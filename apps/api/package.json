@@ -1,0 +1,19 @@
+{
+	"name": "gefakit-api",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy:staging": "wrangler deploy --minify --env staging",
+		"deploy:production": "wrangler deploy --minify --env production",
+		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
+		"types": "wrangler types"
+	},
+	"dependencies": {
+		"@gefakit/shared": "workspace:*",
+		"hono": "^4.7.5"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250410.0",
+		"@types/node": "^22.14.0",
+		"wrangler": "^4.10.0"
+	}
+}
