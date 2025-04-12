@@ -14,21 +14,69 @@
 		"binding": "ASSETS",
 		"directory": "./public"
 	},
+	"placement": {
+		"mode": "smart"
+	},
 	"observability": {
 		"enabled": true
 	},
+	"vars": {
+		"DB_ENV": "development"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "gefakit-db-development",
+			"database_id": "dac494ad-023c-4959-93b9-123f792f36cd",
+			"migrations_dir": "./src/db/migrations"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "KV",
+			"id": "f0217db8f2b54628baa26e0a2d8f97f1"
+		}
+	],
 	"env": {
 		"staging": {
 			"vars": {
 				"DB_ENV": "staging"
-			}
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "gefakit-db-staging",
+					"database_id": "8def47e0-4fb8-41bb-8c75-858f0ca20474",
+					"migrations_dir": "./src/db/migrations"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "KV",
+					"id": "e54d39e0b71f40609e438f4f871f690d"
+				}
+			]
 		},
 		"production": {
 			"vars": {
 				"DB_ENV": "production"
-			}
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "gefakit-db-production",
+					"database_id": "3e46b69c-754f-4c03-82b9-033cd50f6ea7",
+					"migrations_dir": "./src/db/migrations"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "KV",
+					"id": "fcd4f648528b42e19c1504f75332ae74"
+				}
+			]
 		}
-	}
+	},
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

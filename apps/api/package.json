@@ -2,14 +2,26 @@
 	"name": "gefakit-api",
 	"scripts": {
 		"dev": "wrangler dev",
+		"dev:staging": "wrangler dev --remote --env staging",
+		"dev:production:yes-i-am-sure": "wrangler dev --remote --env production",
+		"db:seed:local": "wrangler d1 execute gefakit-db-development --file ./src/db/seed.sql --local",
+		"db:seed:staging": "wrangler d1 execute gefakit-db-staging --file ./src/db/seed.sql --remote --env staging",
+		"db:seed:production:yes-i-am-sure": "wrangler d1 execute gefakit-db-production --file ./src/db/seed.sql --remote --env production",
+		"db:migrate:local": "wrangler d1 migrations apply gefakit-db-development --local",
+		"db:migrate:staging": "wrangler d1 migrations apply gefakit-db-staging --remote --env staging",
+		"db:migrate:production:yes-i-am-sure": "wrangler d1 migrations apply gefakit-db-production --remote --env production",
+		"db:studio:local": "npx @outerbase/studio",
+		"db:not:used:example": "npx wrangler d1 execute gefakit-db --remote --file=./any-sql-file.sql",
 		"deploy:staging": "wrangler deploy --minify --env staging",
-		"deploy:production": "wrangler deploy --minify --env production",
+		"deploy:production:yes-i-am-sure": "wrangler deploy --minify --env production",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
 		"types": "wrangler types"
 	},
 	"dependencies": {
 		"@gefakit/shared": "workspace:*",
-		"hono": "^4.7.5"
+		"hono": "^4.7.5",
+		"kysely": "^0.27.6",
+		"kysely-d1": "^0.3.0"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250410.0",
