@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { Variables } from "./types/hono";
 import { Bindings } from "./types/hono";
 import { dbMiddleware } from "./middleware/db";
-import { authorRoutesV1 } from "./features/authors/author.routes.v1";
+import { authorRoutesV1 } from "./features/persons/person.routes.v1";
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
 

@@ -4,28 +4,35 @@
 		"dev": "wrangler dev",
 		"dev:staging": "wrangler dev --remote --env staging",
 		"dev:production:yes-i-am-sure": "wrangler dev --remote --env production",
-		"db:seed:local": "wrangler d1 execute gefakit-db-development --file ./src/db/seed.sql --local",
-		"db:seed:staging": "wrangler d1 execute gefakit-db-staging --file ./src/db/seed.sql --remote --env staging",
-		"db:seed:production:yes-i-am-sure": "wrangler d1 execute gefakit-db-production --file ./src/db/seed.sql --remote --env production",
-		"db:migrate:local": "wrangler d1 migrations apply gefakit-db-development --local",
-		"db:migrate:staging": "wrangler d1 migrations apply gefakit-db-staging --remote --env staging",
-		"db:migrate:production:yes-i-am-sure": "wrangler d1 migrations apply gefakit-db-production --remote --env production",
-		"db:studio:local": "npx @outerbase/studio",
-		"db:not:used:example": "npx wrangler d1 execute gefakit-db --remote --file=./any-sql-file.sql",
 		"deploy:staging": "wrangler deploy --minify --env staging",
 		"deploy:production:yes-i-am-sure": "wrangler deploy --minify --env production",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
-		"types": "wrangler types"
+		"types": "wrangler types",
+		"db:codegen:development": "kysely-codegen --dialect postgres --env-file .dev.vars --out-file ./src/db/db-types.d.ts",
+		"db:codegen:staging": "kysely-codegen --dialect postgres --env-file .dev.vars.staging --out-file ./src/db/db-types.d.ts",
+		"db:codegen:production:yes-i-am-sure": "kysely-codegen --dialect postgres --env-file .dev.vars.production --out-file ./src/db/db-types.d.ts",
+		"db:migrate:development": "cross-env NODE_ENV=development tsx ./src/db/migrate.ts",
+		"db:migrate:staging": "cross-env NODE_ENV=staging tsx ./src/db/migrate.ts",
+		"db:migrate:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/migrate.ts",
+		"db:seed:development": "cross-env NODE_ENV=development tsx ./src/db/seeds/first.ts",
+		"db:seed:staging": "cross-env NODE_ENV=staging tsx ./src/db/seeds/first.ts",
+		"db:seed:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/seeds/first.ts"
 	},
 	"dependencies": {
 		"@gefakit/shared": "workspace:*",
+		"@neondatabase/serverless": "^1.0.0",
+		"cross-env": "^7.0.3",
 		"hono": "^4.7.5",
 		"kysely": "^0.27.6",
-		"kysely-d1": "^0.3.0"
+		"kysely-neon": "^1.3.0"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250410.0",
 		"@types/node": "^22.14.0",
+		"@types/pg": "^8.11.12",
+		"dotenv": "^16.5.0",
+		"kysely-codegen": "^0.18.3",
+		"tsx": "^4.19.3",
 		"wrangler": "^4.10.0"
 	}
 }

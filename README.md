@@ -27,7 +27,7 @@ You can always add staging later.
 
 NOTE: We intentionally don't use `preview` from cloudflare for databases and KV namespaces because it's easier to manage different environments.
 
-## Databses
+## Databses D1 - NOT USED
 
 1. Create a new D1 dev database with: `wrangler d1 create gefakit-db-development`
 2. Create a new D1 staging database with: `wrangler d1 create gefakit-db-staging`
@@ -53,6 +53,14 @@ Similar, you can run `npm run db:migrate:staging` and `npm run db:migrate:produc
 4. Run `npm run db:seed:local` to seed the database.
 Similar, you can run `npm run db:seed:staging` and `npm run db:seed:production` to seed the staging and production databases.
 
+## DATABASES - NEON POSTGRES
+Create a seperate database for each environment and set the connection strings in:
+.dev.vars => DATABASE_URL and DATABASE_URL_POOLED for development
+.dev.vars => DATABASE_URL and DATABASE_URL_POOLED for staging
+.dev.vars => DATABASE_URL and DATABASE_URL_POOLED for production
+
+Note: Remember to set the secrets to cloudflare environments:
+`npx wrangler secret put BUCKET_APPDRIVE_PUBLIC_NAME --env staging`
 
 ## KV
 1. Create KV name space `GEFAKIT_KV` with `npx wrangler kv namespace create gefakit-kv-development`
