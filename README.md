@@ -62,6 +62,8 @@ Create a seperate database for each environment and set the connection strings i
 Note: Remember to set the secrets to cloudflare environments:
 `npx wrangler secret put BUCKET_APPDRIVE_PUBLIC_NAME --env staging`
 
+Note: The development development is on-purpose
+
 ## KV
 1. Create KV name space `GEFAKIT_KV` with `npx wrangler kv namespace create gefakit-kv-development`
 2. Create KV name space `GEFAKIT_KV` with `npx wrangler kv namespace create gefakit-kv-staging`
