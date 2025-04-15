@@ -5,7 +5,6 @@ export interface Bindings extends Cloudflare.Env {
     myVar: string;
   }
   
-  // type the drizzle d
   export interface Variables {
     db: Kysely<DB>
   }

@@ -4,3 +4,4 @@ export * from "./schemas/vehicle.schema";
 export * from "./schemas/subscription.schema";
 
 export * from "./types/user";
+export * from "./types/auth";

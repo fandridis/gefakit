@@ -11,22 +11,22 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
-export interface Person {
+export interface AppUser {
   created_at: Generated<Timestamp>;
-  first_name: string;
-  gender: string;
+  email: string;
   id: Generated<number>;
-  last_name: string | null;
+  password_hash: string;
+  recovery_code: Buffer | null;
+  username: string;
 }
 
-export interface Pet {
-  id: Generated<number>;
-  name: string;
-  owner_id: number;
-  species: string;
+export interface UserSession {
+  expires_at: Timestamp;
+  id: string;
+  user_id: number;
 }
 
 export interface DB {
-  person: Person;
-  pet: Pet;
+  app_user: AppUser;
+  user_session: UserSession;
 }
