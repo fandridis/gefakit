@@ -58,7 +58,7 @@ function AppContent() {
 
   // Example data for forms
   const email = 'john@example.com';
-  const password = '1q2w3e4r';
+  const password = '1q2w3eeqoidj4r';
   const username = 'John';
 
   return (

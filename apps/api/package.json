@@ -30,7 +30,6 @@
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
 		"bcryptjs": "^3.0.2",
-		"better-auth": "^1.2.6",
 		"cross-env": "^7.0.3",
 		"hono": "^4.7.5",
 		"kysely": "^0.27.6",

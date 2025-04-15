@@ -147,6 +147,29 @@ Files
 ================================================================
 
 ================
+File: apps/api/public/index.html
+================
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Hello, World!</title>
+	</head>
+	<body>
+		<h1 id="heading"></h1>
+		<script>
+			fetch('/message')
+				.then((resp) => resp.text())
+				.then((text) => {
+					const h1 = document.getElementById('heading');
+					h1.textContent = text;
+				});
+		</script>
+	</body>
+</html>
+
+================
 File: apps/api/src/db/migrations/0002_user.ts
 ================
 import { Kysely, sql } from 'kysely'
@@ -175,6 +198,173 @@ export async function down(db: Kysely<any>): Promise<void> {
     .dropColumn('created_at')
     .execute()
 }
+
+================
+File: apps/api/src/db/seeds/first.ts
+================
+// seed.ts
+
+import { Kysely } from 'kysely'
+import { DB } from '../db-types'
+import { config } from 'dotenv'
+import { NeonDialect } from 'kysely-neon'
+
+// Choose a config file based on NODE_ENV
+const env = process.env.NODE_ENV || 'development'
+const envFile =
+  env === 'production'
+    ? '.dev.vars.production'
+    : env === 'staging'
+    ? '.dev.vars.staging'
+    : '.dev.vars'
+
+// Load environment variables from the appropriate file
+config({ path: envFile })
+
+async function seed() {
+  const db = new Kysely<DB>({
+    dialect: new NeonDialect({
+      connectionString: process.env.DATABASE_URL,
+    }),
+  })
+
+  // Add 3 random people
+  const person1 = await db
+    .insertInto('person')
+    .values({
+      first_name: 'John',
+      last_name: 'Doe',
+      gender: 'male',
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+
+  const person2 = await db
+    .insertInto('person')
+    .values({
+      first_name: 'Jane',
+      last_name: 'Smith',
+      gender: 'female',
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+
+  const person3 = await db
+    .insertInto('person')
+    .values({
+      first_name: 'Alex',
+      last_name: 'Johnson',
+      gender: 'non-binary',
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow()
+
+  // Add 5 pets
+  await db
+    .insertInto('pet')
+    .values([
+      {
+        name: 'Fluffy',
+        owner_id: person1.id,
+        species: 'cat',
+      },
+      {
+        name: 'Rex',
+        owner_id: person1.id,
+        species: 'dog',
+      },
+      {
+        name: 'Whiskers',
+        owner_id: person2.id,
+        species: 'cat',
+      },
+      {
+        name: 'Buddy',
+        owner_id: person3.id,
+        species: 'dog',
+      },
+      {
+        name: 'Goldie',
+        owner_id: person3.id,
+        species: 'fish',
+      },
+    ])
+    .execute()
+
+  console.log('Database seeded successfully!')
+  await db.destroy()
+}
+
+seed().catch((error) => {
+  console.error('Failed to seed database:', error)
+  process.exit(1)
+})
+
+================
+File: apps/api/src/db/migrate.ts
+================
+import * as path from 'path'
+import { promises as fs } from 'fs'
+import {
+  Kysely,
+  Migrator,
+  FileMigrationProvider,
+} from 'kysely'
+import { NeonDialect } from 'kysely-neon'
+import { config } from 'dotenv'
+
+// Choose a config file based on NODE_ENV
+const env = process.env.NODE_ENV || 'development'
+const envFile =
+  env === 'production'
+    ? '.dev.vars.production'
+    : env === 'staging'
+    ? '.dev.vars.staging'
+    : '.dev.vars'
+
+// Load environment variables from the appropriate file
+config({ path: envFile })
+
+async function migrateToLatest() {
+
+    console.log('process.env.DATABASE_URL: ', process.env.DATABASE_URL)
+
+    const db = new Kysely<any>({
+        dialect: new NeonDialect({
+            connectionString: process.env.DATABASE_URL,
+        }),
+    })
+
+    const migrator = new Migrator({
+        db,
+        provider: new FileMigrationProvider({
+        fs,
+        path,
+        // This needs to be an absolute path.
+        migrationFolder: path.join(__dirname, 'migrations'),
+        }),
+    })
+
+    const { error, results } = await migrator.migrateToLatest()
+
+    results?.forEach((it) => {
+        if (it.status === 'Success') {
+        console.log(`migration "${it.migrationName}" was executed successfully`)
+        } else if (it.status === 'Error') {
+        console.error(`failed to execute migration "${it.migrationName}"`)
+        }
+    })
+
+    if (error) {
+        console.error('failed to migrate')
+        console.error(error)
+        process.exit(1)
+    }
+
+    await db.destroy()
+}
+
+migrateToLatest()
 
 ================
 File: apps/api/src/errors/app-error.ts
@@ -832,6 +1022,143 @@ export const zValidator = <T extends ZodSchema, Target extends keyof ValidationT
   })
 
 ================
+File: apps/api/.gitignore
+================
+# prod
+dist/
+
+# dev
+.yarn/
+!.yarn/releases
+.vscode/*
+!.vscode/launch.json
+!.vscode/*.code-snippets
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf
+
+# deps
+node_modules/
+.wrangler
+
+# env
+.env
+.env.production
+.dev.vars
+.dev.vars.*
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# misc
+.DS_Store
+
+================
+File: apps/api/README.md
+================
+```
+npm install
+npm run dev
+```
+
+```
+npm run deploy
+```
+
+================
+File: apps/api/tsconfig.json
+================
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": [
+      "ESNext"
+    ],
+    "types": [
+      "@cloudflare/workers-types/2023-07-01",
+      "node"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx"
+  },
+}
+
+================
+File: apps/web/public/vite.svg
+================
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+
+================
+File: apps/web/src/assets/Cloudflare_Logo.svg
+================
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 21.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 822.8 355.5" style="enable-background:new 0 0 822.8 355.5;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#FFFFFF;}
+	.st1{fill:#FBAE40;}
+	.st2{fill:#F58220;}
+</style>
+<g id="Page-1">
+	<path id="CLOUDFLARE-_xAE_" class="st0" d="M772.2,252.6c-3.4,0-6.1-2.7-6.1-6.1c0-3.3,2.7-6.1,6.1-6.1c3.3,0,6.1,2.7,6.1,6.1
+		C778.3,249.8,775.5,252.6,772.2,252.6L772.2,252.6z M772.2,241.6c-2.7,0-4.9,2.2-4.9,4.9s2.2,4.9,4.9,4.9c2.7,0,4.9-2.2,4.9-4.9
+		S774.9,241.6,772.2,241.6L772.2,241.6z M775.3,249.7h-1.4l-1.2-2.3h-1.6v2.3h-1.3V243h3.2c1.4,0,2.3,0.9,2.3,2.2c0,1-0.6,1.7-1.4,2
+		L775.3,249.7z M772.9,246.2c0.5,0,1-0.3,1-1c0-0.8-0.4-1-1-1h-2v2H772.9z M136.7,239.8h15.6v42.5h27.1v13.6h-42.7V239.8z
+		 M195.5,268v-0.2c0-16.1,13-29.2,30.3-29.2s30.1,12.9,30.1,29v0.2c0,16.1-13,29.2-30.3,29.2S195.5,284.1,195.5,268z M240.1,268
+		v-0.2c0-8.1-5.8-15.1-14.4-15.1c-8.5,0-14.2,6.9-14.2,15v0.2c0,8.1,5.8,15.1,14.3,15.1C234.4,283,240.1,276.1,240.1,268z
+		 M275,271.3v-31.5h15.8V271c0,8.1,4.1,11.9,10.3,11.9c6.2,0,10.3-3.7,10.3-11.5v-31.6h15.8v31.1c0,18.1-10.3,26-26.3,26
+		C285,296.9,275,288.9,275,271.3z M351,239.8h21.6c20,0,31.7,11.5,31.7,27.7v0.2c0,16.2-11.8,28.2-32,28.2H351V239.8z M372.9,282.1
+		c9.3,0,15.5-5.1,15.5-14.2v-0.2c0-9-6.2-14.2-15.5-14.2h-6.3V282L372.9,282.1L372.9,282.1z M426.9,239.8h44.9v13.6h-29.4v9.6H469
+		v12.9h-26.6v20h-15.5V239.8z M493.4,239.8h15.5v42.5h27.2v13.6h-42.7V239.8z M576.7,239.4h15l23.9,56.5h-16.7l-4.1-10h-21.6l-4,10
+		h-16.3L576.7,239.4z M590.4,273.8l-6.2-15.9l-6.3,15.9H590.4z M635.6,239.8h26.5c8.6,0,14.5,2.2,18.3,6.1c3.3,3.2,5,7.5,5,13.1v0.2
+		c0,8.6-4.6,14.3-11.5,17.2l13.4,19.6h-18L658,279h-6.8v17h-15.6V239.8z M661.4,266.7c5.3,0,8.3-2.6,8.3-6.6v-0.2
+		c0-4.4-3.2-6.6-8.4-6.6h-10.2v13.4H661.4z M707.8,239.8h45.1V253h-29.7v8.5h26.9v12.3h-26.9v8.9h30.1v13.2h-45.5V239.8z
+		 M102.7,274.6c-2.2,4.9-6.8,8.4-12.8,8.4c-8.5,0-14.3-7.1-14.3-15.1v-0.2c0-8.1,5.7-15,14.2-15c6.4,0,11.3,3.9,13.3,9.3h16.4
+		c-2.6-13.4-14.4-23.3-29.6-23.3c-17.3,0-30.3,13.1-30.3,29.2v0.2c0,16.1,12.8,29,30.1,29c14.8,0,26.4-9.6,29.4-22.4L102.7,274.6z"
+		/>
+	<path id="flare" class="st0" d="M734.5,150.4l-40.7-24.7c-0.6-0.1-4.4,0.3-6.4-0.7c-1.4-0.7-2.5-1.9-3.2-4c-3.2,0-175.5,0-175.5,0
+		v91.8h225.8V150.4z"/>
+	<path id="right-cloud" class="st1" d="M692.2,125.8c-0.8,0-1.5,0.6-1.8,1.4l-4.8,16.7c-2.1,7.2-1.3,13.8,2.2,18.7
+		c3.2,4.5,8.6,7.1,15.1,7.4l26.2,1.6c0.8,0,1.5,0.4,1.9,1c0.4,0.6,0.5,1.5,0.3,2.2c-0.4,1.2-1.6,2.1-2.9,2.2l-27.3,1.6
+		c-14.8,0.7-30.7,12.6-36.3,27.2l-2,5.1c-0.4,1,0.3,2,1.4,2H758c1.1,0,2.1-0.7,2.4-1.8c1.6-5.8,2.5-11.9,2.5-18.2
+		c0-37-30.2-67.2-67.3-67.2C694.5,125.7,693.3,125.7,692.2,125.8z"/>
+	<path id="left-cloud" class="st2" d="M656.4,204.6c2.1-7.2,1.3-13.8-2.2-18.7c-3.2-4.5-8.6-7.1-15.1-7.4L516,176.9
+		c-0.8,0-1.5-0.4-1.9-1c-0.4-0.6-0.5-1.4-0.3-2.2c0.4-1.2,1.6-2.1,2.9-2.2l124.2-1.6c14.7-0.7,30.7-12.6,36.3-27.2l7.1-18.5
+		c0.3-0.8,0.4-1.6,0.2-2.4c-8-36.2-40.3-63.2-78.9-63.2c-35.6,0-65.8,23-76.6,54.9c-7-5.2-15.9-8-25.5-7.1
+		c-17.1,1.7-30.8,15.4-32.5,32.5c-0.4,4.4-0.1,8.7,0.9,12.7c-27.9,0.8-50.2,23.6-50.2,51.7c0,2.5,0.2,5,0.5,7.5
+		c0.2,1.2,1.2,2.1,2.4,2.1h227.2c1.3,0,2.5-0.9,2.9-2.2L656.4,204.6z"/>
+</g>
+<g>
+</g>
+<g>
+</g>
+<g>
+</g>
+<g>
+</g>
+<g>
+</g>
+<g>
+</g>
+</svg>
+
+================
+File: apps/web/src/assets/react.svg
+================
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+
+================
 File: apps/web/src/features/auth/hooks/useAuthActions.ts
 ================
 // /features/auth/hooks/useAuthActions.ts
@@ -1064,516 +1391,6 @@ export const authClient = createAuthClient({
 })
 
 ================
-File: packages/shared/src/schemas/auth.schema.ts
-================
-import { z } from 'zod';
-
-export const userSchema = z.object({
-    id: z.number(),
-    email: z.string(),
-    username: z.string().nullable().optional(),
-    created_at: z.date(),
-});
-
-export const sessionSchema = z.object({
-    id: z.string(),
-    user_id: z.number(),
-    expires_at: z.date()
-});
-
-export const getSessionResponseSchema = z.object({
-    session: sessionSchema.nullable(),
-    user: userSchema.nullable(),
-});
-
-export const signInEmailRequestBodySchema = z.object({
-    email: z.string().email(),
-    password: z.string(),
-});
-
-export const signInEmailResponseSchema = z.object({
-    user: userSchema,
-});
-
-export const signUpEmailRequestBodySchema = z.object({
-    username: z.string(),
-    email: z.string().email(),
-    password: z.string(),
-});
-
-export const signUpEmailResponseSchema = z.object({
-    user: userSchema,
-});
-
-export const signOutResponseSchema = z.object({
-    message: z.string(),
-});
-
-================
-File: packages/shared/src/types/auth.ts
-================
-import { 
-  userSchema,
-  sessionSchema,
-  getSessionResponseSchema,
-  signInEmailRequestBodySchema,
-  signUpEmailRequestBodySchema, 
-  signUpEmailResponseSchema} from "../schemas/auth.schema";
-import { z } from "zod";
-
-export type UserDTO = z.infer<typeof userSchema>;
-export type SessionDTO = z.infer<typeof sessionSchema>;
-
-export type GetSessionResponseDTO = z.infer<typeof getSessionResponseSchema>;
-
-export type SignInEmailRequestBodyDTO = z.infer<typeof signInEmailRequestBodySchema>;
-export type SignInEmailResponseDTO = { user: UserDTO };
-
-export type SignUpEmailRequestBodyDTO = z.infer<typeof signUpEmailRequestBodySchema>;
-export type SignUpEmailResponseDTO = z.infer<typeof signUpEmailResponseSchema>;
-
-export type SignOutResponseDTO = { message: string };
-
-================
-File: apps/api/public/index.html
-================
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
-		</script>
-	</body>
-</html>
-
-================
-File: apps/api/src/db/migrations/0001_init.ts
-================
-// import { Kysely, sql } from 'kysely'
-
-// export async function up(db: Kysely<any>): Promise<void> {
-//   await db.schema
-//     .createTable('person')
-//     .addColumn('id', 'serial', (col) => col.primaryKey())
-//     .addColumn('first_name', 'varchar', (col) => col.notNull())
-//     .addColumn('last_name', 'varchar')
-//     .addColumn('gender', 'varchar(50)', (col) => col.notNull())
-//     .addColumn('created_at', 'timestamp', (col) =>
-//       col.defaultTo(sql`now()`).notNull(),
-//     )
-//     .execute()
-
-//   await db.schema
-//     .createTable('pet')
-//     .addColumn('id', 'serial', (col) => col.primaryKey())
-//     .addColumn('name', 'varchar', (col) => col.notNull().unique())
-//     .addColumn('owner_id', 'integer', (col) =>
-//       col.references('person.id').onDelete('cascade').notNull(),
-//     )
-//     .addColumn('species', 'varchar', (col) => col.notNull())
-//     .execute()
-
-//   await db.schema
-//     .createIndex('pet_owner_id_index')
-//     .on('pet')
-//     .column('owner_id')
-//     .execute()
-// }
-
-// export async function down(db: Kysely<any>): Promise<void> {
-//   await db.schema.dropTable('pet').execute()
-//   await db.schema.dropTable('person').execute()
-// }
-
-/**
- * CREATE TABLE app_user (
-    id SERIAL PRIMARY KEY,
-    username TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE user_session (
-    id TEXT NOT NULL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES app_user(id),
-    expires_at TIMESTAMPTZ NOT NULL,
-);
- */
-
-import { Kysely } from 'kysely'
-
-export async function up(db: Kysely<any>): Promise<void> {
-  await db.schema
-    .createTable('app_user')
-    .addColumn('id', 'serial', (col) => col.primaryKey())
-    .addColumn('username', 'text', (col) => col.notNull().unique())
-    .execute()
-
-  await db.schema
-    .createTable('user_session')
-    .addColumn('id', 'text', (col) => col.primaryKey())
-    .addColumn('user_id', 'integer', (col) =>
-      col.references('app_user.id').notNull()
-    )
-    .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
-    .execute()
-}
-
-export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropTable('user_session').execute()
-  await db.schema.dropTable('app_user').execute()
-}
-
-================
-File: apps/api/src/db/seeds/first.ts
-================
-// seed.ts
-
-import { Kysely } from 'kysely'
-import { DB } from '../db-types'
-import { config } from 'dotenv'
-import { NeonDialect } from 'kysely-neon'
-
-// Choose a config file based on NODE_ENV
-const env = process.env.NODE_ENV || 'development'
-const envFile =
-  env === 'production'
-    ? '.dev.vars.production'
-    : env === 'staging'
-    ? '.dev.vars.staging'
-    : '.dev.vars'
-
-// Load environment variables from the appropriate file
-config({ path: envFile })
-
-async function seed() {
-  const db = new Kysely<DB>({
-    dialect: new NeonDialect({
-      connectionString: process.env.DATABASE_URL,
-    }),
-  })
-
-  // Add 3 random people
-  const person1 = await db
-    .insertInto('person')
-    .values({
-      first_name: 'John',
-      last_name: 'Doe',
-      gender: 'male',
-    })
-    .returning('id')
-    .executeTakeFirstOrThrow()
-
-  const person2 = await db
-    .insertInto('person')
-    .values({
-      first_name: 'Jane',
-      last_name: 'Smith',
-      gender: 'female',
-    })
-    .returning('id')
-    .executeTakeFirstOrThrow()
-
-  const person3 = await db
-    .insertInto('person')
-    .values({
-      first_name: 'Alex',
-      last_name: 'Johnson',
-      gender: 'non-binary',
-    })
-    .returning('id')
-    .executeTakeFirstOrThrow()
-
-  // Add 5 pets
-  await db
-    .insertInto('pet')
-    .values([
-      {
-        name: 'Fluffy',
-        owner_id: person1.id,
-        species: 'cat',
-      },
-      {
-        name: 'Rex',
-        owner_id: person1.id,
-        species: 'dog',
-      },
-      {
-        name: 'Whiskers',
-        owner_id: person2.id,
-        species: 'cat',
-      },
-      {
-        name: 'Buddy',
-        owner_id: person3.id,
-        species: 'dog',
-      },
-      {
-        name: 'Goldie',
-        owner_id: person3.id,
-        species: 'fish',
-      },
-    ])
-    .execute()
-
-  console.log('Database seeded successfully!')
-  await db.destroy()
-}
-
-seed().catch((error) => {
-  console.error('Failed to seed database:', error)
-  process.exit(1)
-})
-
-================
-File: apps/api/src/db/db-types.d.ts
-================
-/**
- * This file was generated by kysely-codegen.
- * Please do not edit it manually.
- */
-
-import type { ColumnType } from "kysely";
-
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-  ? ColumnType<S, I | undefined, U>
-  : ColumnType<T, T | undefined, T>;
-
-export type Timestamp = ColumnType<Date, Date | string, Date | string>;
-
-export interface AppUser {
-  created_at: Generated<Timestamp>;
-  email: string;
-  id: Generated<number>;
-  password_hash: string;
-  recovery_code: Buffer | null;
-  username: string;
-}
-
-export interface UserSession {
-  expires_at: Timestamp;
-  id: string;
-  user_id: number;
-}
-
-export interface DB {
-  app_user: AppUser;
-  user_session: UserSession;
-}
-
-================
-File: apps/api/src/db/migrate.ts
-================
-import * as path from 'path'
-import { promises as fs } from 'fs'
-import {
-  Kysely,
-  Migrator,
-  FileMigrationProvider,
-} from 'kysely'
-import { NeonDialect } from 'kysely-neon'
-import { config } from 'dotenv'
-
-// Choose a config file based on NODE_ENV
-const env = process.env.NODE_ENV || 'development'
-const envFile =
-  env === 'production'
-    ? '.dev.vars.production'
-    : env === 'staging'
-    ? '.dev.vars.staging'
-    : '.dev.vars'
-
-// Load environment variables from the appropriate file
-config({ path: envFile })
-
-async function migrateToLatest() {
-
-    console.log('process.env.DATABASE_URL: ', process.env.DATABASE_URL)
-
-    const db = new Kysely<any>({
-        dialect: new NeonDialect({
-            connectionString: process.env.DATABASE_URL,
-        }),
-    })
-
-    const migrator = new Migrator({
-        db,
-        provider: new FileMigrationProvider({
-        fs,
-        path,
-        // This needs to be an absolute path.
-        migrationFolder: path.join(__dirname, 'migrations'),
-        }),
-    })
-
-    const { error, results } = await migrator.migrateToLatest()
-
-    results?.forEach((it) => {
-        if (it.status === 'Success') {
-        console.log(`migration "${it.migrationName}" was executed successfully`)
-        } else if (it.status === 'Error') {
-        console.error(`failed to execute migration "${it.migrationName}"`)
-        }
-    })
-
-    if (error) {
-        console.error('failed to migrate')
-        console.error(error)
-        process.exit(1)
-    }
-
-    await db.destroy()
-}
-
-migrateToLatest()
-
-================
-File: apps/api/.gitignore
-================
-# prod
-dist/
-
-# dev
-.yarn/
-!.yarn/releases
-.vscode/*
-!.vscode/launch.json
-!.vscode/*.code-snippets
-.idea/workspace.xml
-.idea/usage.statistics.xml
-.idea/shelf
-
-# deps
-node_modules/
-.wrangler
-
-# env
-.env
-.env.production
-.dev.vars
-.dev.vars.*
-
-# logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# misc
-.DS_Store
-
-================
-File: apps/api/README.md
-================
-```
-npm install
-npm run dev
-```
-
-```
-npm run deploy
-```
-
-================
-File: apps/api/tsconfig.json
-================
-{
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "lib": [
-      "ESNext"
-    ],
-    "types": [
-      "@cloudflare/workers-types/2023-07-01",
-      "node"
-    ],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  },
-}
-
-================
-File: apps/web/public/vite.svg
-================
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-
-================
-File: apps/web/src/assets/Cloudflare_Logo.svg
-================
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 21.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 822.8 355.5" style="enable-background:new 0 0 822.8 355.5;" xml:space="preserve">
-<style type="text/css">
-	.st0{fill:#FFFFFF;}
-	.st1{fill:#FBAE40;}
-	.st2{fill:#F58220;}
-</style>
-<g id="Page-1">
-	<path id="CLOUDFLARE-_xAE_" class="st0" d="M772.2,252.6c-3.4,0-6.1-2.7-6.1-6.1c0-3.3,2.7-6.1,6.1-6.1c3.3,0,6.1,2.7,6.1,6.1
-		C778.3,249.8,775.5,252.6,772.2,252.6L772.2,252.6z M772.2,241.6c-2.7,0-4.9,2.2-4.9,4.9s2.2,4.9,4.9,4.9c2.7,0,4.9-2.2,4.9-4.9
-		S774.9,241.6,772.2,241.6L772.2,241.6z M775.3,249.7h-1.4l-1.2-2.3h-1.6v2.3h-1.3V243h3.2c1.4,0,2.3,0.9,2.3,2.2c0,1-0.6,1.7-1.4,2
-		L775.3,249.7z M772.9,246.2c0.5,0,1-0.3,1-1c0-0.8-0.4-1-1-1h-2v2H772.9z M136.7,239.8h15.6v42.5h27.1v13.6h-42.7V239.8z
-		 M195.5,268v-0.2c0-16.1,13-29.2,30.3-29.2s30.1,12.9,30.1,29v0.2c0,16.1-13,29.2-30.3,29.2S195.5,284.1,195.5,268z M240.1,268
-		v-0.2c0-8.1-5.8-15.1-14.4-15.1c-8.5,0-14.2,6.9-14.2,15v0.2c0,8.1,5.8,15.1,14.3,15.1C234.4,283,240.1,276.1,240.1,268z
-		 M275,271.3v-31.5h15.8V271c0,8.1,4.1,11.9,10.3,11.9c6.2,0,10.3-3.7,10.3-11.5v-31.6h15.8v31.1c0,18.1-10.3,26-26.3,26
-		C285,296.9,275,288.9,275,271.3z M351,239.8h21.6c20,0,31.7,11.5,31.7,27.7v0.2c0,16.2-11.8,28.2-32,28.2H351V239.8z M372.9,282.1
-		c9.3,0,15.5-5.1,15.5-14.2v-0.2c0-9-6.2-14.2-15.5-14.2h-6.3V282L372.9,282.1L372.9,282.1z M426.9,239.8h44.9v13.6h-29.4v9.6H469
-		v12.9h-26.6v20h-15.5V239.8z M493.4,239.8h15.5v42.5h27.2v13.6h-42.7V239.8z M576.7,239.4h15l23.9,56.5h-16.7l-4.1-10h-21.6l-4,10
-		h-16.3L576.7,239.4z M590.4,273.8l-6.2-15.9l-6.3,15.9H590.4z M635.6,239.8h26.5c8.6,0,14.5,2.2,18.3,6.1c3.3,3.2,5,7.5,5,13.1v0.2
-		c0,8.6-4.6,14.3-11.5,17.2l13.4,19.6h-18L658,279h-6.8v17h-15.6V239.8z M661.4,266.7c5.3,0,8.3-2.6,8.3-6.6v-0.2
-		c0-4.4-3.2-6.6-8.4-6.6h-10.2v13.4H661.4z M707.8,239.8h45.1V253h-29.7v8.5h26.9v12.3h-26.9v8.9h30.1v13.2h-45.5V239.8z
-		 M102.7,274.6c-2.2,4.9-6.8,8.4-12.8,8.4c-8.5,0-14.3-7.1-14.3-15.1v-0.2c0-8.1,5.7-15,14.2-15c6.4,0,11.3,3.9,13.3,9.3h16.4
-		c-2.6-13.4-14.4-23.3-29.6-23.3c-17.3,0-30.3,13.1-30.3,29.2v0.2c0,16.1,12.8,29,30.1,29c14.8,0,26.4-9.6,29.4-22.4L102.7,274.6z"
-		/>
-	<path id="flare" class="st0" d="M734.5,150.4l-40.7-24.7c-0.6-0.1-4.4,0.3-6.4-0.7c-1.4-0.7-2.5-1.9-3.2-4c-3.2,0-175.5,0-175.5,0
-		v91.8h225.8V150.4z"/>
-	<path id="right-cloud" class="st1" d="M692.2,125.8c-0.8,0-1.5,0.6-1.8,1.4l-4.8,16.7c-2.1,7.2-1.3,13.8,2.2,18.7
-		c3.2,4.5,8.6,7.1,15.1,7.4l26.2,1.6c0.8,0,1.5,0.4,1.9,1c0.4,0.6,0.5,1.5,0.3,2.2c-0.4,1.2-1.6,2.1-2.9,2.2l-27.3,1.6
-		c-14.8,0.7-30.7,12.6-36.3,27.2l-2,5.1c-0.4,1,0.3,2,1.4,2H758c1.1,0,2.1-0.7,2.4-1.8c1.6-5.8,2.5-11.9,2.5-18.2
-		c0-37-30.2-67.2-67.3-67.2C694.5,125.7,693.3,125.7,692.2,125.8z"/>
-	<path id="left-cloud" class="st2" d="M656.4,204.6c2.1-7.2,1.3-13.8-2.2-18.7c-3.2-4.5-8.6-7.1-15.1-7.4L516,176.9
-		c-0.8,0-1.5-0.4-1.9-1c-0.4-0.6-0.5-1.4-0.3-2.2c0.4-1.2,1.6-2.1,2.9-2.2l124.2-1.6c14.7-0.7,30.7-12.6,36.3-27.2l7.1-18.5
-		c0.3-0.8,0.4-1.6,0.2-2.4c-8-36.2-40.3-63.2-78.9-63.2c-35.6,0-65.8,23-76.6,54.9c-7-5.2-15.9-8-25.5-7.1
-		c-17.1,1.7-30.8,15.4-32.5,32.5c-0.4,4.4-0.1,8.7,0.9,12.7c-27.9,0.8-50.2,23.6-50.2,51.7c0,2.5,0.2,5,0.5,7.5
-		c0.2,1.2,1.2,2.1,2.4,2.1h227.2c1.3,0,2.5-0.9,2.9-2.2L656.4,204.6z"/>
-</g>
-<g>
-</g>
-<g>
-</g>
-<g>
-</g>
-<g>
-</g>
-<g>
-</g>
-<g>
-</g>
-</svg>
-
-================
-File: apps/web/src/assets/react.svg
-================
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
-
-================
 File: apps/web/src/App.css
 ================
 #root {
@@ -1621,142 +1438,6 @@ File: apps/web/src/App.css
 .read-the-docs {
 	color: #888;
 }
-
-================
-File: apps/web/src/App.tsx
-================
-// App.tsx (or wherever AppContent is)
-import { useEffect, useState } from 'react'; // Removed useEffect unless needed for other things
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import './App.css';
-// Import your new hooks
-import { useAuthActions } from './features/auth/hooks/useAuthActions'; // Adjust path
-import { useAuthSession } from './features/auth/hooks/useAuthSession';
-
-const queryClient = new QueryClient();
-
-function AppContent() {
-  const [count, setCount] = useState(0); // Keep local UI state if needed
-
-  // Get session state using your new hook
-  const { data, isLoading: isSessionLoading, isAuthenticated, error: sessionError } = useAuthSession();
-
-  // Get auth action functions and states
-  const {
-    signInEmail,
-    signUpEmail,
-    signOut,
-    signInSocial,
-    isSigningIn,
-    isSigningUp,
-    isSigningOut,
-    // signInError, signUpError, signOutError // Access errors if needed
-  } = useAuthActions();
-
-  useEffect(() => {
-    console.log('session', data);
-  }, [data]);
-
-
-  // Example: log session changes (optional)
-  // useEffect(() => {
-  //   console.log('Session State:', { session, isSessionLoading, isAuthenticated, sessionError });
-  // }, [session, isSessionLoading, isAuthenticated, sessionError]);
-
-
-  const handleFetchPersons = async () => {
-    console.log('Fetching persons...');
-    try {
-      const res = await fetch('http://localhost:8787/api/v1/persons', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Requires user to be logged in on backend
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      const data = await res.json();
-      console.log('Persons data: ', data);
-    } catch (error) {
-      console.error("Failed to fetch persons:", error);
-      // Handle error (e.g., show message) - likely needs authentication
-    }
-  };
-
-  // Example data for forms
-  const email = 'john@example.com';
-  const password = '1q2w3e4r';
-  const username = 'John';
-
-  return (
-    <>
-      <h1>Auth Actions & Session State</h1>
-
-      {/* Display Session Info */}
-      <div>
-        <h2>Session Status:</h2>
-        {isSessionLoading && <p>Loading session...</p>}
-        {sessionError && <p style={{ color: 'red' }}>Error loading session: {sessionError.message}</p>}
-        {isAuthenticated && data?.session && (
-          <div>
-            <p>Welcome, {data.user.username || data.user.email}!</p>
-            <pre>{JSON.stringify(data.session, null, 2)}</pre>
-          </div>
-        )}
-        {!isSessionLoading && !isAuthenticated && <p>You are not logged in.</p>}
-      </div>
-
-      {/* Auth Actions */}
-      <div>
-        <h2>Actions:</h2>
-        {!isAuthenticated && (
-          <>
-            <button onClick={() => signUpEmail({ username, email, password })} disabled={isSigningUp}>
-              {isSigningUp ? 'Signing Up...' : 'Sign Up Email'}
-            </button>
-            <button onClick={() => signInEmail({ email, password })} disabled={isSigningIn}>
-              {isSigningIn ? 'Signing In...' : 'Sign In Email'}
-            </button>
-            <button onClick={() => signInSocial('github')}>
-              Sign In with GitHub
-            </button>
-          </>
-        )}
-        {isAuthenticated && (
-          <button onClick={() => signOut()} disabled={isSigningOut}>
-            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-          </button>
-        )}
-      </div>
-
-      {/* Protected Action Example */}
-      <div>
-        <h2>Protected Data:</h2>
-        {isAuthenticated && (
-          <button onClick={handleFetchPersons}>Fetch Persons (Protected)</button>
-        )}
-        {!isAuthenticated && (
-          <>
-            <p>Log in to fetch persons data.</p>
-            <button onClick={handleFetchPersons}>Fetch Persons anyway (Protected)</button>
-
-          </>
-        )}
-      </div>
-
-    </>
-  );
-}
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
-  );
-}
-
-export default App;
 
 ================
 File: apps/web/src/index.css
@@ -1947,49 +1628,6 @@ File: apps/web/index.html
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
-================
-File: apps/web/package.json
-================
-{
-	"name": "gefakit-web",
-	"private": true,
-	"version": "0.0.0",
-	"type": "module",
-	"scripts": {
-		"dev": "vite",
-		"build:staging": "tsc -b && vite build --mode staging",
-		"build:production": "tsc -b && vite build --mode production",
-		"deploy:staging": "CLOUDFLARE_ENV=staging npm run build:staging && wrangler deploy",
-		"deploy:production": "CLOUDFLARE_ENV=production npm run build:production && wrangler deploy",
-		"preview": "npm run build && vite preview",
-		"lint": "eslint .",
-		"cf-typegen": "wrangler types"
-	},
-	"dependencies": {
-		"@gefakit/shared": "workspace:*",
-		"@tanstack/react-query": "^5.74.3",
-		"better-auth": "^1.2.6",
-		"react": "^19.0.0",
-		"react-dom": "^19.0.0"
-	},
-	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.0.5",
-		"@cloudflare/workers-types": "^4.20250410.0",
-		"@eslint/js": "^9.21.0",
-		"@types/react": "^19.0.10",
-		"@types/react-dom": "^19.0.4",
-		"@vitejs/plugin-react-swc": "^3.8.0",
-		"eslint": "^9.21.0",
-		"eslint-plugin-react-hooks": "^5.1.0",
-		"eslint-plugin-react-refresh": "^0.4.19",
-		"globals": "^15.15.0",
-		"typescript": "~5.7.2",
-		"typescript-eslint": "^8.24.1",
-		"vite": "^6.2.0",
-		"wrangler": "^4.10.0"
-	}
-}
 
 ================
 File: apps/web/README.md
@@ -7933,6 +7571,52 @@ File: apps/web/wrangler.jsonc
 }
 
 ================
+File: packages/shared/src/schemas/auth.schema.ts
+================
+import { z } from 'zod';
+
+export const userSchema = z.object({
+    id: z.number(),
+    email: z.string(),
+    username: z.string().nullable().optional(),
+    created_at: z.date(),
+});
+
+export const sessionSchema = z.object({
+    id: z.string(),
+    user_id: z.number(),
+    expires_at: z.date()
+});
+
+export const getSessionResponseSchema = z.object({
+    session: sessionSchema.nullable(),
+    user: userSchema.nullable(),
+});
+
+export const signInEmailRequestBodySchema = z.object({
+    email: z.string().email(),
+    password: z.string(),
+});
+
+export const signInEmailResponseSchema = z.object({
+    user: userSchema,
+});
+
+export const signUpEmailRequestBodySchema = z.object({
+    username: z.string(),
+    email: z.string().email(),
+    password: z.string(),
+});
+
+export const signUpEmailResponseSchema = z.object({
+    user: userSchema,
+});
+
+export const signOutResponseSchema = z.object({
+    message: z.string(),
+});
+
+================
 File: packages/shared/src/schemas/representative.schema.ts
 ================
 import { z } from 'zod';
@@ -8070,6 +7754,31 @@ export const vehicleSchema = z.object({
 export type SharedVehicleDTO = z.infer<typeof vehicleSchema>;
 
 ================
+File: packages/shared/src/types/auth.ts
+================
+import { 
+  userSchema,
+  sessionSchema,
+  getSessionResponseSchema,
+  signInEmailRequestBodySchema,
+  signUpEmailRequestBodySchema, 
+  signUpEmailResponseSchema} from "../schemas/auth.schema";
+import { z } from "zod";
+
+export type UserDTO = z.infer<typeof userSchema>;
+export type SessionDTO = z.infer<typeof sessionSchema>;
+
+export type GetSessionResponseDTO = z.infer<typeof getSessionResponseSchema>;
+
+export type SignInEmailRequestBodyDTO = z.infer<typeof signInEmailRequestBodySchema>;
+export type SignInEmailResponseDTO = { user: UserDTO };
+
+export type SignUpEmailRequestBodyDTO = z.infer<typeof signUpEmailRequestBodySchema>;
+export type SignUpEmailResponseDTO = z.infer<typeof signUpEmailResponseSchema>;
+
+export type SignOutResponseDTO = { message: string };
+
+================
 File: packages/shared/src/types/user.ts
 ================
 export interface TestType {
@@ -8086,17 +7795,6 @@ export const TestTypeRole = {
 } as const;
 
 export type TestTypeRole = typeof TestTypeRole[keyof typeof TestTypeRole];
-
-================
-File: packages/shared/src/index.ts
-================
-export * from "./schemas/user.schema";
-export * from "./schemas/representative.schema";
-export * from "./schemas/vehicle.schema";
-export * from "./schemas/subscription.schema";
-
-export * from "./types/user";
-export * from "./types/auth";
 
 ================
 File: packages/shared/.gitignore
@@ -8172,89 +7870,116 @@ File: package.json
 }
 
 ================
-File: apps/api/src/features/persons/person.routes.v1.ts
+File: apps/api/src/db/migrations/0001_init.ts
 ================
-import { Hono } from "hono";
-import { jsonArrayFrom } from 'kysely/helpers/postgres'
-import { Bindings } from "../../types/hono";
-import { Variables } from "../../types/hono";
-import { getCookie } from "hono/cookie";
-import { createAuthService } from "../auth/auth.service";
-import { createAppError } from "../../errors";
+// import { Kysely, sql } from 'kysely'
 
+// export async function up(db: Kysely<any>): Promise<void> {
+//   await db.schema
+//     .createTable('person')
+//     .addColumn('id', 'serial', (col) => col.primaryKey())
+//     .addColumn('first_name', 'varchar', (col) => col.notNull())
+//     .addColumn('last_name', 'varchar')
+//     .addColumn('gender', 'varchar(50)', (col) => col.notNull())
+//     .addColumn('created_at', 'timestamp', (col) =>
+//       col.defaultTo(sql`now()`).notNull(),
+//     )
+//     .execute()
 
-const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
+//   await db.schema
+//     .createTable('pet')
+//     .addColumn('id', 'serial', (col) => col.primaryKey())
+//     .addColumn('name', 'varchar', (col) => col.notNull().unique())
+//     .addColumn('owner_id', 'integer', (col) =>
+//       col.references('person.id').onDelete('cascade').notNull(),
+//     )
+//     .addColumn('species', 'varchar', (col) => col.notNull())
+//     .execute()
 
-app.get("/", async (c) => {
-    const db = c.get("db");
+//   await db.schema
+//     .createIndex('pet_owner_id_index')
+//     .on('pet')
+//     .column('owner_id')
+//     .execute()
+// }
 
-    const sessionToken = getCookie(c, 'gefakit-session');
+// export async function down(db: Kysely<any>): Promise<void> {
+//   await db.schema.dropTable('pet').execute()
+//   await db.schema.dropTable('person').execute()
+// }
 
-    if (!sessionToken) {
-        throw createAppError.auth.unauthorized();
-    }
+/**
+ * CREATE TABLE app_user (
+    id SERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE
+);
 
-    console.log('sessionToken: ', sessionToken)
-    
-    const authService = createAuthService(db);
-    const {session} = await authService.getCurrentSession(sessionToken);
+CREATE TABLE user_session (
+    id TEXT NOT NULL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES app_user(id),
+    expires_at TIMESTAMPTZ NOT NULL,
+);
+ */
 
-    if (!session) {
-        throw createAppError.auth.unauthorized();
-    }
-   
-     const persons = await db
-      .selectFrom('app_user')
-      .selectAll()
-      .execute();
-
-    return c.json({ persons });
-});
-
-
-app.get('/:id', async (c) => {
-    const id = c.req.param('id')
-
-    console.log('id: ', id);
-    const KV = c.env.KV;
-    const kv = await KV.get('myKey');
-
-    return c.json({ id, kv });
-  })
-
-export const personRoutesV1 = app;
-
-================
-File: apps/api/src/middleware/db.ts
-================
-import { createMiddleware } from 'hono/factory'
 import { Kysely } from 'kysely'
-import { NeonDialect } from 'kysely-neon';
-import { DB } from '../db/db-types';
 
-export const dbMiddleware = createMiddleware(async (c, next) => {
-    const db = new Kysely<DB>({
-      dialect: new NeonDialect({
-        connectionString: process.env.DATABASE_URL_POOLED,
-      }),
-    })
-    c.set('db', db);
-    await next()
-  })
+export async function up(db: Kysely<any>): Promise<void> {
+  await db.schema
+    .createTable('app_user')
+    .addColumn('id', 'serial', (col) => col.primaryKey())
+    .addColumn('username', 'text', (col) => col.notNull().unique())
+    .execute()
+
+  await db.schema
+    .createTable('user_session')
+    .addColumn('id', 'text', (col) => col.primaryKey())
+    .addColumn('user_id', 'integer', (col) =>
+      col.references('app_user.id').notNull()
+    )
+    .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
+    .execute()
+}
+
+export async function down(db: Kysely<any>): Promise<void> {
+  await db.schema.dropTable('user_session').execute()
+  await db.schema.dropTable('app_user').execute()
+}
 
 ================
-File: apps/api/src/types/hono.ts
+File: apps/api/src/db/db-types.d.ts
 ================
-import { Kysely } from "kysely";
-import { DB } from "../db/db-types";
+/**
+ * This file was generated by kysely-codegen.
+ * Please do not edit it manually.
+ */
 
-export interface Bindings extends Cloudflare.Env {
-    myVar: string;
-  }
-  
-  export interface Variables {
-    db: Kysely<DB>
-  }
+import type { ColumnType } from "kysely";
+
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
+
+export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export interface AppUser {
+  created_at: Generated<Timestamp>;
+  email: string;
+  id: Generated<number>;
+  password_hash: string;
+  recovery_code: Buffer | null;
+  username: string;
+}
+
+export interface UserSession {
+  expires_at: Timestamp;
+  id: string;
+  user_id: number;
+}
+
+export interface DB {
+  app_user: AppUser;
+  user_session: UserSession;
+}
 
 ================
 File: apps/api/wrangler.jsonc
@@ -8371,6 +8096,196 @@ File: apps/api/wrangler.jsonc
 }
 
 ================
+File: apps/web/src/App.tsx
+================
+// App.tsx (or wherever AppContent is)
+import { useEffect, useState } from 'react'; // Removed useEffect unless needed for other things
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import './App.css';
+// Import your new hooks
+import { useAuthActions } from './features/auth/hooks/useAuthActions'; // Adjust path
+import { useAuthSession } from './features/auth/hooks/useAuthSession';
+
+const queryClient = new QueryClient();
+
+function AppContent() {
+  const [count, setCount] = useState(0); // Keep local UI state if needed
+
+  // Get session state using your new hook
+  const { data, isLoading: isSessionLoading, isAuthenticated, error: sessionError } = useAuthSession();
+
+  // Get auth action functions and states
+  const {
+    signInEmail,
+    signUpEmail,
+    signOut,
+    signInSocial,
+    isSigningIn,
+    isSigningUp,
+    isSigningOut,
+    // signInError, signUpError, signOutError // Access errors if needed
+  } = useAuthActions();
+
+  useEffect(() => {
+    console.log('session', data);
+  }, [data]);
+
+
+  // Example: log session changes (optional)
+  // useEffect(() => {
+  //   console.log('Session State:', { session, isSessionLoading, isAuthenticated, sessionError });
+  // }, [session, isSessionLoading, isAuthenticated, sessionError]);
+
+
+  const handleFetchPersons = async () => {
+    console.log('Fetching persons...');
+    try {
+      const res = await fetch('http://localhost:8787/api/v1/persons', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Requires user to be logged in on backend
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Persons data: ', data);
+    } catch (error) {
+      console.error("Failed to fetch persons:", error);
+      // Handle error (e.g., show message) - likely needs authentication
+    }
+  };
+
+  // Example data for forms
+  const email = 'john@example.com';
+  const password = '1q2w3eeqoidj4r';
+  const username = 'John';
+
+  return (
+    <>
+      <h1>Auth Actions & Session State</h1>
+
+      {/* Display Session Info */}
+      <div>
+        <h2>Session Status:</h2>
+        {isSessionLoading && <p>Loading session...</p>}
+        {sessionError && <p style={{ color: 'red' }}>Error loading session: {sessionError.message}</p>}
+        {isAuthenticated && data?.session && (
+          <div>
+            <p>Welcome, {data.user.username || data.user.email}!</p>
+            <pre>{JSON.stringify(data.session, null, 2)}</pre>
+          </div>
+        )}
+        {!isSessionLoading && !isAuthenticated && <p>You are not logged in.</p>}
+      </div>
+
+      {/* Auth Actions */}
+      <div>
+        <h2>Actions:</h2>
+        {!isAuthenticated && (
+          <>
+            <button onClick={() => signUpEmail({ username, email, password })} disabled={isSigningUp}>
+              {isSigningUp ? 'Signing Up...' : 'Sign Up Email'}
+            </button>
+            <button onClick={() => signInEmail({ email, password })} disabled={isSigningIn}>
+              {isSigningIn ? 'Signing In...' : 'Sign In Email'}
+            </button>
+            <button onClick={() => signInSocial('github')}>
+              Sign In with GitHub
+            </button>
+          </>
+        )}
+        {isAuthenticated && (
+          <button onClick={() => signOut()} disabled={isSigningOut}>
+            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+          </button>
+        )}
+      </div>
+
+      {/* Protected Action Example */}
+      <div>
+        <h2>Protected Data:</h2>
+        {isAuthenticated && (
+          <button onClick={handleFetchPersons}>Fetch Persons (Protected)</button>
+        )}
+        {!isAuthenticated && (
+          <>
+            <p>Log in to fetch persons data.</p>
+            <button onClick={handleFetchPersons}>Fetch Persons anyway (Protected)</button>
+
+          </>
+        )}
+      </div>
+
+    </>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppContent />
+    </QueryClientProvider>
+  );
+}
+
+export default App;
+
+================
+File: apps/web/package.json
+================
+{
+	"name": "gefakit-web",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build:staging": "tsc -b && vite build --mode staging",
+		"build:production": "tsc -b && vite build --mode production",
+		"deploy:staging": "CLOUDFLARE_ENV=staging npm run build:staging && wrangler deploy",
+		"deploy:production": "CLOUDFLARE_ENV=production npm run build:production && wrangler deploy",
+		"preview": "npm run build && vite preview",
+		"lint": "eslint .",
+		"cf-typegen": "wrangler types"
+	},
+	"dependencies": {
+		"@gefakit/shared": "workspace:*",
+		"@tanstack/react-query": "^5.74.3",
+		"better-auth": "^1.2.6",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "^1.0.5",
+		"@cloudflare/workers-types": "^4.20250410.0",
+		"@eslint/js": "^9.21.0",
+		"@types/react": "^19.0.10",
+		"@types/react-dom": "^19.0.4",
+		"@vitejs/plugin-react-swc": "^3.8.0",
+		"eslint": "^9.21.0",
+		"eslint-plugin-react-hooks": "^5.1.0",
+		"eslint-plugin-react-refresh": "^0.4.19",
+		"globals": "^15.15.0",
+		"typescript": "~5.7.2",
+		"typescript-eslint": "^8.24.1",
+		"vite": "^6.2.0",
+		"wrangler": "^4.10.0"
+	}
+}
+
+================
+File: packages/shared/src/index.ts
+================
+export * from "./schemas/user.schema";
+export * from "./schemas/representative.schema";
+export * from "./schemas/vehicle.schema";
+export * from "./schemas/subscription.schema";
+
+export * from "./types/user";
+export * from "./types/auth";
+
+================
 File: pnpm-workspace.yaml
 ================
 packages:
@@ -8385,6 +8300,91 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - better-sqlite3
+
+================
+File: apps/api/src/features/persons/person.routes.v1.ts
+================
+import { Hono } from "hono";
+import { jsonArrayFrom } from 'kysely/helpers/postgres'
+import { Bindings } from "../../types/hono";
+import { Variables } from "../../types/hono";
+import { getCookie } from "hono/cookie";
+import { createAuthService } from "../auth/auth.service";
+import { createAppError } from "../../errors";
+
+
+const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
+
+app.get("/", async (c) => {
+    const db = c.get("db");
+
+    const sessionToken = getCookie(c, 'gefakit-session');
+
+    if (!sessionToken) {
+        throw createAppError.auth.unauthorized();
+    }
+
+    console.log('sessionToken: ', sessionToken)
+    
+    const authService = createAuthService(db);
+    const {session} = await authService.getCurrentSession(sessionToken);
+
+    if (!session) {
+        throw createAppError.auth.unauthorized();
+    }
+   
+     const persons = await db
+      .selectFrom('app_user')
+      .selectAll()
+      .execute();
+
+    return c.json({ persons });
+});
+
+
+app.get('/:id', async (c) => {
+    const id = c.req.param('id')
+
+    console.log('id: ', id);
+    const KV = c.env.KV;
+    const kv = await KV.get('myKey');
+
+    return c.json({ id, kv });
+  })
+
+export const personRoutesV1 = app;
+
+================
+File: apps/api/src/middleware/db.ts
+================
+import { createMiddleware } from 'hono/factory'
+import { Kysely } from 'kysely'
+import { NeonDialect } from 'kysely-neon';
+import { DB } from '../db/db-types';
+
+export const dbMiddleware = createMiddleware(async (c, next) => {
+    const db = new Kysely<DB>({
+      dialect: new NeonDialect({
+        connectionString: process.env.DATABASE_URL_POOLED,
+      }),
+    })
+    c.set('db', db);
+    await next()
+  })
+
+================
+File: apps/api/src/types/hono.ts
+================
+import { Kysely } from "kysely";
+import { DB } from "../db/db-types";
+
+export interface Bindings extends Cloudflare.Env {
+    myVar: string;
+  }
+  
+  export interface Variables {
+    db: Kysely<DB>
+  }
 
 ================
 File: apps/api/src/index.ts
