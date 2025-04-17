@@ -43,4 +43,4 @@ app.get('/todos', async (c) => {
     return c.json(response);
 });
 
-export const myRoutesV1 = app 
+export const meRoutesV1 = app 

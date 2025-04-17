@@ -5,7 +5,6 @@ import { createAuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
-import { isMyPasswordPwned } from "../../lib/crypto";
 import { createAppError } from "../../errors";
 import { createOrganizationRepository } from "../organizations/organizations.repository";
 import { hashPassword, verifyPassword } from "../../lib/crypto";

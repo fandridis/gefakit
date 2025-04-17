@@ -8,7 +8,7 @@ import { AppError } from "./errors/app-error";
 import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
 import { organizationsRoutesV1 } from "./features/organizations/organizations.routes.v1";
-import { myRoutesV1 } from "./features/my/my.routes.v1";
+import { meRoutesV1 } from "./features/me/me.routes.v1";
 const app = new Hono<{ Bindings: Bindings}>();
 
 app.use('/api/*', async (c, next) => {
@@ -27,8 +27,8 @@ app.use('/api/*', async (c, next) => {
 app.use('/api/*', dbMiddleware);
 
 // Current authenticated user specific routes
-app.use("/api/v1/my/*", authMiddleware);
-app.route("/api/v1/my", myRoutesV1);
+app.use("/api/v1/me/*", authMiddleware);
+app.route("/api/v1/me", meRoutesV1);
 
 
 app.route("/api/v1/persons", personRoutesV1);
