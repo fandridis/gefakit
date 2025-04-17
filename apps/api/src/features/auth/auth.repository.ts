@@ -1,27 +1,29 @@
-import { Insertable, Kysely } from "kysely";
-import { AppUser, DB, UserSession } from "../../db/db-types";
+import { Insertable, Kysely, Transaction } from "kysely";
+import { AuthSession, AuthUser, DB } from "../../db/db-types";
 
-export function createAuthRepository(db: Kysely<DB>) {
+type DbClient = Kysely<DB> | Transaction<DB>
+
+export function createAuthRepository(db: DbClient) {
     return {
         async findUserWithPasswordByEmail(data: { email: string }) {
             return db
-                .selectFrom('app_user')
+                .selectFrom('auth.users')
                 .where('email', '=', data.email)
                 .select(['id', 'email', 'username', 'password_hash', 'created_at'])
                 .executeTakeFirst();
         },
 
-        async createUser(data: Insertable<AppUser>) {
+        async createUser(insertableUser: Insertable<AuthUser>) {
             return db
-                .insertInto('app_user')
-                .values(data)
+                .insertInto('auth.users')
+                .values(insertableUser)
                 .returning(['id', 'email', 'username', 'created_at'])
                 .executeTakeFirst();
         },
 
-        async createSession(data: Insertable<UserSession>) {
+        async createSession(data: Insertable<AuthSession>) {
             return db
-                .insertInto('user_session')
+                .insertInto('auth.sessions')
                 .values(data)
                 .returning(['id', 'user_id', 'expires_at'])
                 .executeTakeFirst();
@@ -29,24 +31,24 @@ export function createAuthRepository(db: Kysely<DB>) {
 
         async findSessionWithUser(data: { sessionId: string }) {
             return db
-                .selectFrom('user_session')
-                .innerJoin('app_user', 'app_user.id', 'user_session.user_id')
+                .selectFrom('auth.sessions')
+                .innerJoin('auth.users', 'auth.users.id', 'auth.sessions.user_id')
                 .select([
-                    'user_session.id',
-                    'user_session.user_id',
-                    'user_session.expires_at',
-                    'app_user.id as user_id',
-                    'app_user.email',
-                    'app_user.username',
-                    'app_user.created_at'
+                    'auth.sessions.id',
+                    'auth.sessions.user_id',
+                    'auth.sessions.expires_at',
+                    'auth.users.id as user_id',
+                    'auth.users.email',
+                    'auth.users.username',
+                    'auth.users.created_at'
                 ])
-                .where('user_session.id', '=', data.sessionId)
+                .where('auth.sessions.id', '=', data.sessionId)
                 .executeTakeFirst();
         },
 
         async updateSessionExpiry(data: { sessionId: string; expiresAt: Date }) {
             return db
-                .updateTable('user_session')
+                .updateTable('auth.sessions')
                 .set({ expires_at: data.expiresAt })
                 .where('id', '=', data.sessionId)
                 .execute();
@@ -54,14 +56,14 @@ export function createAuthRepository(db: Kysely<DB>) {
 
         async deleteSession(data: { sessionId: string }) {
             return db
-                .deleteFrom('user_session')
+                .deleteFrom('auth.sessions')
                 .where('id', '=', data.sessionId)
                 .execute();
         },
 
         async deleteAllUserSessions(data: { userId: number }) {
             return db
-                .deleteFrom('user_session')
+                .deleteFrom('auth.sessions')
                 .where('user_id', '=', data.userId)
                 .execute();
         }

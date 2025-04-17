@@ -1,43 +1,20 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
-import { Kysely } from "kysely";
+import { Kysely, Transaction } from "kysely";
 import { DB } from "../../db/db-types";
 import { createAuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
-import bcrypt from 'bcryptjs';
 import { SessionDTO, UserDTO } from "@gefakit/shared";
-import { isMyPasswordPwned } from "./pwned";
+import { isMyPasswordPwned } from "../../lib/crypto";
 import { createAppError } from "../../errors";
+import { createOrganizationRepository } from "../organizations/organizations.repository";
+import { hashPassword, verifyPassword } from "../../lib/crypto";
 
 export function createAuthService(db: Kysely<DB>) {
     const repository = createAuthRepository(db);
+    const orgRepository = createOrganizationRepository(db);
     const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
-
-    /**
-     * Asynchronously hashes a password using bcrypt.
-     *
-     * @param password - The plaintext password to hash.
-     * @param saltRounds - The cost factor (number of salt rounds) for hashing (default is 12).
-     * @returns A Promise that resolves to the hashed password.
-     */
-    async function hashPassword(password: string, saltRounds: number = 12) {
-        const salt = await bcrypt.genSalt(saltRounds);
-        const hash = await bcrypt.hash(password, salt);
-        return hash;
-    }
-
-    /**
-     * Asynchronously verifies a password against a given hash.
-     *
-     * @param password - The plaintext password to verify.
-     * @param hash - The hashed password to compare against.
-     * @returns A Promise that resolves to true if the password matches the hash, false otherwise.
-     */
-    async function verifyPassword(password: string, hash: string) {
-        const result = await bcrypt.compare(password, hash);
-        return result;
-    }
 
     /**
      * Generates a cryptographically secure random session token.
@@ -166,48 +143,6 @@ export function createAuthService(db: Kysely<DB>) {
     }
 
     /**
-     * Creates a new user account with the provided email, password, and username.
-     * 
-     * @param data - The user creation parameters
-     * @param data.email - The email address for the new user
-     * @param data.password - The password for the new user
-     * @param data.username - The username for the new user
-     * @returns A Promise that resolves to the created user object.
-     */
-    async function signUpWithEmail(data: { email: string; password: string; username: string }): Promise<UserDTO> {
-        const existingUser = await repository.findUserWithPasswordByEmail({email: data.email});
-        if (existingUser) {
-          throw createAppError.auth.invalidCredentials();
-        }
-      
-        const passwordHash = await hashPassword(data.password);
-
-        if (data.password.length < 8 || data.password.length > 255) {
-            throw createAppError.auth.weakPassword('Password must be between 8 and 255 characters long.');
-        }
-
-        const isPwned = await isMyPasswordPwned(data.password);
-        console.log('isPwned: ', data.password, isPwned)
-        // Check if password is strong
-        if (isPwned) {
-            throw createAppError.auth.weakPassword('Password was found in a data breach.');
-        }
-
-        const user = await repository.createUser({
-          email: data.email,
-          username: data.username,
-          password_hash: passwordHash
-        });
-
-      
-        if (!user) {
-          throw createAppError.auth.userCreationFailed();
-        }
-      
-        return user;
-    }
-
-    /**
      * Retrieves the current session and associated user for a given session token.
      * 
      * @param token - The session token to validate.
@@ -241,7 +176,6 @@ export function createAuthService(db: Kysely<DB>) {
 
     return {
         signInWithEmail,
-        signUpWithEmail,
         validateSession,
         getCurrentSession,
         invalidateSession,

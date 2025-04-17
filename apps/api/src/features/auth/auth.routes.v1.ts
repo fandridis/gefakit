@@ -1,17 +1,15 @@
 import { Hono } from "hono";
 import { createAuthController } from "./auth.controller";
 import { Bindings } from "../../types/hono";
-import { Variables } from "../../types/hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
-import { signUpEmailRequestBodySchema, signInEmailRequestBodySchema, signUpEmailResponseSchema } from "@gefakit/shared/src/schemas/auth.schema";
+import { signUpEmailRequestBodySchema, signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
-import { z } from "zod";
-import { GetSessionResponseDTO, SignInEmailResponseDTO, SignOutResponseDTO } from "@gefakit/shared/src/types/auth";
+import { GetSessionResponseDTO, SignInEmailResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO } from "@gefakit/shared/src/types/auth";
 import { createAppError } from "../../errors";
+import { DbMiddleWareVariables } from "../../middleware/db";
 
-export type SignUpEmailResponseDTO = z.infer<typeof signUpEmailResponseSchema>;
-
-const app = new Hono<{ Bindings: Bindings, Variables: Variables }>();
+type AuthRouteVariables = DbMiddleWareVariables
+const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
 app.get('/session', async (c) => {
     const db = c.get("db");
@@ -31,7 +29,7 @@ app.get('/session', async (c) => {
 app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), async (c) => {
     const db = c.get("db");
     const body = c.req.valid('json');
-    
+
     const controller = createAuthController(db);
     const result = await controller.signIn(body);
     

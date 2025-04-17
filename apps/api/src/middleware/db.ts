@@ -1,9 +1,14 @@
 import { createMiddleware } from 'hono/factory'
-import { Kysely } from 'kysely'
+import { Kysely, ParseJSONResultsPlugin } from 'kysely'
 import { NeonDialect } from 'kysely-neon';
 import { DB } from '../db/db-types';
+import { Bindings } from '../types/hono';
 
-export const dbMiddleware = createMiddleware(async (c, next) => {
+export interface DbMiddleWareVariables {
+  db: Kysely<DB>
+}
+
+export const dbMiddleware = createMiddleware<{ Bindings: Bindings, Variables: DbMiddleWareVariables }>(async (c, next) => {
     const db = new Kysely<DB>({
       dialect: new NeonDialect({
         connectionString: process.env.DATABASE_URL_POOLED,

@@ -3,8 +3,8 @@
  */
 
 import { authErrors } from '../features/auth/auth.errors';
-// import { todoErrors } from '../features/todos/todos.errors';
-
+import { todoErrors } from '../features/todos/todo.errors';
+import { organizationErrors } from '../features/organizations/organizations.errors';
 /**
  * Central object for creating application-specific errors.
  * Usage: `throw createAppError.auth.invalidCredentials();`
@@ -12,7 +12,7 @@ import { authErrors } from '../features/auth/auth.errors';
  */
 export const createAppError = {
   auth: authErrors,
-  // todos: todoErrors,
-  // users: userErrorCreators,
+  todos: todoErrors,
+  organizations: organizationErrors,
   // Add other features here...
 };
