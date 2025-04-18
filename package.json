@@ -8,7 +8,7 @@
     ],
     "scripts": {
         "dev:web": "pnpm --filter gefakit-web dev",
-        "dev:api": "pnpm --filter gefakit-api dev:all"
+        "dev:api": "pnpm --filter gefakit-api dev"
     },
     "packageManager": "pnpm@10.8.0"
 }

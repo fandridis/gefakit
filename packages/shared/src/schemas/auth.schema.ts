@@ -5,6 +5,7 @@ export const userSchema = z.object({
     email: z.string(),
     username: z.string().nullable().optional(),
     created_at: z.date(),
+    email_verified: z.boolean(),
 });
 
 export const sessionSchema = z.object({
