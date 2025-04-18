@@ -7,22 +7,29 @@
 // onboarding.service.ts
 import { Kysely, Transaction } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthRepository } from "../auth/auth.repository";
-import { createOrganizationRepository } from "../organizations/organizations.repository";
 import { createAppError } from "../../errors";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
+import { AuthRepository } from "../auth/auth.repository";
+import { OrganizationRepository } from "../organizations/organizations.repository";
 
-export function createOnboardingService(db: Kysely<DB>) {
-  const authRepo = createAuthRepository(db);
-  const orgRepo  = createOrganizationRepository(db);
+export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
+export function createOnboardingService({
+  db,
+  authRepository,
+  orgRepository
+}: { 
+  db: Kysely<DB>;
+  authRepository: AuthRepository;
+  orgRepository: OrganizationRepository;
+}) {
   async function signUpAndCreateOrganization(data: {
     email: string;
     password: string;
     username: string;
     orgName?: string;
   }) {
-    const existingUser = await authRepo.findUserWithPasswordByEmail({email: data.email});
+    const existingUser = await authRepository.findUserWithPasswordByEmail({email: data.email});
 
     if (data.password.length < 8 || data.password.length > 255) {
         throw createAppError.auth.weakPassword('Password must be between 8 and 255 characters long.');
@@ -41,10 +48,7 @@ export function createOnboardingService(db: Kysely<DB>) {
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {
-        const authRepoTx = createAuthRepository(trx);
-        const orgRepoTx = createOrganizationRepository(trx);
-
-      const user = await authRepoTx.createUser({
+      const user = await authRepository.createUser({
         email: data.email,
         password_hash: passwordHash,
         username: data.username,
@@ -54,11 +58,11 @@ export function createOnboardingService(db: Kysely<DB>) {
         throw createAppError.auth.userCreationFailed(); // Can't really happen.
       }
 
-      const org = await orgRepoTx.createOrganization({
+      const org = await orgRepository.createOrganization({
         name: data.orgName ?? `${user.username}'s org`
       });
 
-      await orgRepoTx.createMembership({
+      await orgRepository.createMembership({
         organization_id: org.id,
         user_id: user.id,
         role: 'owner'

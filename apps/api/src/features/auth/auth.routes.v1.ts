@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createAuthController } from "./auth.controller";
+import { createAuthController, AuthController } from "./auth.controller";
 import { Bindings } from "../../types/hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { signUpEmailRequestBodySchema, signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema";
@@ -7,19 +7,37 @@ import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO } from "@gefakit/shared/src/types/auth";
 import { createAppError } from "../../errors";
 import { DbMiddleWareVariables } from "../../middleware/db";
+import { Kysely } from "kysely";
+import { DB } from "../../db/db-types";
+import { createAuthService } from "./auth.service";
+import { createOnboardingService } from "../onboarding/onboarding.service";
+import { createAuthRepository } from "./auth.repository";
+import { createOrganizationRepository } from "../organizations/organizations.repository";
 
-type AuthRouteVariables = DbMiddleWareVariables
+type AuthRouteVariables = DbMiddleWareVariables & {
+    authController: AuthController;
+}
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
+app.use('/*', async (c, next) => {
+    const db = c.get("db") as Kysely<DB>;
+    const authRepository = createAuthRepository({db});
+    const orgRepository = createOrganizationRepository({db});
+    const authService = createAuthService({db, authRepository});
+    const onboardingService = createOnboardingService({db, authRepository, orgRepository});
+    const authController = createAuthController({authService, onboardingService});
+    c.set('authController', authController);
+    await next();
+});
+
 app.get('/session', async (c) => {
-    const db = c.get("db");
     const sessionToken = getCookie(c, 'gefakit-session');
 
     if (!sessionToken) {
         throw createAppError.auth.unauthorized();
     }
 
-    const controller = createAuthController(db);
+    const controller = c.get('authController');
     const result = await controller.getSession(sessionToken);
 
     const response: GetSessionResponseDTO = { session: result.session, user: result.user };
@@ -27,10 +45,9 @@ app.get('/session', async (c) => {
 });
 
 app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), async (c) => {
-    const db = c.get("db");
     const body = c.req.valid('json');
 
-    const controller = createAuthController(db);
+    const controller = c.get('authController');
     const result = await controller.signIn(body);
     
     setCookie(c, 'gefakit-session', result.sessionToken, {
@@ -44,10 +61,9 @@ app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), asy
 });
 
 app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), async (c) => {
-    const db = c.get("db");
     const body = c.req.valid('json');
 
-    const controller = createAuthController(db);
+    const controller = c.get('authController');
     const { user } = await controller.signUp(body);
 
     const response: SignUpEmailResponseDTO = { user };
@@ -55,9 +71,8 @@ app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), asy
 });
 
 app.post('/sign-out', async (c) => {
-    const db = c.get("db");
     const sessionToken = getCookie(c, 'gefakit-session');
-    const controller = createAuthController(db);
+    const controller = c.get('authController');
 
     if (sessionToken) {
         await controller.signOut(sessionToken);

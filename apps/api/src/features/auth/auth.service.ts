@@ -1,17 +1,16 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
-import { Kysely, Transaction } from "kysely";
+import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthRepository } from "./auth.repository";
+import { AuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
 import { createAppError } from "../../errors";
-import { createOrganizationRepository } from "../organizations/organizations.repository";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
 
-export function createAuthService(db: Kysely<DB>) {
-    const repository = createAuthRepository(db);
-    const orgRepository = createOrganizationRepository(db);
+export type AuthService = ReturnType<typeof createAuthService>;
+
+export function createAuthService({ db, authRepository }: { db: Kysely<DB>, authRepository: AuthRepository }) {
     const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
 
@@ -19,7 +18,7 @@ export function createAuthService(db: Kysely<DB>) {
      * Find user by id
      */
     async function findUserById(id: number) {
-        return await repository.findUserById(id);
+        return await authRepository.findUserById(id);
     }
 
     /**
@@ -53,7 +52,7 @@ export function createAuthService(db: Kysely<DB>) {
         const token = generateSessionToken();
         const sessionId = generateSessionId(token);
         
-        const session = await repository.createSession({
+        const session = await authRepository.createSession({
             id: sessionId,
             user_id: userId,
             expires_at: new Date(Date.now() + SESSION_DURATION)
@@ -81,7 +80,7 @@ export function createAuthService(db: Kysely<DB>) {
      */
     async function validateSession(token: string) {
         const sessionId = generateSessionId(token);
-        const result = await repository.findSessionWithUser({ sessionId });
+        const result = await authRepository.findSessionWithUser({ sessionId });
 
         console.log('validating session: ', {sessionId, result})
 
@@ -97,14 +96,14 @@ export function createAuthService(db: Kysely<DB>) {
 
         // Handle expired session
         if (Date.now() >= session.expires_at.getTime()) {
-            await repository.deleteSession({ sessionId });
+            await authRepository.deleteSession({ sessionId });
             return { session: null, user: null };
         }
 
         // Extend session if approaching expiration
         if (Date.now() >= session.expires_at.getTime() - SESSION_RENEWAL_THRESHOLD) {
             const newExpiryDate = new Date(Date.now() + SESSION_DURATION);
-            await repository.updateSessionExpiry({ 
+            await authRepository.updateSessionExpiry({ 
                 sessionId: session.id, 
                 expiresAt: newExpiryDate 
             });
@@ -130,7 +129,7 @@ export function createAuthService(db: Kysely<DB>) {
      * @returns A Promise that resolves to an object containing the user and session token.
      */
     async function signInWithEmail(data: { email: string; password: string }) {
-        const user = await repository.findUserWithPasswordByEmail({ email: data.email });
+        const user = await authRepository.findUserWithPasswordByEmail({ email: data.email });
         if (!user) {
             throw createAppError.auth.invalidCredentials();
         }
@@ -168,7 +167,7 @@ export function createAuthService(db: Kysely<DB>) {
     async function invalidateSession(token: string): Promise<void> {
         const sessionId = generateSessionId(token);
         console.log('invalidating sessionId: ', {sessionId})
-        await repository.deleteSession({ sessionId });
+        await authRepository.deleteSession({ sessionId });
     }
 
     /**
@@ -178,7 +177,7 @@ export function createAuthService(db: Kysely<DB>) {
      * @returns A Promise that resolves when all sessions have been invalidated.
      */
     async function invalidateAllSessions(userId: number): Promise<void> {
-        await repository.deleteAllUserSessions({ userId });
+        await authRepository.deleteAllUserSessions({ userId });
     }
 
     return {

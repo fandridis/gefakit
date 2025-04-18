@@ -1,14 +1,11 @@
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthRepository } from "../auth/auth.repository";
-import { createOrganizationRepository } from "../organizations/organizations.repository";
 import { sendEmail } from "../../lib/emails";
 import organizationCreatedTemplate from "./templates/organization-created.template";
 
-export function createEmailService(db: Kysely<DB>) {
-  const authRepo = createAuthRepository(db);
-  const orgRepo  = createOrganizationRepository(db);
+export type EmailService = ReturnType<typeof createEmailService>;
 
+export function createEmailService({ db }: { db: Kysely<DB> }) {
   async function sendWelcomeEmail(data: {
     email: string;
     username: string;

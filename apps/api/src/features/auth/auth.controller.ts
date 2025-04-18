@@ -1,15 +1,21 @@
-import { createAuthService } from "./auth.service";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
 import { UserDTO } from "@gefakit/shared/src/types/auth";
 import { AppError } from "../../errors/app-error";
-import { createOnboardingService } from "../onboarding/onboarding.service";
+import { createOnboardingService, OnboardingService } from "../onboarding/onboarding.service";
+import { AuthService, createAuthService } from "./auth.service";
 
-export function createAuthController(db: Kysely<DB>) {
-    const authService = createAuthService(db);
-    const onboardingService = createOnboardingService(db);
+export type AuthController = ReturnType<typeof createAuthController>;
 
+export function createAuthController({
+    authService,
+    onboardingService,
+}: {
+    authService: AuthService;
+    onboardingService: OnboardingService;
+}) {
     async function getSession(token: string) {
+        console.log('============================== AT GET SESSION ==============================')
         return authService.getCurrentSession(token);
     }
 

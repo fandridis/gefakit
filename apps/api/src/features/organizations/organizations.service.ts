@@ -1,18 +1,19 @@
 import { Kysely, Insertable, Transaction } from 'kysely'
 import { DB, OrganizationsOrganization } from '../../db/db-types'
-import { createOrganizationRepository } from './organizations.repository';
+import { createOrganizationRepository, OrganizationRepository } from './organizations.repository';
 import { createAppError } from '../../errors';
 
-export function createOrganizationService(db: Kysely<DB>) {
-  const repository = createOrganizationRepository(db);
+export type OrganizationService = ReturnType<typeof createOrganizationService>
+
+export function createOrganizationService({ db, organizationRepository }: { db: Kysely<DB>, organizationRepository: OrganizationRepository }) {
   return {
     findAllOrganizationMembershipsByUserId: async (userId: number) => {
-      return await repository.findAllOrganizationMembershipsByUserId(userId);
+      return await organizationRepository.findAllOrganizationMembershipsByUserId(userId);
     },
 
     createOrganization: async (data: Insertable<OrganizationsOrganization>, userId: number) => {
       return await db.transaction().execute(async (trx: Transaction<DB>) => {
-        const orgRepoTx = createOrganizationRepository(trx);
+        const orgRepoTx = createOrganizationRepository({db: trx});
         const organization = await orgRepoTx.createOrganization({
           name: data.name,
         });
@@ -28,44 +29,41 @@ export function createOrganizationService(db: Kysely<DB>) {
     },
 
     deleteOrganization: async (orgId: number, userId: number) => {
-      
-      // Check if this is the user's only organization
-      const memberships = await repository.findAllOrganizationMembershipsByUserId(userId);
+      const memberships = await organizationRepository.findAllOrganizationMembershipsByUserId(userId);
       if (memberships.length === 1 && memberships[0].organization_id === orgId) {
         throw createAppError.organizations.actionNotAllowed('Cannot delete your only organization...');
       }
 
-      // Fetch the organization to check if the user is the owner
-      const organization = await repository.findOrganizationById(orgId);
+      return await db.transaction().execute(async (trx) => {
+        const repoTx = createOrganizationRepository({ db: trx });
+        const organization = await repoTx.findOrganizationById(orgId);
 
-      if (!organization) {
-        throw createAppError.organizations.organizationNotFound();
-      }
-
-      // Check if the user is the owner of the organization
-      const isOwner = organization.ownerMembership?.user_id === userId;
-
-      if (!isOwner) {
-        throw createAppError.organizations.actionNotAllowed('Only the owner can delete the organization');
-      }
-
-      return await repository.deleteOrganization(orgId);
+        if (!organization) {
+          throw createAppError.organizations.organizationNotFound();
+        }
+  
+        const isOwner = organization.ownerMembership?.user_id === userId;
+  
+        if (!isOwner) {
+          throw createAppError.organizations.actionNotAllowed('Only the owner can delete the organization');
+        }
+  
+        return await repoTx.deleteOrganization(orgId); 
+      });
     },
 
     deleteOrganizationMembership: async (orgId: number, userId: number) => {
-      // Fetch the organization to check if the user is the owner
-      const organization = await repository.findOrganizationById(orgId);
+      const organization = await organizationRepository.findOrganizationById(orgId);
 
       if (!organization) {
         throw createAppError.organizations.organizationNotFound();
       }
 
-      // If owner, we cannot remove the owner
       if (organization.ownerMembership?.user_id === userId) {
         throw createAppError.organizations.actionNotAllowed('Cannot leave the organization as the owner');
       }
 
-      return await repository.deleteOrganizationMembership(orgId, userId);
+      return await organizationRepository.deleteOrganizationMembership(orgId, userId);
     }
   }
 } 

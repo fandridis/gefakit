@@ -1,10 +1,11 @@
-import { Kysely, Insertable, ExpressionBuilder, Transaction } from 'kysely'
+import { Kysely, Insertable, Transaction } from 'kysely'
 import { jsonObjectFrom } from 'kysely/helpers/postgres'
 import { DB, OrganizationsMembership, OrganizationsOrganization } from '../../db/db-types'
 
-type DbClient = Kysely<DB> | Transaction<DB>
 
-export function createOrganizationRepository(db: DbClient) {
+export type OrganizationRepository = ReturnType<typeof createOrganizationRepository>
+
+export function createOrganizationRepository({ db }: { db: Kysely<DB> | Transaction<DB> } ) {
   return {
     findAllOrganizationMembershipsByUserId: async (userId: number) => {
       return db
@@ -61,31 +62,6 @@ export function createOrganizationRepository(db: DbClient) {
       return result
     },
     
-    // createOrganizationAndOwnerMembership: async (orgData: any, userId: number) => {
-    //   return await db.transaction().execute(async (trx) => {
-    //     const newOrganization = await trx
-    //       .insertInto('organizations.organizations')
-    //       .values({
-    //         name: orgData.name,
-    //       })
-    //       .returningAll()
-    //       .executeTakeFirstOrThrow();
-
-    //     const membershipData: Insertable<OrganizationsMembership> = {
-    //       organization_id: newOrganization.id,
-    //       user_id: userId,
-    //       role: 'owner'
-    //     };
-
-    //     await trx
-    //       .insertInto('organizations.memberships')
-    //       .values(membershipData)
-    //       .executeTakeFirstOrThrow();
-
-    //     return newOrganization; 
-    //   });
-    // },
-
     deleteOrganization: async (orgId: number) => {
       return await db
         .deleteFrom('organizations.organizations')

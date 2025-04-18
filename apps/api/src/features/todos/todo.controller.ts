@@ -1,17 +1,11 @@
-import { Insertable, Kysely, Updateable, Selectable } from "kysely";
+import { Insertable, Updateable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
 import { AppError } from "../../errors/app-error";
 import { TodoService } from "./todo.service";
 
-export interface TodoController {
-    getTodos(authorId: number): Promise<{ todos: Selectable<CoreTodo>[] }>;
-    createTodo(authorId: number, todo: Insertable<CoreTodo>): Promise<{ todo: Selectable<CoreTodo> }>;
-    updateTodo(id: number, updateableTodo: Updateable<CoreTodo>, userId: number): Promise<{ todo: Selectable<CoreTodo> }>;
-    deleteTodo(id: number, userId: number): Promise<{ todo: Selectable<CoreTodo> }>;
-}
+export type TodoController = ReturnType<typeof createTodoController>
 
-// Inject the service
-export function createTodoController(todoService: TodoService): TodoController {
+export function createTodoController({ todoService }: { todoService: TodoService }) {
     async function getTodos(authorId: number) {
         try {
             const result = await todoService.findAllTodosByAuthorId(authorId);

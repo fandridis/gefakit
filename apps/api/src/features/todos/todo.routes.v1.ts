@@ -1,12 +1,9 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
 import { zValidator } from "../../lib/zod-utils";
-import { z } from "zod";
-import { createAppError } from "../../errors";
 import { createTodoController, TodoController } from "./todo.controller";
 import { createTodoService } from "./todo.service";
 import { createTodoRepository } from "./todo.repository";
-import type { UserDTO, SessionDTO } from '@gefakit/shared/src/types/auth';
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { AuthMiddleWareVariables } from "../../middleware/auth";
 import { createTodoRequestBodySchema, updateTodoRequestBodySchema } from "@gefakit/shared/src/schemas/todo.schema";
@@ -21,9 +18,9 @@ const app = new Hono<{ Bindings: Bindings, Variables: TodoRouteVariables }>();
 
 app.use('/*', async (c, next) => {
     const db = c.get("db");
-    const todoRepository = createTodoRepository(db);
-    const todoService = createTodoService(db, todoRepository);
-    const todoController = createTodoController(todoService);
+    const todoRepository = createTodoRepository({db});
+    const todoService = createTodoService({todoRepository});
+    const todoController = createTodoController({todoService});
     c.set('todoController', todoController);
     await next();
 });

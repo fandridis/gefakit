@@ -1,17 +1,23 @@
-import { Kysely } from 'kysely'
-import { DB } from '../../db/db-types'
+import { Kysely, Selectable } from 'kysely'
+import { DB, OrganizationsMembership, OrganizationsOrganization } from '../../db/db-types'
 import { CreateOrganizationRequestBodyDTO } from '@gefakit/shared/src/types/organization'
-import { createOrganizationService } from './organizations.service';
+import { OrganizationService, createOrganizationService } from './organizations.service';
 import { AppError } from '../../errors/app-error';
-import { createEmailService } from '../emails/email.service';
-import { createAuthService } from '../auth/auth.service';
+import { EmailService, createEmailService } from '../emails/email.service';
+import { AuthService, createAuthService } from '../auth/auth.service';
 import { createAppError } from '../../errors';
 
-export function createOrganizationController(db: Kysely<DB>) {
-  const organizationService = createOrganizationService(db);
-  const emailService = createEmailService(db);
-  const authService = createAuthService(db);
+export type OrganizationController = ReturnType<typeof createOrganizationController>
 
+export function createOrganizationController({
+  organizationService,
+  emailService,
+  authService,
+}: {
+  organizationService: OrganizationService;
+  emailService: EmailService;
+  authService: AuthService;
+}) {
   return {
     findAllOrganizationMembershipsByUserId: async (userId: number) => {
       try {
@@ -76,4 +82,7 @@ export function createOrganizationController(db: Kysely<DB>) {
       }
     }
   }
-} 
+}
+
+// Remove the inferred type export
+// export type OrganizationController = ReturnType<typeof createOrganizationController>; 

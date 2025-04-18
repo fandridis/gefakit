@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { Bindings } from "./types/hono";
 import { dbMiddleware } from "./middleware/db";
-import { personRoutesV1 } from "./features/persons/person.routes.v1";
 import { authRoutesV1 } from "./features/auth/auth.routes.v1";
 import { ZodError } from "zod";
 import { AppError } from "./errors/app-error";
@@ -31,8 +30,6 @@ app.use('/api/*', dbMiddleware);
 app.use("/api/v1/me/*", authMiddleware);
 app.route("/api/v1/me", meRoutesV1);
 
-
-app.route("/api/v1/persons", personRoutesV1);
 app.route("/api/v1/auth", authRoutesV1);
 
 // Apply auth middleware ONLY to todo routes

@@ -3,7 +3,9 @@ import { AuthSession, AuthUser, DB } from "../../db/db-types";
 
 type DbClient = Kysely<DB> | Transaction<DB>
 
-export function createAuthRepository(db: DbClient) {
+export type AuthRepository = ReturnType<typeof createAuthRepository>;
+
+export function createAuthRepository({ db }: { db: DbClient }) {
     return {
         async findUserById(id: number) {
             return db
