@@ -1,0 +1,3 @@
+apps/api/worker-configuration.d.ts
+apps/web/worker-configuration.d.ts
+*.svg
