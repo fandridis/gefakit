@@ -15,6 +15,16 @@ export type OrganizationsMembershipRole = "admin" | "member" | "owner";
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface AuthEmailVerification {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  id: string;
+  identifier: string;
+  updated_at: Generated<Timestamp>;
+  user_id: number;
+  value: string;
+}
+
 export interface AuthSession {
   expires_at: Timestamp;
   id: string;
@@ -24,6 +34,7 @@ export interface AuthSession {
 export interface AuthUser {
   created_at: Generated<Timestamp>;
   email: string;
+  email_verified: Generated<boolean>;
   id: Generated<number>;
   password_hash: string;
   recovery_code: Buffer | null;
@@ -69,6 +80,7 @@ export interface OrganizationsOrganization {
 }
 
 export interface DB {
+  "auth.email_verifications": AuthEmailVerification;
   "auth.sessions": AuthSession;
   "auth.users": AuthUser;
   "core.todos": CoreTodo;

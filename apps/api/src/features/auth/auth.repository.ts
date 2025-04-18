@@ -9,7 +9,7 @@ export function createAuthRepository(db: DbClient) {
             return db
                 .selectFrom('auth.users')
                 .where('id', '=', id)
-                .select(['id', 'email', 'username', 'created_at'])
+                .select(['id', 'email', 'username', 'created_at', 'email_verified'])
                 .executeTakeFirst();
         },
 
@@ -17,7 +17,7 @@ export function createAuthRepository(db: DbClient) {
             return db
                 .selectFrom('auth.users')
                 .where('email', '=', data.email)
-                .select(['id', 'email', 'username', 'password_hash', 'created_at'])
+                .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified'])
                 .executeTakeFirst();
         },
 
@@ -25,7 +25,7 @@ export function createAuthRepository(db: DbClient) {
             return db
                 .insertInto('auth.users')
                 .values(insertableUser)
-                .returning(['id', 'email', 'username', 'created_at'])
+                .returning(['id', 'email', 'username', 'created_at', 'email_verified'])
                 .executeTakeFirst();
         },
 
@@ -48,7 +48,8 @@ export function createAuthRepository(db: DbClient) {
                     'auth.users.id as user_id',
                     'auth.users.email',
                     'auth.users.username',
-                    'auth.users.created_at'
+                    'auth.users.created_at',
+                    'auth.users.email_verified'
                 ])
                 .where('auth.sessions.id', '=', data.sessionId)
                 .executeTakeFirst();

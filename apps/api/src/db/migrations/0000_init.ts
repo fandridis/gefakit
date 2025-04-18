@@ -25,18 +25,14 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('email', 'text', (col) => col.notNull().unique())
     .addColumn('password_hash', 'text', (col) => col.notNull())
     .addColumn('recovery_code', sql`bytea`) // Kysely might not have native bytea support
-    .addColumn('created_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn('created_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
     .execute()
 
   // Create auth.sessions table
   await db.schema
     .createTable('auth.sessions')
     .addColumn('id', 'text', (col) => col.primaryKey())
-    .addColumn('user_id', 'integer', (col) =>
-      col.references('auth.users.id').onDelete('cascade').notNull()
-    )
+    .addColumn('user_id', 'integer', (col) =>col.references('auth.users.id').onDelete('cascade').notNull())
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
     .execute()
 
@@ -45,33 +41,18 @@ export async function up(db: Kysely<any>): Promise<void> {
     .createTable('organizations.organizations')
     .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('name', 'text', (col) => col.notNull())
-    .addColumn('created_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn('updated_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .addColumn('updated_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
     .execute()
 
   // Create organizations.memberships table
   await db.schema
     .createTable('organizations.memberships')
-    .addColumn('user_id', 'integer', (col) =>
-      col.references('auth.users.id').onDelete('cascade').notNull()
-    )
-    .addColumn('organization_id', 'integer', (col) =>
-      col
-        .references('organizations.organizations.id')
-        .onDelete('cascade')
-        .notNull()
-    )
+    .addColumn('user_id', 'integer', (col) =>col.references('auth.users.id').onDelete('cascade').notNull())
+    .addColumn('organization_id', 'integer', (col) => col.references('organizations.organizations.id').onDelete('cascade').notNull())
     .addColumn('role', sql`organizations.membership_role`, (col) => col.notNull())
-    .addColumn('created_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn('updated_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn('created_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
+    .addColumn('updated_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
     .addPrimaryKeyConstraint('memberships_pkey', ['user_id', 'organization_id'])
     .execute()
 
@@ -79,28 +60,15 @@ export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createTable('organizations.invitations')
     .addColumn('id', 'serial', (col) => col.primaryKey())
-    .addColumn('organization_id', 'integer', (col) =>
-      col
-        .references('organizations.organizations.id')
-        .onDelete('cascade')
-        .notNull()
-    )
-    .addColumn('invited_by_user_id', 'integer', (col) =>
-      col.references('auth.users.id').onDelete('set null')
-    )
+    .addColumn('organization_id', 'integer', (col) =>col.references('organizations.organizations.id').onDelete('cascade').notNull())
+    .addColumn('invited_by_user_id', 'integer', (col) =>col.references('auth.users.id').onDelete('set null'))
     .addColumn('email', 'text', (col) => col.notNull())
     .addColumn('role', sql`organizations.membership_role`, (col) => col.notNull())
     .addColumn('token', 'text', (col) => col.notNull().unique())
-    .addColumn('status', sql`organizations.invitation_status`, (col) =>
-       col.notNull().defaultTo('pending')
-    )
+    .addColumn('status', sql`organizations.invitation_status`, (col) =>col.notNull().defaultTo('pending'))
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
-    .addColumn('created_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn('updated_at', 'timestamptz', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn('created_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
+    .addColumn('updated_at', 'timestamptz', (col) =>col.notNull().defaultTo(sql`now()`))
     .execute()
 
   // Create index on organizations.invitations(token)
@@ -118,12 +86,8 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('description', 'varchar')
     .addColumn('due_date', 'timestamp')
     .addColumn('completed', 'boolean', (col) => col.notNull().defaultTo(false))
-    .addColumn('author_id', 'integer', (col) =>
-      col.references('auth.users.id').notNull()
-    )
-    .addColumn('created_at', 'timestamp', (col) =>
-      col.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn('author_id', 'integer', (col) => col.references('auth.users.id').onDelete('cascade').notNull())
+    .addColumn('created_at', 'timestamp', (col) => col.notNull().defaultTo(sql`now()`))
     .execute()
 }
 

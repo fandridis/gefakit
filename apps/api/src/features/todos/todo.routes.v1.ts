@@ -3,45 +3,59 @@ import { Bindings } from "../../types/hono";
 import { zValidator } from "../../lib/zod-utils";
 import { z } from "zod";
 import { createAppError } from "../../errors";
-import { createTodoController } from "./todo.controller";
+import { createTodoController, TodoController } from "./todo.controller";
+import { createTodoService } from "./todo.service";
+import { createTodoRepository } from "./todo.repository";
 import type { UserDTO, SessionDTO } from '@gefakit/shared/src/types/auth';
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { AuthMiddleWareVariables } from "../../middleware/auth";
 import { createTodoRequestBodySchema, updateTodoRequestBodySchema } from "@gefakit/shared/src/schemas/todo.schema";
 import { CreateTodoResponseDTO, DeleteTodoResponseDTO, UpdateTodoResponseDTO } from "@gefakit/shared/src/types/todo";
+import { Selectable } from 'kysely';
+import { CoreTodo } from '../../db/db-types';
 
-type TodoRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables
+type TodoRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
+    todoController: TodoController
+};
 const app = new Hono<{ Bindings: Bindings, Variables: TodoRouteVariables }>();
 
-app.get('/', async (c) => {
+app.use('/*', async (c, next) => {
     const db = c.get("db");
-    const user = c.get('user');
+    const todoRepository = createTodoRepository(db);
+    const todoService = createTodoService(db, todoRepository);
+    const todoController = createTodoController(todoService);
+    c.set('todoController', todoController);
+    await next();
+});
 
-    const todoController = createTodoController(db);
+app.get('/', async (c) => {
+    const user = c.get('user');
+    const todoController = c.get('todoController');
+
     const result = await todoController.getTodos(user.id);
 
-    const response: { todos: any[] } = { todos: result.todos };
+    console.log('todoController', todoController);
+
+    const response: { todos: Selectable<CoreTodo>[] } = { todos: result.todos };
     return c.json(response);
 });
 
 app.post('/', zValidator('json', createTodoRequestBodySchema), async (c) => {
-    const db = c.get("db");
     const user = c.get('user');
     const todoToCreate = c.req.valid('json');
+    const todoController = c.get('todoController');
 
-    const todoController = createTodoController(db);
-    const result = await todoController.createTodo(user.id, { ...todoToCreate, author_id: user.id }); 
+    const result = await todoController.createTodo(user.id, { ...todoToCreate, author_id: user.id });
 
     const response: CreateTodoResponseDTO = { createdTodo: result.todo };
-    return c.json(response, 201); 
+    return c.json(response, 201);
 });
 
 app.put('/:id', zValidator('json', updateTodoRequestBodySchema), async (c) => {
     const todoId = c.req.param('id');
-    const db = c.get("db");
     const user = c.get('user');
     const todoToUpdate = c.req.valid('json');
-    const todoController = createTodoController(db);
+    const todoController = c.get('todoController');
 
     const result = await todoController.updateTodo(parseInt(todoId), todoToUpdate, user.id);
 
@@ -52,10 +66,9 @@ app.put('/:id', zValidator('json', updateTodoRequestBodySchema), async (c) => {
 app.delete('/:id', async (c) => {
     console.log('===================== deleteTodo =====================');
     const todoId = c.req.param('id');
-    const db = c.get("db");
     const user = c.get('user');
+    const todoController = c.get('todoController');
 
-    const todoController = createTodoController(db);
     const result = await todoController.deleteTodo(parseInt(todoId), user.id);
 
     const response: DeleteTodoResponseDTO = { deletedTodo: result.todo };

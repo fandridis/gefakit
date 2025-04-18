@@ -1,10 +1,22 @@
-import { Insertable, Kysely, Updateable } from "kysely";
+import { Insertable, Kysely, Updateable, Transaction, Selectable } from "kysely";
 import { CoreTodo, DB } from "../../db/db-types";
 
-export function createTodoRepository(db: Kysely<DB>) {
+type DbOrTrx = Kysely<DB> | Transaction<DB>;
+
+export interface TodoRepository {
+    findAllTodosByAuthorId(authorId: number): Promise<Selectable<CoreTodo>[]>;
+    findTodoById(id: number): Promise<Selectable<CoreTodo> | undefined>;
+    createTodo(authorId: number, insertableTodo: Insertable<CoreTodo>): Promise<Selectable<CoreTodo>>;
+    updateTodo(id: number, updateableTodo: Updateable<CoreTodo>): Promise<Selectable<CoreTodo>>;
+    deleteTodo(id: number): Promise<Selectable<CoreTodo>>;
+}
+
+
+export function createTodoRepository(dbOrTrx: DbOrTrx): TodoRepository {
     return {
         async findAllTodosByAuthorId(authorId: number) {
-            return db
+            // Use the injected dbOrTrx
+            return dbOrTrx
                 .selectFrom('core.todos')
                 .selectAll()
                 .where('author_id', '=', authorId)
@@ -12,7 +24,8 @@ export function createTodoRepository(db: Kysely<DB>) {
         },
 
         async findTodoById(id: number) {
-            return db
+            // Use the injected dbOrTrx
+            return dbOrTrx
                 .selectFrom('core.todos')
                 .selectAll()
                 .where('id', '=', id)
@@ -20,7 +33,8 @@ export function createTodoRepository(db: Kysely<DB>) {
         },
 
         async createTodo(authorId: number, insertableTodo: Insertable<CoreTodo>) {
-            return db
+             // Use the injected dbOrTrx
+            return dbOrTrx
                 .insertInto('core.todos')
                 .values({ ...insertableTodo, author_id: authorId })
                 .returningAll()
@@ -28,7 +42,8 @@ export function createTodoRepository(db: Kysely<DB>) {
         },
 
         async updateTodo(id: number, updateableTodo: Updateable<CoreTodo>) {
-            return db
+             // Use the injected dbOrTrx
+            return dbOrTrx
                 .updateTable('core.todos')
                 .set(updateableTodo)
                 .where('id', '=', id)
@@ -38,7 +53,8 @@ export function createTodoRepository(db: Kysely<DB>) {
         },
 
         async deleteTodo(id: number) {
-            return db
+             // Use the injected dbOrTrx
+            return dbOrTrx
                 .deleteFrom('core.todos')
                 .where('id', '=', id)
                 .returningAll()
@@ -46,6 +62,3 @@ export function createTodoRepository(db: Kysely<DB>) {
         },
     };
 }
-
-export type TodoRepository = ReturnType<typeof createTodoRepository>;
-export type FindAllTodosByAuthorIdResponse = Awaited<ReturnType<TodoRepository['findAllTodosByAuthorId']>>;

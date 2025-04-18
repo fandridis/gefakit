@@ -1,16 +1,21 @@
-import { Insertable, Kysely, Updateable } from "kysely";
+import { Insertable, Kysely, Updateable, Selectable, Transaction } from "kysely";
 import { CoreTodo, DB } from "../../db/db-types";
-import { createTodoRepository } from "./todo.repository";
+import { TodoRepository } from "./todo.repository";
 import { createAppError } from "../../errors";
 
-export function createTodoService(db: Kysely<DB>) {
-    const repository = createTodoRepository(db);
+export interface TodoService {
+    findAllTodosByAuthorId(authorId: number): Promise<Selectable<CoreTodo>[]>;
+    createTodo(authorId: number, todo: Insertable<CoreTodo>): Promise<Selectable<CoreTodo>>;
+    updateTodo(id: number, updateableTodo: Updateable<CoreTodo>, userId: number): Promise<Selectable<CoreTodo>>;
+    deleteTodo(id: number, userId: number): Promise<Selectable<CoreTodo>>;
+}
 
+export function createTodoService(db: Kysely<DB>, repository: TodoRepository): TodoService {
     /**
-     * Asynchronously hashes a password using bcrypt.
+     * Fetches all todos for a given author.
      *
-     * @param authorId - The id of the author of the todos.
-     * @returns A Promise that resolves to the todos.
+     * @param authorId - The id of the author.
+     * @returns A Promise resolving to the list of todos.
      */
     async function findAllTodosByAuthorId(authorId: number) {
         return repository.findAllTodosByAuthorId(authorId);

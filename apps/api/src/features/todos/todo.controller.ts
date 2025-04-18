@@ -1,12 +1,17 @@
-import { Insertable, Kysely, Updateable } from "kysely";
-import { DB, CoreTodo } from "../../db/db-types";
-import { UserDTO } from "@gefakit/shared/src/types/auth";
+import { Insertable, Kysely, Updateable, Selectable } from "kysely";
+import { CoreTodo } from "../../db/db-types";
 import { AppError } from "../../errors/app-error";
-import { createTodoService } from "./todo.service";
+import { TodoService } from "./todo.service";
 
-export function createTodoController(db: Kysely<DB>) {
-    const todoService = createTodoService(db);
+export interface TodoController {
+    getTodos(authorId: number): Promise<{ todos: Selectable<CoreTodo>[] }>;
+    createTodo(authorId: number, todo: Insertable<CoreTodo>): Promise<{ todo: Selectable<CoreTodo> }>;
+    updateTodo(id: number, updateableTodo: Updateable<CoreTodo>, userId: number): Promise<{ todo: Selectable<CoreTodo> }>;
+    deleteTodo(id: number, userId: number): Promise<{ todo: Selectable<CoreTodo> }>;
+}
 
+// Inject the service
+export function createTodoController(todoService: TodoService): TodoController {
     async function getTodos(authorId: number) {
         try {
             const result = await todoService.findAllTodosByAuthorId(authorId);

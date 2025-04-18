@@ -115,7 +115,8 @@ export function createAuthService(db: Kysely<DB>) {
             id: result.user_id,
             email: result.email,
             username: result.username,
-            created_at: result.created_at
+            created_at: result.created_at,
+            email_verified: result.email_verified
         };
 
         return { session, user };

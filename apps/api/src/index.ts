@@ -9,6 +9,7 @@ import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
 import { organizationsRoutesV1 } from "./features/organizations/organizations.routes.v1";
 import { meRoutesV1 } from "./features/me/me.routes.v1";
+
 const app = new Hono<{ Bindings: Bindings}>();
 
 app.use('/api/*', async (c, next) => {
@@ -23,7 +24,7 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-// All routes will have access to the db instance.
+// All routes will have access to the db instance via context set by this middleware.
 app.use('/api/*', dbMiddleware);
 
 // Current authenticated user specific routes
