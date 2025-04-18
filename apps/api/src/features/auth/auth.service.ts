@@ -16,6 +16,13 @@ export function createAuthService(db: Kysely<DB>) {
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
 
     /**
+     * Find user by id
+     */
+    async function findUserById(id: number) {
+        return await repository.findUserById(id);
+    }
+
+    /**
      * Generates a cryptographically secure random session token.
      * 
      * @returns A base32 encoded string representing the session token.
@@ -174,6 +181,7 @@ export function createAuthService(db: Kysely<DB>) {
     }
 
     return {
+        findUserById,
         signInWithEmail,
         validateSession,
         getCurrentSession,

@@ -1,11 +1,17 @@
 import { Kysely } from 'kysely'
 import { DB } from '../../db/db-types'
-import { CreateOrganizationRequestBodyDTO, OrganizationDTO } from '@gefakit/shared/src/types/organization'
+import { CreateOrganizationRequestBodyDTO } from '@gefakit/shared/src/types/organization'
 import { createOrganizationService } from './organizations.service';
 import { AppError } from '../../errors/app-error';
+import { createEmailService } from '../emails/email.service';
+import { createAuthService } from '../auth/auth.service';
+import { createAppError } from '../../errors';
 
 export function createOrganizationController(db: Kysely<DB>) {
   const organizationService = createOrganizationService(db);
+  const emailService = createEmailService(db);
+  const authService = createAuthService(db);
+
   return {
     findAllOrganizationMembershipsByUserId: async (userId: number) => {
       try {
@@ -23,6 +29,17 @@ export function createOrganizationController(db: Kysely<DB>) {
     createOrganization: async (data: CreateOrganizationRequestBodyDTO, userId: number) => {
       try {
         const result = await organizationService.createOrganization(data, userId);
+
+        const user = await authService.findUserById(userId);
+
+        if (!user) {
+          throw createAppError.auth.userNotFound()
+        }
+
+        await emailService.sendOrganizationCreatedEmail({
+          email: user.email,
+          orgName: data.name,
+        });
         return { organization: result };
       } catch (err) {
         if (err instanceof AppError) {

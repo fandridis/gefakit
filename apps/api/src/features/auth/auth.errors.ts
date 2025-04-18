@@ -18,5 +18,9 @@ export const authErrors = {
     new AppError(`Password is too weak: ${reason}`, 400, { code: 'AUTH_WEAK_PASSWORD', reason }),
 
   userCreationFailed: (details?: Record<string, any>) =>
-    new AppError('Failed to create user account', 500, { code: 'AUTH_USER_CREATION_FAILED', ...details })
+    new AppError('Failed to create user account', 500, { code: 'AUTH_USER_CREATION_FAILED', ...details }),
+
+  userNotFound: () =>
+    new AppError('User not found', 404, { code: 'AUTH_USER_NOT_FOUND' }),
+
 } as const;

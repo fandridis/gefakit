@@ -5,6 +5,14 @@ type DbClient = Kysely<DB> | Transaction<DB>
 
 export function createAuthRepository(db: DbClient) {
     return {
+        async findUserById(id: number) {
+            return db
+                .selectFrom('auth.users')
+                .where('id', '=', id)
+                .select(['id', 'email', 'username', 'created_at'])
+                .executeTakeFirst();
+        },
+
         async findUserWithPasswordByEmail(data: { email: string }) {
             return db
                 .selectFrom('auth.users')
