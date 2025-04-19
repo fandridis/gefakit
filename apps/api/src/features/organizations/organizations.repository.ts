@@ -1,4 +1,4 @@
-import { Kysely, Insertable, Transaction } from 'kysely'
+import { Kysely, Insertable, Transaction, Selectable } from 'kysely'
 import { jsonObjectFrom } from 'kysely/helpers/postgres'
 import { DB, OrganizationsMembership, OrganizationsOrganization } from '../../db/db-types'
 
@@ -77,6 +77,27 @@ export function createOrganizationRepository({ db }: { db: Kysely<DB> | Transact
         .where('user_id', '=', userId)
         .returningAll()
         .executeTakeFirstOrThrow();
+    },
+
+    // update the membership of the user/org combo to have is_default = true
+    updateMembershipDefaultStatus: async (userId: number, orgId: number, isDefault: boolean) => {
+      return await db
+        .updateTable('organizations.memberships')
+        .set({ is_default: isDefault })
+        .where('user_id', '=', userId)
+        .where('organization_id', '=', orgId)
+        .returningAll()
+        .executeTakeFirstOrThrow();
+    },
+
+    findDefaultMembershipByUserId: async (userId: number) => {
+      return await db
+        .selectFrom('organizations.memberships')
+        .where('user_id', '=', userId)
+        .where('is_default', '=', true)
+        .selectAll()
+        .executeTakeFirst();
     }
+    
   }
 } 

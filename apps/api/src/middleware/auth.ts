@@ -1,15 +1,11 @@
 import { getCookie } from 'hono/cookie';
 import { createAppError } from '../errors';
-import { createAuthController } from '../features/auth/auth.controller';
 import { Bindings } from '../types/hono';
 import { createMiddleware } from 'hono/factory'
 import { SessionDTO, UserDTO } from '@gefakit/shared/src/types/auth';
 import { DbMiddleWareVariables } from './db';
 import { createAuthRepository } from '../features/auth/auth.repository';
 import { createAuthService } from '../features/auth/auth.service';
-import { createOnboardingService } from '../features/onboarding/onboarding.service';
-import { createOrganizationRepository } from '../features/organizations/organizations.repository';
-import { createEmailService } from '../features/emails/email.service';
 
 export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
     user: UserDTO
@@ -27,15 +23,9 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
 
     try {
         const authRepository = createAuthRepository({db});
-        const orgRepository = createOrganizationRepository({db});
-
         const authService = createAuthService({db, authRepository});
-        const emailService = createEmailService({db});
-        const onboardingService = createOnboardingService({db, authRepository, orgRepository, emailService});
         
-        const controller = createAuthController({authService, onboardingService});
-
-        const { user, session } = await controller.getSession(sessionToken); 
+        const { user, session } = await authService.getCurrentSession(sessionToken); 
 
         // These set calls should now be type-safe
         c.set('user', user);

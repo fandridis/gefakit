@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { createAuthController, AuthController } from "./auth.controller";
 import { Bindings } from "../../types/hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { signUpEmailRequestBodySchema, signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema";
@@ -9,15 +8,15 @@ import { createAppError } from "../../errors";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthService } from "./auth.service";
-import { createOnboardingService } from "../onboarding/onboarding.service";
+import { createAuthService, AuthService } from "./auth.service";
+import { createOnboardingService, OnboardingService } from "../onboarding/onboarding.service";
 import { createAuthRepository } from "./auth.repository";
 import { createOrganizationRepository } from "../organizations/organizations.repository";
 import { createEmailService } from "../emails/email.service";
-import { AppError } from "../../errors/app-error";
 
 type AuthRouteVariables = DbMiddleWareVariables & {
-    authController: AuthController;
+    authService: AuthService;
+    onboardingService: OnboardingService;
 }
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
@@ -26,12 +25,12 @@ app.use('/*', async (c, next) => {
     const authRepository = createAuthRepository({db});
     const orgRepository = createOrganizationRepository({db});
 
-    const emailService = createEmailService({db});
+    const emailService = createEmailService();
     const authService = createAuthService({db, authRepository});
     const onboardingService = createOnboardingService({db, authRepository, orgRepository, emailService});
     
-    const authController = createAuthController({authService, onboardingService});
-    c.set('authController', authController);
+    c.set('authService', authService);
+    c.set('onboardingService', onboardingService);
     await next();
 });
 
@@ -42,8 +41,8 @@ app.get('/session', async (c) => {
         throw createAppError.auth.unauthorized();
     }
 
-    const controller = c.get('authController');
-    const result = await controller.getSession(sessionToken);
+    const service = c.get('authService');
+    const result = await service.getCurrentSession(sessionToken);
 
     const response: GetSessionResponseDTO = { session: result.session, user: result.user };
     return c.json(response);
@@ -52,8 +51,8 @@ app.get('/session', async (c) => {
 app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
 
-    const controller = c.get('authController');
-    const result = await controller.signIn(body);
+    const service = c.get('authService');
+    const result = await service.signInWithEmail(body);
     
     setCookie(c, 'gefakit-session', result.sessionToken, {
         httpOnly: true,
@@ -68,8 +67,8 @@ app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), asy
 app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
 
-    const controller = c.get('authController');
-    const { user } = await controller.signUp(body);
+    const onboardingService = c.get('onboardingService');
+    const { user } = await onboardingService.signUpAndCreateOrganization(body);
 
     const response: SignUpEmailResponseDTO = { user };
     return c.json(response);
@@ -77,10 +76,10 @@ app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), asy
 
 app.post('/sign-out', async (c) => {
     const sessionToken = getCookie(c, 'gefakit-session');
-    const controller = c.get('authController');
+    const service = c.get('authService');
 
     if (sessionToken) {
-        await controller.signOut(sessionToken);
+        await service.invalidateSession(sessionToken);
         deleteCookie(c, 'gefakit-session');
     }
 
@@ -94,8 +93,8 @@ app.get('/verify-email', async (c) => {
         throw createAppError.auth.emailVerificationTokenNotFound();
     }
 
-    const controller = c.get('authController');
-    const result = await controller.verifyEmail(token);
+    const service = c.get('authService');
+    await service.verifyEmail(token);
 
     const response = { message: 'Email verified successfully' };
     return c.json(response);

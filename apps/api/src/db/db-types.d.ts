@@ -26,6 +26,7 @@ export interface AuthEmailVerification {
 }
 
 export interface AuthSession {
+  active_organization_id: number | null;
   expires_at: Timestamp;
   id: string;
   user_id: number;
@@ -66,6 +67,7 @@ export interface OrganizationsInvitation {
 
 export interface OrganizationsMembership {
   created_at: Generated<Timestamp>;
+  is_default: Generated<boolean>;
   organization_id: number;
   role: OrganizationsMembershipRole;
   updated_at: Generated<Timestamp>;

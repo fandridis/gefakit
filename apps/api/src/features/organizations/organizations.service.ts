@@ -1,5 +1,5 @@
-import { Kysely, Insertable, Transaction } from 'kysely'
-import { DB, OrganizationsOrganization } from '../../db/db-types'
+import { Kysely, Insertable, Transaction, Selectable } from 'kysely'
+import { DB, OrganizationsOrganization, OrganizationsMembership } from '../../db/db-types'
 import { createOrganizationRepository, OrganizationRepository } from './organizations.repository';
 import { createAppError } from '../../errors';
 
@@ -64,6 +64,28 @@ export function createOrganizationService({ db, organizationRepository }: { db: 
       }
 
       return await organizationRepository.deleteOrganizationMembership(orgId, userId);
+    },
+
+    updateMembershipDefaultStatus: async (userId: number, orgId: number) => {
+      return await db.transaction().execute(async (trx) => {
+        const repoTx = createOrganizationRepository({ db: trx });
+
+        // Find the current default membership
+        const currentDefault = await repoTx.findDefaultMembershipByUserId(userId);
+
+        // If there is a current default and it's not the one we're trying to set,
+        // unset it first.
+        if (currentDefault && currentDefault.organization_id !== orgId) {
+          await repoTx.updateMembershipDefaultStatus(userId, currentDefault.organization_id, false);
+        }
+
+        // Set the new default organization
+        return await repoTx.updateMembershipDefaultStatus(userId, orgId, true);
+      });
+    },
+
+    findDefaultMembershipByUserId: async (userId: number) => {
+      return await organizationRepository.findDefaultMembershipByUserId(userId);
     }
   }
 } 

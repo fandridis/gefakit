@@ -1,12 +1,10 @@
-import { Kysely } from "kysely";
-import { DB } from "../../db/db-types";
 import { sendEmail } from "../../lib/emails";
 import organizationCreatedTemplate from "./templates/organization-created.template";
 import emailVerificationTemplate from "./templates/email-verification.template";
 
 export type EmailService = ReturnType<typeof createEmailService>;
 
-export function createEmailService({ db }: { db: Kysely<DB> }) {
+export function createEmailService() {
   async function sendWelcomeEmail(data: {
     email: string;
     username: string;
