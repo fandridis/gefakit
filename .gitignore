@@ -9,5 +9,4 @@ node_modules
 .DS_Store
 
 ai-project-info.txt
-
-repomix-output.txt
+ai-project-as-text.txt
