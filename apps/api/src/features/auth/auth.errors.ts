@@ -23,4 +23,10 @@ export const authErrors = {
   userNotFound: () =>
     new AppError('User not found', 404, { code: 'AUTH_USER_NOT_FOUND' }),
 
+  emailVerificationTokenNotFound: () =>
+    new AppError('Email verification token not found', 404, { code: 'AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND' }),
+
+  emailNotVerified: () =>
+    new AppError('Email not verified', 401, { code: 'AUTH_EMAIL_NOT_VERIFIED' }),
+
 } as const;

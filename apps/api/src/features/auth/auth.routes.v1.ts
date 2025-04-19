@@ -13,6 +13,8 @@ import { createAuthService } from "./auth.service";
 import { createOnboardingService } from "../onboarding/onboarding.service";
 import { createAuthRepository } from "./auth.repository";
 import { createOrganizationRepository } from "../organizations/organizations.repository";
+import { createEmailService } from "../emails/email.service";
+import { AppError } from "../../errors/app-error";
 
 type AuthRouteVariables = DbMiddleWareVariables & {
     authController: AuthController;
@@ -23,8 +25,11 @@ app.use('/*', async (c, next) => {
     const db = c.get("db") as Kysely<DB>;
     const authRepository = createAuthRepository({db});
     const orgRepository = createOrganizationRepository({db});
+
+    const emailService = createEmailService({db});
     const authService = createAuthService({db, authRepository});
-    const onboardingService = createOnboardingService({db, authRepository, orgRepository});
+    const onboardingService = createOnboardingService({db, authRepository, orgRepository, emailService});
+    
     const authController = createAuthController({authService, onboardingService});
     c.set('authController', authController);
     await next();
@@ -80,6 +85,19 @@ app.post('/sign-out', async (c) => {
     }
 
     const response: SignOutResponseDTO = { message: 'Signed out successfully' };
+    return c.json(response);
+});
+
+app.get('/verify-email', async (c) => {
+    const token = c.req.query('token');
+    if (!token) {
+        throw createAppError.auth.emailVerificationTokenNotFound();
+    }
+
+    const controller = c.get('authController');
+    const result = await controller.verifyEmail(token);
+
+    const response = { message: 'Email verified successfully' };
     return c.json(response);
 });
 

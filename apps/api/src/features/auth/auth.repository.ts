@@ -1,5 +1,5 @@
 import { Insertable, Kysely, Transaction } from "kysely";
-import { AuthSession, AuthUser, DB } from "../../db/db-types";
+import { AuthSession, AuthUser, DB, AuthEmailVerification } from "../../db/db-types";
 
 type DbClient = Kysely<DB> | Transaction<DB>
 
@@ -76,6 +76,38 @@ export function createAuthRepository({ db }: { db: DbClient }) {
             return db
                 .deleteFrom('auth.sessions')
                 .where('user_id', '=', data.userId)
+                .execute();
+        },
+
+        async createEmailVerificationToken(data: Insertable<AuthEmailVerification>) {
+            return db
+                .insertInto('auth.email_verifications')
+                .values(data)
+                .returning(['id', 'user_id', 'value', 'expires_at'])
+                .executeTakeFirst();
+        },
+
+        async findEmailVerificationTokenByValue(data: { tokenValue: string }) {
+            return db
+                .selectFrom('auth.email_verifications')
+                .selectAll()
+                .where('value', '=', data.tokenValue)
+                .executeTakeFirst();
+        },
+
+        async updateUserEmailVerified(data: { userId: number; verified: boolean }) {
+            return db
+                .updateTable('auth.users')
+                .set({ email_verified: data.verified })
+                .where('id', '=', data.userId)
+                .returning(['id', 'email_verified'])
+                .executeTakeFirst();
+        },
+
+        async deleteEmailVerificationToken(data: { tokenId: string }) {
+            return db
+                .deleteFrom('auth.email_verifications')
+                .where('id', '=', data.tokenId)
                 .execute();
         }
     };

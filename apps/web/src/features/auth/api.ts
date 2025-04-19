@@ -75,8 +75,6 @@ export const apiSignUpEmail = async ({ username, email, password }: SignUpEmailR
   return response.json();
 };
 
-
-
 export const apiSignOut = async () => {
   const response = await fetch(`${API_BASE_URL}/sign-out`, {
     method: 'POST',
@@ -87,4 +85,22 @@ export const apiSignOut = async () => {
     throw new Error(errorData.message || 'Sign out failed');
   }
   return response.json();
+};
+
+export const apiVerifyEmail = async (token: string) => {
+  // Use GET and pass token as query parameter
+  const response = await fetch(`${API_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json', // Still expect JSON back
+    },
+    // Removed 'credentials' and 'body'
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to verify email' }));
+    throw new Error(errorData.message || 'Email verification failed');
+  }
+
+  return response.json(); // Assuming backend returns some data, maybe updated user info
 };

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetSession, apiSignInEmail, apiSignUpEmail, apiSignOut } from '../api';
+import { apiGetSession, apiSignInEmail, apiSignUpEmail, apiSignOut, apiVerifyEmail } from '../api';
 import { SignInEmailRequestBodyDTO, SignUpEmailRequestBodyDTO } from '@gefakit/shared/src/types/auth';
 
 // Define a query key for the session data
@@ -83,6 +83,22 @@ export function useAuth() {
         }
     });
 
+    // Verify Email Mutation
+    const {
+        mutate: verifyEmail,
+        isPending: isVerifyingEmail,
+        error: verifyEmailError
+    } = useMutation<unknown, Error, { token: string }>({
+        mutationFn: ({ token }) => apiVerifyEmail(token),
+        onSuccess: (data, variables, context) => {
+            console.log('Email verification success:', { data, variables, context });
+            invalidateSession(); // Refresh session state after verification
+        },
+        onError: (error, variables, context) => {
+            console.error('Email verification error:', { error, variables, context });
+        },
+    });
+
     // Social Sign In
     const signInSocial = async (provider: 'github' /* | other providers */) => {
         console.log(`Initiating social sign in with ${provider}`);
@@ -106,15 +122,18 @@ export function useAuth() {
         signUpEmail,
         signOut,
         signInSocial,
+        verifyEmail,
 
         // Action states
         isSigningIn,
         isSigningUp,
         isSigningOut,
+        isVerifyingEmail,
 
         // Action errors
         signInError,
         signUpError,
         signOutError,
+        verifyEmailError,
     };
 } 

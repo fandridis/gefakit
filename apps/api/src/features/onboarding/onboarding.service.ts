@@ -6,22 +6,26 @@
 
 // onboarding.service.ts
 import { Kysely, Transaction } from "kysely";
+import { randomUUID } from 'node:crypto';
 import { DB } from "../../db/db-types";
 import { createAppError } from "../../errors";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
-import { AuthRepository } from "../auth/auth.repository";
-import { OrganizationRepository } from "../organizations/organizations.repository";
+import { AuthRepository, createAuthRepository } from "../auth/auth.repository";
+import { OrganizationRepository, createOrganizationRepository } from "../organizations/organizations.repository";
+import { EmailService } from "../emails/email.service";
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
 export function createOnboardingService({
   db,
   authRepository,
-  orgRepository
+  orgRepository,
+  emailService
 }: { 
   db: Kysely<DB>;
   authRepository: AuthRepository;
   orgRepository: OrganizationRepository;
+  emailService: EmailService;
 }) {
   async function signUpAndCreateOrganization(data: {
     email: string;
@@ -48,7 +52,10 @@ export function createOnboardingService({
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {
-      const user = await authRepository.createUser({
+      const txAuthRepo = createAuthRepository({ db: trx });
+      const txOrgRepo = createOrganizationRepository({ db: trx });
+
+      const user = await txAuthRepo.createUser({
         email: data.email,
         password_hash: passwordHash,
         username: data.username,
@@ -58,14 +65,32 @@ export function createOnboardingService({
         throw createAppError.auth.userCreationFailed(); // Can't really happen.
       }
 
-      const org = await orgRepository.createOrganization({
+      const verificationToken = randomUUID();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+      await txAuthRepo.createEmailVerificationToken({
+        id: randomUUID(),
+        user_id: user.id,
+        value: verificationToken,
+        expires_at: expiresAt,
+        identifier: user.email // Assuming identifier is the email
+      });
+
+      const org = await txOrgRepo.createOrganization({
         name: data.orgName ?? `${user.username}'s org`
       });
 
-      await orgRepository.createMembership({
+      await txOrgRepo.createMembership({
         organization_id: org.id,
         user_id: user.id,
         role: 'owner'
+      });
+
+      console.log('Send welcome email to ', user.email);
+
+      await emailService.sendVerificationEmail({ 
+        email: user.email, 
+        token: verificationToken 
       });
 
       return { user, orgId: org.id };

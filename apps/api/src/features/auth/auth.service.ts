@@ -1,11 +1,12 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
-import { Kysely } from "kysely";
+import { Kysely, Transaction } from "kysely";
 import { DB } from "../../db/db-types";
-import { AuthRepository } from "./auth.repository";
+import { AuthRepository, createAuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
 import { createAppError } from "../../errors";
+import { AppError } from "../../errors/app-error";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
 
 export type AuthService = ReturnType<typeof createAuthService>;
@@ -134,6 +135,10 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
             throw createAppError.auth.invalidCredentials();
         }
 
+        if (!user.email_verified) {
+            throw createAppError.auth.emailNotVerified();
+        }
+
         const isValidPassword = await verifyPassword(data.password, user.password_hash);
         if (!isValidPassword) {
             throw createAppError.auth.invalidCredentials();
@@ -180,6 +185,52 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
         await authRepository.deleteAllUserSessions({ userId });
     }
 
+    /**
+     * Verifies a user's email using a verification token.
+     * 
+     * @param token - The verification token.
+     * @returns A Promise that resolves when the email is successfully verified.
+     * @throws AppError if the token is invalid, expired, or if the update fails.
+     */
+    async function verifyEmail(token: string): Promise<void> {
+        // Use the service-level authRepository for the initial find (outside transaction)
+        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
+
+        console.log('verificationRecord: ', verificationRecord)
+
+        if (!verificationRecord) {
+            throw new AppError('Invalid or expired verification token.', 400);
+        }
+
+        const now = new Date();
+        if (now > verificationRecord.expires_at) {
+            throw new AppError('Verification token has expired.', 400);
+        }
+
+        try {
+            // Start transaction
+            await db.transaction().execute(async (trx: Transaction<DB>) => {
+                // Create repository bound to the transaction
+                const txAuthRepo = createAuthRepository({ db: trx });
+
+                // Use transaction-bound repository (no trx argument needed)
+                await txAuthRepo.updateUserEmailVerified({ 
+                    userId: verificationRecord.user_id, 
+                    verified: true 
+                });
+
+                // Use transaction-bound repository (no trx argument needed)
+                await txAuthRepo.deleteEmailVerificationToken({ 
+                    tokenId: verificationRecord.id 
+                });
+            });
+            console.log(`Email verified for user ${verificationRecord.user_id}`);
+        } catch (err) {
+            console.error('Failed to verify email in transaction:', err);
+            throw new AppError('Failed to complete email verification process.', 500);
+        }
+    }
+
     return {
         findUserById,
         signInWithEmail,
@@ -191,6 +242,7 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
         generateSessionId,
         createSession,
         hashPassword,
-        verifyPassword
+        verifyPassword,
+        verifyEmail
     };
 }

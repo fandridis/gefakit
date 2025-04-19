@@ -55,10 +55,30 @@ export function createAuthController({
         }
     }
 
+    async function verifyEmail(token: string) {
+        if (!token || typeof token !== 'string') {
+            throw new AppError('Verification token is missing or invalid.', 400);
+        }
+
+        try {
+            await authService.verifyEmail(token);
+            // TODO: Decide on response. Redirect? Simple success message?
+            return { success: true, message: 'Email verified successfully.' }; 
+        } catch (err) {
+            if (err instanceof AppError) {
+                throw err;
+            }
+            console.error("Unexpected error in controller.verifyEmail:", err);
+            // TODO: Handle specific errors from authService (e.g., expired/invalid token)
+            throw new AppError('Failed to verify email.', 500); 
+        }
+    }
+
     return {
         signIn,
         signUp,
         signOut,
-        getSession
+        getSession,
+        verifyEmail
     };
 }

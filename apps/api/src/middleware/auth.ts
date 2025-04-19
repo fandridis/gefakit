@@ -9,6 +9,7 @@ import { createAuthRepository } from '../features/auth/auth.repository';
 import { createAuthService } from '../features/auth/auth.service';
 import { createOnboardingService } from '../features/onboarding/onboarding.service';
 import { createOrganizationRepository } from '../features/organizations/organizations.repository';
+import { createEmailService } from '../features/emails/email.service';
 
 export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
     user: UserDTO
@@ -26,9 +27,12 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
 
     try {
         const authRepository = createAuthRepository({db});
-        const authService = createAuthService({db, authRepository});
         const orgRepository = createOrganizationRepository({db});
-        const onboardingService = createOnboardingService({db, authRepository, orgRepository});
+
+        const authService = createAuthService({db, authRepository});
+        const emailService = createEmailService({db});
+        const onboardingService = createOnboardingService({db, authRepository, orgRepository, emailService});
+        
         const controller = createAuthController({authService, onboardingService});
 
         const { user, session } = await controller.getSession(sessionToken); 

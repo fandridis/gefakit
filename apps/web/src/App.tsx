@@ -1,5 +1,5 @@
 // App.tsx (or wherever AppContent is)
-import { useState } from 'react'; // Removed useEffect unless needed for other things
+import { useEffect, useState } from 'react'; // Removed useEffect unless needed for other things
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './App.css';
 // Import your new hooks
@@ -18,6 +18,9 @@ function AppContent() {
     signUpEmail,
     signOut,
     signInSocial,
+    verifyEmail,
+    isVerifyingEmail,
+    verifyEmailError,
     isSigningIn,
     isSigningUp,
     isSigningOut,
@@ -26,6 +29,15 @@ function AppContent() {
     sessionError,
     isAuthenticated,
   } = useAuth();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      console.log('Token found: ', token);
+      verifyEmail({ token });
+    }
+  }, []);
 
   const handleFetchPersons = async () => {
     console.log('Fetching persons...');
@@ -47,9 +59,9 @@ function AppContent() {
   };
 
   // Example data for forms
-  const email = 'john@example.com';
-  const password = '1q2w3eeqoidj4r';
-  const username = 'John';
+  const email = 'fandridis@gmail.com';
+  const password = '1q2w3e4rgefakit';
+  const username = 'Gefa';
 
   return (
     <>
