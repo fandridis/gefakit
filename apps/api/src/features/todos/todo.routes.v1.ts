@@ -27,15 +27,19 @@ app.use("/*", async (c, next) => {
   await next();
 });
 
-// GET /api/v1/todos
+// GET /api/v1/todos - Get all todos for the current user
 app.get("/", async (c) => {
-  const user = c.get("user");
-  const todoService = c.get("todoService");
-  const todos = await todoService.findAllTodosByAuthorId(user.id);
-  return c.json({ todos } as { todos: Selectable<CoreTodo>[] });
+    const user = c.get('user');
+    const todoService = c.get('todoService');
+
+    const result = await todoService.findAllTodosByAuthorId({authorId: user.id});
+
+    // Ensure Selectable and CoreTodo are imported
+    const response: { todos: Selectable<CoreTodo>[] } = { todos: result }; 
+    return c.json(response);
 });
 
-// POST /api/v1/todos
+// POST /api/v1/todos - Create a new todo
 app.post(
   "/",
   zValidator("json", createTodoRequestBodySchema),
@@ -43,12 +47,12 @@ app.post(
     const user = c.get("user");
     const data = c.req.valid("json");
     const todoService = c.get("todoService");
-    const created = await todoService.createTodo(user.id, { ...data, author_id: user.id });
+    const created = await todoService.createTodo({authorId: user.id, todo: { ...data, author_id: user.id }});
     return c.json({ createdTodo: created });
   }
 );
 
-// PUT /api/v1/todos/:id
+// PUT /api/v1/todos/:id - Update a todo
 app.put(
   "/:id",
   zValidator("json", updateTodoRequestBodySchema),
@@ -57,17 +61,17 @@ app.put(
     const id = Number(c.req.param("id"));
     const data = c.req.valid("json");
     const todoService = c.get("todoService");
-    const updated = await todoService.updateTodo(id, data, user.id);
+    const updated = await todoService.updateTodo({id, authorId: user.id, todo: { ...data, author_id: user.id }});
     return c.json({ updatedTodo: updated });
   }
 );
 
-// DELETE /api/v1/todos/:id
+// DELETE /api/v1/todos/:id - Delete a todo
 app.delete("/:id", async (c) => {
   const user = c.get("user");
   const id = Number(c.req.param("id"));
   const todoService = c.get("todoService");
-  const deleted = await todoService.deleteTodo(id, user.id);
+  const deleted = await todoService.deleteTodo({id, authorId: user.id});
   return c.json({ deletedTodo: deleted });
 });
 

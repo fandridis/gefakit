@@ -11,14 +11,23 @@ import { hashPassword, verifyPassword } from "../../lib/crypto";
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
-export function createAuthService({ db, authRepository }: { db: Kysely<DB>, authRepository: AuthRepository }) {
+export function createAuthService(
+    { 
+        db, 
+        authRepository, 
+        createAuthRepository }:
+    { 
+        db: Kysely<DB>, 
+        authRepository: AuthRepository, 
+        createAuthRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => AuthRepository 
+    }) {
     const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
 
     /**
      * Find user by id
      */
-    async function findUserById(id: number) {
+    async function findUserById({ id }: { id: number }) {
         return await authRepository.findUserById(id);
     }
 
@@ -39,7 +48,7 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param token - The session token to hash.
      * @returns A hex-encoded string representing the session ID.
      */
-    function generateSessionId(token: string): string {
+    function generateSessionId({ token }: { token: string }) {
         return encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
     }
 
@@ -49,14 +58,16 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param userId - The ID of the user to create a session for.
      * @returns A Promise that resolves to an object containing the session and token.
      */
-    async function createSession(userId: number): Promise<{ session: SessionDTO; token: string }> {
+    async function createSession({ userId }: { userId: number }) {
         const token = generateSessionToken();
-        const sessionId = generateSessionId(token);
+        const sessionId = generateSessionId({ token });
         
         const session = await authRepository.createSession({
-            id: sessionId,
-            user_id: userId,
-            expires_at: new Date(Date.now() + SESSION_DURATION)
+            session: {
+                id: sessionId,
+                user_id: userId,
+                expires_at: new Date(Date.now() + SESSION_DURATION)
+            }
         })
 
         if (!session) {
@@ -79,8 +90,8 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param token - The session token to validate.
      * @returns A Promise that resolves to an object containing the session and user, or null values if invalid.
      */
-    async function validateSession(token: string) {
-        const sessionId = generateSessionId(token);
+    async function validateSession({ token }: { token: string }) {
+        const sessionId = generateSessionId({ token });
         const result = await authRepository.findSessionWithUser({ sessionId });
 
         console.log('validating session: ', {sessionId, result})
@@ -129,8 +140,8 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param password - The user's password.
      * @returns A Promise that resolves to an object containing the user and session token.
      */
-    async function signInWithEmail(data: { email: string; password: string }) {
-        const user = await authRepository.findUserWithPasswordByEmail({ email: data.email });
+    async function signInWithEmail({ email, password }: { email: string; password: string }) {
+        const user = await authRepository.findUserWithPasswordByEmail({ email });
         if (!user) {
             throw createAppError.auth.invalidCredentials();
         }
@@ -139,12 +150,12 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
             throw createAppError.auth.emailNotVerified();
         }
 
-        const isValidPassword = await verifyPassword(data.password, user.password_hash);
+        const isValidPassword = await verifyPassword(password, user.password_hash);
         if (!isValidPassword) {
             throw createAppError.auth.invalidCredentials();
         }
 
-        const { token } = await createSession(user.id);
+        const { token } = await createSession({ userId: user.id });
 
         const { password_hash, ...userWithoutPassword } = user;
         return {
@@ -159,8 +170,8 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param token - The session token to validate.
      * @returns A Promise that resolves to an object containing the session and user.
      */
-    async function getCurrentSession(token: string): Promise<{ session: any; user: any }> {
-        return await validateSession(token);
+    async function getCurrentSession({ token }: { token: string }) {
+        return await validateSession({ token });
     }
 
     /**
@@ -169,8 +180,8 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param token - The session token to invalidate.
      * @returns A Promise that resolves when the session has been invalidated.
      */
-    async function invalidateSession(token: string): Promise<void> {
-        const sessionId = generateSessionId(token);
+    async function invalidateSession({ token }: { token: string }) {
+        const sessionId = generateSessionId({ token });
         console.log('invalidating sessionId: ', {sessionId})
         await authRepository.deleteSession({ sessionId });
     }
@@ -181,7 +192,7 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @param userId - The ID of the user whose sessions should be invalidated.
      * @returns A Promise that resolves when all sessions have been invalidated.
      */
-    async function invalidateAllSessions(userId: number): Promise<void> {
+    async function invalidateAllSessions({ userId }: { userId: number }) {
         await authRepository.deleteAllUserSessions({ userId });
     }
 
@@ -192,7 +203,7 @@ export function createAuthService({ db, authRepository }: { db: Kysely<DB>, auth
      * @returns A Promise that resolves when the email is successfully verified.
      * @throws AppError if the token is invalid, expired, or if the update fails.
      */
-    async function verifyEmail(token: string): Promise<void> {
+    async function verifyEmail({ token }: { token: string }) {
         // Use the service-level authRepository for the initial find (outside transaction)
         const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
 

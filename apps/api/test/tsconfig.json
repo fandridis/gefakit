@@ -1,0 +1,18 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "types": [
+            "@cloudflare/vitest-pool-workers",
+            "node"
+        ],
+        "baseUrl": ".",
+        "paths": {
+            // Add any path aliases you use in your main application if needed
+            // Example: "@/lib/*": ["../src/lib/*"]
+        }
+    },
+    "include": [
+        "**/*.ts",
+        "../worker-configuration.d.ts"
+    ]
+}

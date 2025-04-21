@@ -9,6 +9,20 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
   ? ColumnType<S, I | undefined, U>
   : ColumnType<T, T | undefined, T>;
 
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
+
+export type Json = JsonValue;
+
+export type JsonArray = JsonValue[];
+
+export type JsonObject = {
+  [x: string]: JsonValue | undefined;
+};
+
+export type JsonPrimitive = boolean | number | string | null;
+
+export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
+
 export type OrganizationsInvitationStatus = "accepted" | "declined" | "expired" | "pending";
 
 export type OrganizationsMembershipRole = "admin" | "member" | "owner";
@@ -18,7 +32,7 @@ export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 export interface AuthEmailVerification {
   created_at: Generated<Timestamp>;
   expires_at: Timestamp;
-  id: string;
+  id: Generated<number>;
   identifier: string;
   updated_at: Generated<Timestamp>;
   user_id: number;
@@ -40,6 +54,18 @@ export interface AuthUser {
   password_hash: string;
   recovery_code: Buffer | null;
   username: string;
+}
+
+export interface CoreNotification {
+  action_url: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp | null;
+  id: Generated<Int8>;
+  read_at: Timestamp | null;
+  template_key: string;
+  template_variables: Json | null;
+  type: string;
+  user_id: number;
 }
 
 export interface CoreTodo {
@@ -85,6 +111,7 @@ export interface DB {
   "auth.email_verifications": AuthEmailVerification;
   "auth.sessions": AuthSession;
   "auth.users": AuthUser;
+  "core.notifications": CoreNotification;
   "core.todos": CoreTodo;
   "organizations.invitations": OrganizationsInvitation;
   "organizations.memberships": OrganizationsMembership;

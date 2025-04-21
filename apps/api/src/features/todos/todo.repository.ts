@@ -6,7 +6,7 @@ export type TodoRepository = ReturnType<typeof createTodoRepository>
 
 export function createTodoRepository({ db }: { db: Kysely<DB> | Transaction<DB> }) {
     return {
-        async findAllTodosByAuthorId(authorId: number) {
+        async findAllTodosByAuthorId({authorId}: {authorId: number}) {
             return db
                 .selectFrom('core.todos')
                 .selectAll()
@@ -14,7 +14,7 @@ export function createTodoRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
                 .execute();
         },
 
-        async findTodoById(id: number) {
+        async findTodoById({id}: {id: number}) {
             return db
                 .selectFrom('core.todos')
                 .selectAll()
@@ -22,25 +22,25 @@ export function createTodoRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
                 .executeTakeFirst();
         },
 
-        async createTodo(authorId: number, insertableTodo: Insertable<CoreTodo>) {
+        async createTodo({authorId, todo}: {authorId: number, todo: Insertable<CoreTodo>}) {
             return db
                 .insertInto('core.todos')
-                .values({ ...insertableTodo, author_id: authorId })
+                .values({ ...todo, author_id: authorId })
                 .returningAll()
                 .executeTakeFirstOrThrow();
         },
 
-        async updateTodo(id: number, updateableTodo: Updateable<CoreTodo>) {
+        async updateTodo({id, todo}: {id: number, todo: Updateable<CoreTodo>}) {
             return db
                 .updateTable('core.todos')
-                .set(updateableTodo)
+                .set(todo)
                 .where('id', '=', id)
                 .returningAll()
                 .executeTakeFirstOrThrow()
 
         },
 
-        async deleteTodo(id: number) {
+        async deleteTodo({id}: {id: number}) {
             return db
                 .deleteFrom('core.todos')
                 .where('id', '=', id)

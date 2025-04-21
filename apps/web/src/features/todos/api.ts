@@ -1,11 +1,10 @@
 import { CreateTodoRequestBodyDTO, CreateTodoResponseDTO, DeleteTodoResponseDTO, TodoDTO, UpdateTodoRequestBodyDTO, UpdateTodoResponseDTO } from "@gefakit/shared/src/types/todo";
 
 const API_BASE_URL = 'http://localhost:8787/api/v1/todos';
-const API_MY_BASE_URL = 'http://localhost:8787/api/v1/me';
 
 export const apiGetTodos = async () => {
   try {
-    const response = await fetch(`${API_MY_BASE_URL}/todos`, {
+    const response = await fetch(`${API_BASE_URL}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

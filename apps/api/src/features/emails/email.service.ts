@@ -1,11 +1,15 @@
 import { sendEmail } from "../../lib/emails";
-import organizationCreatedTemplate from "./templates/organization-created.template";
 import emailVerificationTemplate from "./templates/email-verification.template";
+import organizationInvitationTemplate from './templates/organization-invitation.template';
 
 export type EmailService = ReturnType<typeof createEmailService>;
 
 export function createEmailService() {
-  async function sendWelcomeEmail(data: {
+  async function sendWelcomeEmail({
+    email,
+    username,
+    orgName,
+  }: {
     email: string;
     username: string;
     orgName: string;
@@ -14,37 +18,47 @@ export function createEmailService() {
     console.log('Method not implemented yet');
   }
 
-  async function sendVerificationEmail(data: {
+  async function sendVerificationEmail({
+    email,
+    token,
+  }: {
     email: string;
     token: string;
   }) {
     // TODO: Make base URL configurable (e.g., process.env.FRONTEND_URL)
-    const verificationUrl = `http://localhost:5173/verify-email?token=${data.token}`;
+    const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`;
 
     const htmlTemplate = emailVerificationTemplate({ verificationUrl });
 
-    console.log(`Sending verification email to ${data.email} with URL ${verificationUrl}`);
+    console.log(`Sending verification email to ${email} with URL ${verificationUrl}`);
 
     await sendEmail({
-      to: data.email,
+      to: email,
       subject: 'Verify Your Email Address',
       htmlTemplate,
     });
   }
 
-  async function sendOrganizationCreatedEmail(data: {
+  async function sendOrganizationInvitationEmail({
+    email,
+    orgName,
+    token,
+  }: {
     email: string;
     orgName: string;
+    token: string;
   }) {
+    // TODO: Make base URL configurable (e.g., process.env.FRONTEND_URL)
+    const invitationUrl = `${process.env.APP_URL}/accept-invitation?token=${token}`;
     // Generate HTML from the template function
-    const htmlTemplate = organizationCreatedTemplate({ orgName: data.orgName });
+    const htmlTemplate = organizationInvitationTemplate({ orgName, invitationUrl });
 
-    const res = sendEmail({
-      to: 'fandridis@gmail.com', // data.email, // TODO: Use actual recipient email
-      subject: `Welcome to ${data.orgName}!`, 
+    const res = await sendEmail({
+      to: email,
+      subject: `You're invited to join ${orgName} on GefaKit!`, 
       htmlTemplate,
     });
   }
 
-  return { sendWelcomeEmail, sendOrganizationCreatedEmail, sendVerificationEmail };
+  return { sendWelcomeEmail, sendOrganizationInvitationEmail, sendVerificationEmail };
 }

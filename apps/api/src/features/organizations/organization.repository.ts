@@ -1,13 +1,13 @@
 import { Kysely, Insertable, Transaction, Selectable } from 'kysely'
 import { jsonObjectFrom } from 'kysely/helpers/postgres'
-import { DB, OrganizationsMembership, OrganizationsOrganization } from '../../db/db-types'
+import { DB, OrganizationsInvitation, OrganizationsMembership, OrganizationsOrganization } from '../../db/db-types'
 
 
 export type OrganizationRepository = ReturnType<typeof createOrganizationRepository>
 
 export function createOrganizationRepository({ db }: { db: Kysely<DB> | Transaction<DB> } ) {
   return {
-    findAllOrganizationMembershipsByUserId: async (userId: number) => {
+    findAllOrganizationMembershipsByUserId: async ({userId}: {userId: number}) => {
       return db
         .selectFrom('organizations.memberships')
         .where('user_id', '=', userId)
@@ -22,10 +22,10 @@ export function createOrganizationRepository({ db }: { db: Kysely<DB> | Transact
         .execute();
     },
 
-    findOrganizationById: async (orgId: number) => {
+    findOrganizationById: async ({organizationId}: {organizationId: number}) => {
       return db
         .selectFrom('organizations.organizations')
-        .where('organizations.organizations.id', '=', orgId)
+        .where('organizations.organizations.id', '=', organizationId)
         .selectAll()
         .select((eb) => [
           jsonObjectFrom(
@@ -55,49 +55,49 @@ export function createOrganizationRepository({ db }: { db: Kysely<DB> | Transact
         .values({
           organization_id: data.organization_id,
           user_id: data.user_id,
-          role: data.role
+          role: data.role,
+          is_default: data.is_default
         })
         .returningAll()
         .executeTakeFirstOrThrow()
       return result
     },
     
-    deleteOrganization: async (orgId: number) => {
+    deleteOrganization: async ({organizationId}: {organizationId: number}) => {
       return await db
         .deleteFrom('organizations.organizations')
-        .where('id', '=', orgId)
+        .where('id', '=', organizationId)
         .returningAll()
         .executeTakeFirstOrThrow();
     },
 
-    deleteOrganizationMembership: async (orgId: number, userId: number) => {
+    deleteOrganizationMembership: async ({organizationId, userId}: {organizationId: number, userId: number}) => {
       return await db
         .deleteFrom('organizations.memberships')
-        .where('organization_id', '=', orgId)
+        .where('organization_id', '=', organizationId)
         .where('user_id', '=', userId)
         .returningAll()
         .executeTakeFirstOrThrow();
     },
 
     // update the membership of the user/org combo to have is_default = true
-    updateMembershipDefaultStatus: async (userId: number, orgId: number, isDefault: boolean) => {
+    updateMembershipDefaultStatus: async ({userId, organizationId, isDefault}: {userId: number, organizationId: number, isDefault: boolean}) => {
       return await db
         .updateTable('organizations.memberships')
         .set({ is_default: isDefault })
         .where('user_id', '=', userId)
-        .where('organization_id', '=', orgId)
+        .where('organization_id', '=', organizationId)
         .returningAll()
         .executeTakeFirstOrThrow();
     },
 
-    findDefaultMembershipByUserId: async (userId: number) => {
+    findDefaultMembershipByUserId: async ({userId}: {userId: number}) => {
       return await db
         .selectFrom('organizations.memberships')
         .where('user_id', '=', userId)
         .where('is_default', '=', true)
         .selectAll()
         .executeTakeFirst();
-    }
-    
+    },
   }
 } 

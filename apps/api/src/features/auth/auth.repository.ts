@@ -15,31 +15,31 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .executeTakeFirst();
         },
 
-        async findUserWithPasswordByEmail(data: { email: string }) {
+        async findUserWithPasswordByEmail({ email }: { email: string }) {
             return db
                 .selectFrom('auth.users')
-                .where('email', '=', data.email)
+                .where('email', '=', email)
                 .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified'])
                 .executeTakeFirst();
         },
 
-        async createUser(insertableUser: Insertable<AuthUser>) {
+        async createUser({ user }: { user: Insertable<AuthUser> }) {
             return db
                 .insertInto('auth.users')
-                .values(insertableUser)
+                .values(user)
                 .returning(['id', 'email', 'username', 'created_at', 'email_verified'])
                 .executeTakeFirst();
         },
 
-        async createSession(data: Insertable<AuthSession>) {
+        async createSession({ session }: { session: Insertable<AuthSession> }) {
             return db
                 .insertInto('auth.sessions')
-                .values(data)
+                .values(session)
                 .returning(['id', 'user_id', 'expires_at'])
                 .executeTakeFirst();
         },
 
-        async findSessionWithUser(data: { sessionId: string }) {
+        async findSessionWithUser({ sessionId }: { sessionId: string }) {
             return db
                 .selectFrom('auth.sessions')
                 .innerJoin('auth.users', 'auth.users.id', 'auth.sessions.user_id')
@@ -53,29 +53,29 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                     'auth.users.created_at',
                     'auth.users.email_verified'
                 ])
-                .where('auth.sessions.id', '=', data.sessionId)
+                .where('auth.sessions.id', '=', sessionId)
                 .executeTakeFirst();
         },
 
-        async updateSessionExpiry(data: { sessionId: string; expiresAt: Date }) {
+        async updateSessionExpiry({ sessionId, expiresAt }: { sessionId: string; expiresAt: Date }) {
             return db
                 .updateTable('auth.sessions')
-                .set({ expires_at: data.expiresAt })
-                .where('id', '=', data.sessionId)
+                .set({ expires_at: expiresAt })
+                .where('id', '=', sessionId)
                 .execute();
         },
 
-        async deleteSession(data: { sessionId: string }) {
+        async deleteSession({ sessionId }: { sessionId: string }) {
             return db
                 .deleteFrom('auth.sessions')
-                .where('id', '=', data.sessionId)
+                .where('id', '=', sessionId)
                 .execute();
         },
 
-        async deleteAllUserSessions(data: { userId: number }) {
+        async deleteAllUserSessions({ userId }: { userId: number }) {
             return db
                 .deleteFrom('auth.sessions')
-                .where('user_id', '=', data.userId)
+                .where('user_id', '=', userId)
                 .execute();
         },
 
@@ -87,27 +87,27 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .executeTakeFirst();
         },
 
-        async findEmailVerificationTokenByValue(data: { tokenValue: string }) {
+        async findEmailVerificationTokenByValue({ tokenValue }: { tokenValue: string }) {
             return db
                 .selectFrom('auth.email_verifications')
                 .selectAll()
-                .where('value', '=', data.tokenValue)
+                .where('value', '=', tokenValue)
                 .executeTakeFirst();
         },
 
-        async updateUserEmailVerified(data: { userId: number; verified: boolean }) {
+        async updateUserEmailVerified({ userId, verified }: { userId: number; verified: boolean }) {
             return db
                 .updateTable('auth.users')
-                .set({ email_verified: data.verified })
-                .where('id', '=', data.userId)
+                .set({ email_verified: verified })
+                .where('id', '=', userId)
                 .returning(['id', 'email_verified'])
                 .executeTakeFirst();
         },
 
-        async deleteEmailVerificationToken(data: { tokenId: string }) {
+        async deleteEmailVerificationToken({ tokenId }: { tokenId: number }) {
             return db
                 .deleteFrom('auth.email_verifications')
-                .where('id', '=', data.tokenId)
+                .where('id', '=', tokenId)
                 .execute();
         }
     };

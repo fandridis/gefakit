@@ -23,9 +23,13 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
 
     try {
         const authRepository = createAuthRepository({db});
-        const authService = createAuthService({db, authRepository});
+        const authService = createAuthService({db, authRepository, createAuthRepository});
         
-        const { user, session } = await authService.getCurrentSession(sessionToken); 
+        const { user, session } = await authService.getCurrentSession({token: sessionToken}); 
+
+        if (!user || !session) {
+            throw createAppError.auth.unauthorized('Invalid session token.');
+        }
 
         // These set calls should now be type-safe
         c.set('user', user);

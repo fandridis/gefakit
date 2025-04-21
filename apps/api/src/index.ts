@@ -6,13 +6,15 @@ import { ZodError } from "zod";
 import { AppError } from "./errors/app-error";
 import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
-import { organizationsRoutesV1 } from "./features/organizations/organizations.routes.v1";
-import { meRoutesV1 } from "./features/me/me.routes.v1";
+import { organizationsRoutesV1 } from "./features/organizations/organization.routes.v1";
+import { userRoutesV1 } from "./features/users/user.routes.v1";
+import { organizationMembershipRoutesV1 } from "./features/organization-memberships/organization-membership.routes.v1";
+import { organizationInvitationRoutesV1 } from "./features/organization-invitations/organization-invitation.routes.v1";
 
 const app = new Hono<{ Bindings: Bindings}>();
 
 app.use('/api/*', async (c, next) => {
-  c.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // Replace with your frontend domain
+  c.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
   c.header('Access-Control-Allow-Credentials', 'true');
   c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); 
@@ -26,30 +28,35 @@ app.use('/api/*', async (c, next) => {
 // All routes will have access to the db instance via context set by this middleware.
 app.use('/api/*', dbMiddleware);
 
-// Current authenticated user specific routes
-app.use("/api/v1/me/*", authMiddleware);
-app.route("/api/v1/me", meRoutesV1);
-
+// Auth routes (without auth middleware)
 app.route("/api/v1/auth", authRoutesV1);
 
-// Apply auth middleware ONLY to todo routes
+// User routes
+app.use("/api/v1/users/*", authMiddleware);
+app.route("/api/v1/users", userRoutesV1);
+
+// Todo routes
 app.use("/api/v1/todos/*", authMiddleware); 
 app.route("/api/v1/todos", todoRoutesV1);
 
-// Apply auth middleware to organization routes
+// Organization routes
 app.use("/api/v1/organizations/*", authMiddleware);
 app.route("/api/v1/organizations", organizationsRoutesV1);
 
+// Organization membership routes
+app.use("/api/v1/organization-memberships/*", authMiddleware);
+app.route("/api/v1/organization-memberships", organizationMembershipRoutesV1);
+
+// Organization invitation routes
+app.use("/api/v1/organization-invitations/*", authMiddleware);
+app.route("/api/v1/organization-invitations", organizationInvitationRoutesV1);
+
+// Not found route
 app.notFound((c) => {
   return c.text('This route does not exist', 404);
 });
 
 app.onError((err, c) => {
-  console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
   console.log('===================== onError =====================');
   console.log('===================== onError =====================');
   console.log('===================== onError =====================');

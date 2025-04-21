@@ -10,55 +10,61 @@ import { randomUUID } from 'node:crypto';
 import { DB } from "../../db/db-types";
 import { createAppError } from "../../errors";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
-import { AuthRepository, createAuthRepository } from "../auth/auth.repository";
-import { OrganizationRepository, createOrganizationRepository } from "../organizations/organizations.repository";
-import { EmailService } from "../emails/email.service";
+import { AuthRepository } from "../auth/auth.repository";
+import { OrganizationRepository } from "../organizations/organization.repository";
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
 export function createOnboardingService({
   db,
   authRepository,
-  orgRepository,
-  emailService
+  createAuthRepository,
+  createOrganizationRepository
 }: { 
   db: Kysely<DB>;
   authRepository: AuthRepository;
-  orgRepository: OrganizationRepository;
-  emailService: EmailService;
+  createAuthRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => AuthRepository;
+  createOrganizationRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => OrganizationRepository;
 }) {
-  async function signUpAndCreateOrganization(data: {
+  async function signUpAndCreateOrganization({
+    email,
+    password,
+    username,
+    orgName,
+  }: {
     email: string;
     password: string;
     username: string;
     orgName?: string;
   }) {
-    const existingUser = await authRepository.findUserWithPasswordByEmail({email: data.email});
+    const existingUser = await authRepository.findUserWithPasswordByEmail({email});
 
-    if (data.password.length < 8 || data.password.length > 255) {
+    if (password.length < 8 || password.length > 255) {
         throw createAppError.auth.weakPassword('Password must be between 8 and 255 characters long.');
     }
 
-    const isPwned = await isMyPasswordPwned(data.password);
+    const isPwned = await isMyPasswordPwned(password);
 
     if (existingUser) {
-        throw createAppError.auth.invalidCredentials();
+        throw createAppError.auth.userCreationFailed('Email already exists')
     }
 
-    const passwordHash = await hashPassword(data.password);
+    const passwordHash = await hashPassword(password);
 
     if (isPwned) {
         throw createAppError.auth.weakPassword('Password was found in a data breach. Please choose a different password and update it on all your accounts.');
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {
-      const txAuthRepo = createAuthRepository({ db: trx });
-      const txOrgRepo = createOrganizationRepository({ db: trx });
+      const authRepoTx = createAuthRepository({ db: trx });
+      const orgRepoTx = createOrganizationRepository({ db: trx });
 
-      const user = await txAuthRepo.createUser({
-        email: data.email,
-        password_hash: passwordHash,
-        username: data.username,
+      const user = await authRepoTx.createUser({
+        user: {
+          email,
+          password_hash: passwordHash,
+          username,
+        }
       });
 
       if (!user) {
@@ -68,32 +74,27 @@ export function createOnboardingService({
       const verificationToken = randomUUID();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-      await txAuthRepo.createEmailVerificationToken({
-        id: randomUUID(),
+      await authRepoTx.createEmailVerificationToken({
         user_id: user.id,
         value: verificationToken,
         expires_at: expiresAt,
         identifier: user.email // Assuming identifier is the email
       });
 
-      const org = await txOrgRepo.createOrganization({
-        name: data.orgName ?? `${user.username}'s org`
+      const org = await orgRepoTx.createOrganization({
+        name: orgName ?? `${user.username}'s org`
       });
 
-      await txOrgRepo.createMembership({
+      await orgRepoTx.createMembership({
         organization_id: org.id,
         user_id: user.id,
+        is_default: true,
         role: 'owner'
       });
 
       console.log('Send welcome email to ', user.email);
 
-      await emailService.sendVerificationEmail({ 
-        email: user.email, 
-        token: verificationToken 
-      });
-
-      return { user, orgId: org.id };
+      return { user, orgId: org.id, verificationToken };
     });
   }
 

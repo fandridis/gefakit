@@ -20,7 +20,8 @@
 		"db:seed:file": "cross-env NODE_ENV=development tsx ./src/db/seeds/seed-runner.ts",
 		"db:drop:development": "cross-env NODE_ENV=development tsx ./src/db/seeds/drop.ts",
 		"db:drop:staging": "cross-env NODE_ENV=staging tsx ./src/db/seeds/drop.ts",
-		"db:drop:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/seeds/drop.ts"
+		"db:drop:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/seeds/drop.ts",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@gefakit/shared": "workspace:*",
@@ -40,6 +41,7 @@
 		"zod": "^3.24.2"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.18",
 		"@cloudflare/workers-types": "^4.20250410.0",
 		"@faker-js/faker": "^9.7.0",
 		"@types/node": "^22.14.0",
@@ -47,6 +49,7 @@
 		"dotenv": "^16.5.0",
 		"kysely-codegen": "^0.18.3",
 		"tsx": "^4.19.3",
+		"vitest": "~3.0.0",
 		"wrangler": "^4.10.0"
 	}
 }

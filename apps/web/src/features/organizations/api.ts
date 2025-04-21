@@ -1,12 +1,11 @@
-import { OrganizationMembershipDTO, CreateOrganizationRequestBodyDTO, OrganizationDTO, GetOrganizationMembershipsResponseDTO, CreateOrganizationResponseDTO } from "@gefakit/shared/src/types/organization";
+import { CreateOrganizationRequestBodyDTO, GetOrganizationMembershipsResponseDTO, CreateOrganizationResponseDTO } from "@gefakit/shared/src/types/organization";
 
 const API_ORG_BASE_URL = 'http://localhost:8787/api/v1/organizations';
-const API_MY_BASE_URL = 'http://localhost:8787/api/v1/me'; 
+const API_ORG_MEMBERSHIP_BASE_URL = 'http://localhost:8787/api/v1/organization-memberships';
 
-// Updated function: No longer takes userId, uses new endpoint
 export const apiGetOrganizationMemberships = async (): Promise<GetOrganizationMembershipsResponseDTO> => {
   try {
-    const response = await fetch(`${API_MY_BASE_URL}/organization-memberships`, { // Use new endpoint
+    const response = await fetch(`${API_ORG_MEMBERSHIP_BASE_URL}`, { // Use new endpoint
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -73,7 +72,7 @@ export const apiDeleteOrganization = async ({ organizationId }: { organizationId
 export const apiLeaveOrganization = async ({ organizationId }: { organizationId: number }): Promise<void> => {
   try {
     // Use the new endpoint structure requiring organizationId
-    const response = await fetch(`${API_MY_BASE_URL}/organizations/${organizationId}/membership`, {
+    const response = await fetch(`${API_ORG_BASE_URL}/${organizationId}/memberships/me`, {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json', // Good practice to include Accept header
