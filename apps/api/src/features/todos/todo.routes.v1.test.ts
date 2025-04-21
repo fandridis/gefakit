@@ -56,7 +56,7 @@ vi.mock('./todo.repository', () => ({
 
 describe('Todo Routes V1', () => {
   let app: Hono<{ Bindings: Bindings; Variables: TodoRouteVars }>; // Use the correct Bindings type
-  const mockUser: UserDTO = { id: 123, email: 'test@example.com', username: 'tester', email_verified: true, created_at: new Date() };
+  const mockUser: UserDTO = { id: 123, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date() };
   const mockDb = { /* mock db instance if needed by middleware not bypassed */ } as Kysely<DB>;
 
   beforeEach(() => {
@@ -76,8 +76,6 @@ describe('Todo Routes V1', () => {
 
     // Apply the global error handler logic from index.ts to the test app
     app.onError((err, c) => {
-      console.error('Test App Error:', err); // Log errors during tests
-
       if (err instanceof ZodError) {
         return c.json({
           ok: false,

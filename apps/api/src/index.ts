@@ -57,10 +57,10 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
+  console.log('=');
   console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
-  console.log('===================== onError =====================');
-   console.error('App Error:', err);
+  console.log('=');
+   console.error('App Error:', err?.message);
   
   
   if (err instanceof ZodError) {

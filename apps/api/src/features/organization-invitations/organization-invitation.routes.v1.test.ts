@@ -3,7 +3,6 @@ import { Hono } from 'hono';
 import { organizationInvitationRoutesV1 } from './organization-invitation.routes.v1';
 import { OrganizationInvitationService } from './organization-invitation.service';
 import { OrganizationService } from '../organizations/organization.service'; // Needed for middleware setup
-import { AuthService } from '../auth/auth.service'; // Needed for middleware setup
 import { UserDTO } from '@gefakit/shared';
 import { AppError } from '../../errors/app-error';
 import { Bindings } from '../../types/hono';
@@ -78,7 +77,7 @@ vi.mock('../auth/auth.repository', () => ({
 
 describe('Organization Invitation Routes V1', () => {
   let app: Hono<{ Bindings: Bindings; Variables: OrganizationInvitationRouteVariables }>;
-  const mockUser: UserDTO = { id: 1, email: 'test@example.com', username: 'tester', email_verified: true, created_at: new Date() };
+  const mockUser: UserDTO = { id: 1, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date() };
   const mockDb = { /* mock db instance */ } as Kysely<DB>;
   const now = new Date();
   const mockInvitation: CoreInvitation = {
@@ -109,8 +108,6 @@ describe('Organization Invitation Routes V1', () => {
 
     // Apply global error handler (copied from other tests)
     app.onError((err, c) => {
-      console.error('Test App Error:', err);
-
       if (err instanceof ZodError) {
         return c.json({
           ok: false,

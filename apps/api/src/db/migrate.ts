@@ -26,7 +26,7 @@ async function migrateToLatest() {
 
     const db = new Kysely<any>({
         dialect: new NeonDialect({
-            connectionString: process.env.DATABASE_URL,
+            connectionString:  process.env.DATABASE_URL,
         }),
     })
 

@@ -80,7 +80,7 @@ describe('OnboardingService', () => {
   let onboardingService: OnboardingService;
 
   // --- Mock Data Definitions ---
-  const email = 'test@example.com';
+  const email = 'delivered@resend.dev';
   const password = 'ValidPassword123';
   const username = 'tester';
   const orgName = 'Test Org';

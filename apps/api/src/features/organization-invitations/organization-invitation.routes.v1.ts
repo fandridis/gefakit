@@ -43,14 +43,12 @@ app.get('/', async (c) => {
 
 // POST - accept an organization invitation
 app.post('/:token/accept', async (c) => {
+  console.log(`gefa1: with token ${c.req.param('token')} and user ${c.get('user').id}`);
   const token = c.req.param('token');
   const user = c.get('user');
   const service = c.get('organizationInvitationService');
 
-  console.log('About to accept invitation', { token });
-
   const invitation = await service.acceptInvitation({token, acceptingUserId: user.id});
-  console.log('[Route] Accepted invitation', { invitation });
 
   const response = { invitation };
   return c.json(response, 201);

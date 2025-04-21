@@ -47,7 +47,7 @@ describe('Organization Membership Routes v1', () => {
 
   const testUserId = 1;
   const testOrgId = 10;
-  const testUser = { id: testUserId, email: 'test@example.com' };
+  const testUser = { id: testUserId, email: 'delivered@resend.dev' };
 
   // Flag to control auth middleware behavior
   let simulateAuthFailure = false;
@@ -82,7 +82,6 @@ describe('Organization Membership Routes v1', () => {
 
     // b) Error Handler (ensure this is present)
     app.onError((err, c) => {
-      console.error('Test App Error:', err);
       if (err instanceof ZodError) {
         return c.json({
           ok: false,

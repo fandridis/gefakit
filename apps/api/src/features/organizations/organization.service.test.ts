@@ -727,7 +727,7 @@ describe('OrganizationService', () => {
     const invitation: Selectable<OrganizationsInvitation> = {
       id: 123, // Use a number if the type expects it
       organization_id: orgId,
-      email: 'test@example.com',
+      email: 'delivered@resend.dev',
       role: 'member',
       token: 'some-token',
       status: 'pending',

@@ -80,7 +80,7 @@ describe('OrganizationInvitationService', () => {
 
   // --- Mock Data ---
   const userId = 1;
-  const userEmail = 'test@example.com';
+  const userEmail = 'delivered@resend.dev';
   const token = 'valid-token-123';
   const organizationId = 10;
   const now = new Date();
@@ -437,7 +437,7 @@ describe('OrganizationInvitationService', () => {
      it('should call repository.createInvitation with the invitation data', async () => {
       const invitationData: Insertable<OrganizationsInvitation> = {
         organization_id: organizationId,
-        email: 'new@example.com',
+        email: 'delivered@resend.dev',
         role: 'admin',
         token: 'new-token-456',
         status: 'pending',

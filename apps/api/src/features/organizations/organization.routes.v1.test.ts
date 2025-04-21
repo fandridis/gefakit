@@ -137,8 +137,6 @@ describe('Organization Routes V1', () => {
 
     // Apply global error handler
     app.onError((err, c) => {
-      console.error('Test App Error:', err);
-
       if (err instanceof ZodError) {
         return c.json({
           ok: false,

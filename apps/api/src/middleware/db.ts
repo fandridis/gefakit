@@ -9,7 +9,7 @@ export interface DbMiddleWareVariables {
 }
 
 export const dbMiddleware = createMiddleware<{ Bindings: Bindings, Variables: DbMiddleWareVariables }>(async (c, next) => {
-    const db = new Kysely<DB>({
+  const db = new Kysely<DB>({
       dialect: new NeonDialect({
         connectionString: process.env.DATABASE_URL_POOLED,
       }),
