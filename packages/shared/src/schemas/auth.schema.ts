@@ -6,11 +6,13 @@ export const userSchema = z.object({
     username: z.string().nullable().optional(),
     created_at: z.date(),
     email_verified: z.boolean(),
+    role: z.string(),
 });
 
 export const sessionSchema = z.object({
     id: z.string(),
     user_id: z.number(),
+    impersonator_user_id: z.number().nullable(),
     expires_at: z.date()
 });
 

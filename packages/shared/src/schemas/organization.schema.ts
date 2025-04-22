@@ -7,22 +7,6 @@ export const organizationSchema = z.object({
   updated_at: z.coerce.date(),
 })
 
-export const organizationMembershipSchema = z.object({
-  id: z.number().int().positive(),
-  organization: organizationSchema,
-  role: z.enum(['owner', 'member', 'admin']),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-})
-
-export const organizationInvitationSchema = z.object({
-  id: z.number().int().positive(),
-  email: z.string().email('Invalid email address'),
-  role: z.enum(['owner', 'member', 'admin']),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-})
-
 export const creatableOrganizationSchema = organizationSchema
   .omit({ id: true, created_at: true, updated_at: true })
   .extend({

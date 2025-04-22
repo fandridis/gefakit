@@ -9,6 +9,7 @@ import { adminAuth } from '../../middleware/admin-auth';
 import { AppError } from '../../errors/app-error';
 import { dbMiddleware, DbMiddleWareVariables } from '../../middleware/db';
 import { createAdminService } from './admin.service';
+import { createOrganizationRepository } from '../organizations/organization.repository';
 import { Bindings } from '../../types/hono';
 
 type AuthRouteVariables = DbMiddleWareVariables & {
@@ -41,7 +42,6 @@ app.post(
 
     // Use dependency injection pattern similar to your existing routes
     const authRepository = createAuthRepository({db});
-    const authService = createAuthService({db, authRepository, createAuthRepository});
     const adminService = createAdminService({db, authRepository});
 
     await adminService.startImpersonation(session.id, adminUser.id, parseInt(targetUserId));
@@ -67,7 +67,7 @@ app.post(
       // We need the *original* admin ID to revert the session correctly.
       // The best way is to fetch it from the session table itself *before* updating.
       const authRepository = createAuthRepository({db});
-      const authService = createAuthService({db, authRepository, createAuthRepository});
+      const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
       const adminService = createAdminService({db, authRepository});
       
       const sessionDetails = await authService.findSessionById({ id: session.id });

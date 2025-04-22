@@ -6,6 +6,7 @@ import { SessionDTO, UserDTO } from '@gefakit/shared/src/types/auth';
 import { DbMiddleWareVariables } from './db';
 import { createAuthRepository } from '../features/auth/auth.repository';
 import { createAuthService } from '../features/auth/auth.service';
+import { createOrganizationRepository } from '../features/organizations/organization.repository';
 
 export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
     user: UserDTO
@@ -25,8 +26,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
 
     try {
         const authRepository = createAuthRepository({db});
-        const authService = createAuthService({db, authRepository, createAuthRepository});
-        
+        const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});        
         const { user, session } = await authService.getCurrentSession({token: sessionToken}); 
 
         if (!user || !session) {

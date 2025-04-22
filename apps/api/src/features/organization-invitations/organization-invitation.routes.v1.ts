@@ -22,7 +22,7 @@ app.use('/*', async (c, next) => {
   const organizationInvitationRepository = createOrganizationInvitationRepository({ db });
   const organizationRepository = createOrganizationRepository({ db });
   const authRepository = createAuthRepository({ db });
-  const authService = createAuthService({ db, authRepository, createAuthRepository });
+  const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
   const organizationService = createOrganizationService({ db, organizationRepository, createOrganizationRepository });
   const organizationInvitationService = createOrganizationInvitationService({ db, organizationInvitationRepository, organizationService, createOrganizationInvitationRepository, authService });
 

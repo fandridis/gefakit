@@ -37,8 +37,7 @@ app.use('/*', async (c, next) => {
 
   const organizationService = createOrganizationService({db, organizationRepository, createOrganizationRepository});
   const organizationMembershipService = createOrganizationMembershipService({db, organizationMembershipRepository});
-  const authService = createAuthService({ db, authRepository, createAuthRepository });
-  const organizationInvitationService = createOrganizationInvitationService({db, organizationInvitationRepository, createOrganizationInvitationRepository, organizationService, authService});
+  const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});  const organizationInvitationService = createOrganizationInvitationService({db, organizationInvitationRepository, createOrganizationInvitationRepository, organizationService, authService});
   const emailService = createEmailService();
 
   c.set('organizationService', organizationService);

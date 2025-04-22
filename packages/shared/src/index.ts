@@ -6,6 +6,7 @@
 
 export * from "./types/user";
 export * from "./types/auth";
+export * from "./types/organization";
 
 // Remove duplicated UserDTO interface definition
 // export interface UserDTO {

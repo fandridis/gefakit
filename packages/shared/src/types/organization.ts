@@ -1,9 +1,11 @@
 import { z } from "zod";
-import { createOrganizationInvitationRequestBodySchema, createOrganizationRequestBodySchema, organizationInvitationSchema, organizationMembershipSchema, organizationSchema, updateOrganizationRequestBodySchema } from "../schemas/organization.schema";
+import { createOrganizationInvitationRequestBodySchema, createOrganizationRequestBodySchema, organizationSchema, updateOrganizationRequestBodySchema } from "../schemas/organization.schema";
+import { membershipSchema } from "../schemas/membership.schema";
+import { invitationSchema } from "../schemas/invitation.schema";
 
 export type OrganizationDTO = z.infer<typeof organizationSchema>
-export type OrganizationMembershipDTO = z.infer<typeof organizationMembershipSchema>
-export type OrganizationInvitationDTO = z.infer<typeof organizationInvitationSchema>
+export type OrganizationMembershipDTO = z.infer<typeof membershipSchema>
+export type OrganizationInvitationDTO = z.infer<typeof invitationSchema>
 
 export type CreateOrganizationRequestBodyDTO = z.infer<typeof createOrganizationRequestBodySchema>
 export type CreateOrganizationResponseDTO = { createdOrganization: OrganizationDTO }
