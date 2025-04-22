@@ -39,10 +39,20 @@ export interface AuthEmailVerification {
   value: string;
 }
 
+export interface AuthOauthAccount {
+  created_at: Generated<Timestamp>;
+  id: Generated<number>;
+  provider: string;
+  provider_user_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: number;
+}
+
 export interface AuthSession {
   active_organization_id: number | null;
   expires_at: Timestamp;
   id: string;
+  impersonator_user_id: number | null;
   user_id: number;
 }
 
@@ -53,6 +63,7 @@ export interface AuthUser {
   id: Generated<number>;
   password_hash: string;
   recovery_code: Buffer | null;
+  role: Generated<string>;
   username: string;
 }
 
@@ -109,6 +120,7 @@ export interface OrganizationsOrganization {
 
 export interface DB {
   "auth.email_verifications": AuthEmailVerification;
+  "auth.oauth_accounts": AuthOauthAccount;
   "auth.sessions": AuthSession;
   "auth.users": AuthUser;
   "core.notifications": CoreNotification;

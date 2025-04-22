@@ -10,10 +10,12 @@ import { createAuthService } from '../features/auth/auth.service';
 export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
     user: UserDTO
     session: SessionDTO
+    impersonatorUserId: number | null | undefined
 }
 
 // Use createMiddleware instead of MiddlewareHandler directly
 export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: AuthMiddleWareVariables }>(async (c, next) => {
+    console.log('[=== authMiddleware ===]');
     const db = c.get("db");
     const sessionToken = getCookie(c, 'gefakit-session');
 
@@ -34,6 +36,14 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
         // These set calls should now be type-safe
         c.set('user', user);
         c.set('session', session);
+
+        // Impersonator User ID
+        if (session.impersonator_user_id) {
+            c.set('impersonatorUserId', session.impersonator_user_id);
+            // Optionally fetch and set the full impersonator user object if needed often
+            // const impersonatorUser = await userRepository.findById(session.impersonator_user_id);
+            // c.set('impersonatorUser', impersonatorUser);
+        }
 
         await next();
     } catch (error: any) {

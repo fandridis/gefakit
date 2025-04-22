@@ -89,7 +89,7 @@ describe('OnboardingService', () => {
   const mockOrgId = 10;
   const mockVerificationToken = '123e4567-e89b-12d3-a456-426614174000';
 
-  const mockCreatedUser: Selectable<DB['auth.users']> = { id: mockUserId, email, username, password_hash: passwordHash, created_at: new Date(), email_verified: false, recovery_code: null };
+  const mockCreatedUser: Selectable<DB['auth.users']> = { id: mockUserId, email, username, password_hash: passwordHash, created_at: new Date(), email_verified: false, recovery_code: null, role: 'USER' };
   const mockCreatedOrg: Selectable<DB['organizations.organizations']> = { id: mockOrgId, name: orgName, created_at: new Date(), updated_at: new Date() };
   const mockCreatedMembership: Selectable<DB['organizations.memberships']> = { organization_id: mockOrgId, user_id: mockUserId, role: 'owner', is_default: true, created_at: new Date(), updated_at: new Date() };
   const mockCreatedToken: Selectable<DB['auth.email_verifications']> = { id: 200, user_id: mockUserId, value: mockVerificationToken, expires_at: new Date(Date.now() + 86400000), identifier: email, created_at: new Date(), updated_at: new Date() };
@@ -138,12 +138,11 @@ describe('OnboardingService', () => {
     expect(mockFindUserWithPasswordByEmail).toHaveBeenCalledWith({ email });
     expect(mockCrypto.isMyPasswordPwned).toHaveBeenCalledWith(password);
     expect(mockCrypto.hashPassword).toHaveBeenCalledWith(password);
-    expect(mockDb.transaction).toHaveBeenCalledTimes(1); // Check transaction was called
-    // Fix: Assert against the specific mockExecute spy
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1); 
     expect(mockExecute).toHaveBeenCalledTimes(1); 
     expect(mockCreateAuthRepository).toHaveBeenCalledWith({ db: mockTrx });
     expect(mockCreateOrganizationRepository).toHaveBeenCalledWith({ db: mockTrx });
-    expect(mockTxAuthRepo.createUser).toHaveBeenCalledWith({ user: { email, username, password_hash: passwordHash } });
+    expect(mockTxAuthRepo.createUser).toHaveBeenCalledWith({ user: { email, username, password_hash: passwordHash, email_verified: false, role: 'USER' } });
     expect(mockTxAuthRepo.createEmailVerificationToken).toHaveBeenCalledWith(expect.objectContaining({ 
         user_id: mockUserId, 
         value: mockVerificationToken,

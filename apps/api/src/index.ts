@@ -10,6 +10,7 @@ import { organizationsRoutesV1 } from "./features/organizations/organization.rou
 import { userRoutesV1 } from "./features/users/user.routes.v1";
 import { organizationMembershipRoutesV1 } from "./features/organization-memberships/organization-membership.routes.v1";
 import { organizationInvitationRoutesV1 } from "./features/organization-invitations/organization-invitation.routes.v1";
+import {adminRoutesV1} from "./features/admin/admin.routes.v1";
 
 const app = new Hono<{ Bindings: Bindings}>();
 
@@ -27,6 +28,9 @@ app.use('/api/*', async (c, next) => {
 
 // All routes will have access to the db instance via context set by this middleware.
 app.use('/api/*', dbMiddleware);
+
+// Admin routes
+app.route('/api/v1/admin', adminRoutesV1);
 
 // Auth routes (without auth middleware)
 app.route("/api/v1/auth", authRoutesV1);
@@ -60,7 +64,7 @@ app.onError((err, c) => {
   console.log('=');
   console.log('===================== onError =====================');
   console.log('=');
-   console.error('App Error:', err?.message);
+  console.error('App Error:', err);
   
   
   if (err instanceof ZodError) {
@@ -74,10 +78,6 @@ app.onError((err, c) => {
     }, 400);
   }
 
-  // Check if the error is an HTTPException with a ZodError cause
-  // Note: We might need to import HTTPException from 'hono/http-exception'
-  //       or just check for the presence and type of the 'cause' property.
-  //       Let's try checking the property first for simplicity.
   if (err instanceof Error && err.cause instanceof ZodError) {
     console.log('IT IS A ZOD ERROR (wrapped in HTTPException)');
     const zodError = err.cause;
@@ -87,10 +87,8 @@ app.onError((err, c) => {
         field: e.path.join('.'),
         message: e.message
       }))
-    }, 400); // Use 400 for validation errors
+    }, 400);
   }
-
-  console.log('it is not a zod error');
 
   if (err instanceof AppError) {
     const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599 

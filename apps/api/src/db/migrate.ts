@@ -21,12 +21,11 @@ const envFile =
 config({ path: envFile })
 
 async function migrateToLatest() {
-
-    console.log('process.env.DATABASE_URL: ', process.env.DATABASE_URL)
+    const DB_URL = process.env.NODE_ENV === 'test' ? process.env.TEST_DATABASE_URL : process.env.DATABASE_URL
 
     const db = new Kysely<any>({
         dialect: new NeonDialect({
-            connectionString:  process.env.DATABASE_URL,
+            connectionString: DB_URL,
         }),
     })
 

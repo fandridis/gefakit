@@ -1,5 +1,5 @@
 import { Insertable, Kysely, Transaction } from "kysely";
-import { AuthSession, AuthUser, DB, AuthEmailVerification } from "../../db/db-types";
+import { AuthSession, AuthUser, DB, AuthEmailVerification, AuthOauthAccount } from "../../db/db-types";
 
 type DbClient = Kysely<DB> | Transaction<DB>
 
@@ -11,7 +11,7 @@ export function createAuthRepository({ db }: { db: DbClient }) {
             return db
                 .selectFrom('auth.users')
                 .where('id', '=', id)
-                .select(['id', 'email', 'username', 'created_at', 'email_verified'])
+                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
                 .executeTakeFirst();
         },
 
@@ -19,7 +19,7 @@ export function createAuthRepository({ db }: { db: DbClient }) {
             return db
                 .selectFrom('auth.users')
                 .where('email', '=', email)
-                .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified'])
+                .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified', 'role'])
                 .executeTakeFirst();
         },
 
@@ -27,7 +27,7 @@ export function createAuthRepository({ db }: { db: DbClient }) {
             return db
                 .insertInto('auth.users')
                 .values(user)
-                .returning(['id', 'email', 'username', 'created_at', 'email_verified'])
+                .returning(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
                 .executeTakeFirst();
         },
 
@@ -47,11 +47,13 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                     'auth.sessions.id',
                     'auth.sessions.user_id',
                     'auth.sessions.expires_at',
+                    'auth.sessions.impersonator_user_id',
                     'auth.users.id as user_id',
                     'auth.users.email',
                     'auth.users.username',
                     'auth.users.created_at',
-                    'auth.users.email_verified'
+                    'auth.users.email_verified',
+                    'auth.users.role'
                 ])
                 .where('auth.sessions.id', '=', sessionId)
                 .executeTakeFirst();
@@ -109,6 +111,46 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .deleteFrom('auth.email_verifications')
                 .where('id', '=', tokenId)
                 .execute();
+        },
+
+        async updateSessionImpersonation(sessionId: string, userId: number, impersonatorUserId: number | null): Promise<boolean> {
+            const result = await db
+                .updateTable('auth.sessions')
+                .set({
+                    user_id: userId,
+                    impersonator_user_id: impersonatorUserId,
+                    // updated_at: new Date(), // Consider adding if you track session updates
+                })
+                .where('id', '=', sessionId)
+                .executeTakeFirst(); // Use executeTakeFirst to get result info
+
+            // Kysely returns numUpdatedRows as a bigint, ensure comparison is correct
+            return result.numUpdatedRows > 0n;
+        },
+
+        async findUserByProviderId({ provider, providerUserId }: { provider: string; providerUserId: string }) {
+            return db
+                .selectFrom('auth.oauth_accounts')
+                .innerJoin('auth.users', 'auth.users.id', 'auth.oauth_accounts.user_id')
+                .where('auth.oauth_accounts.provider', '=', provider)
+                .where('auth.oauth_accounts.provider_user_id', '=', providerUserId)
+                .select([
+                    'auth.users.id', 
+                    'auth.users.email',
+                    'auth.users.username', 
+                    'auth.users.created_at', 
+                    'auth.users.email_verified', 
+                    'auth.users.role'
+                ])
+                .executeTakeFirst();
+        },
+
+        async linkOAuthAccount({ account }: { account: Insertable<AuthOauthAccount> }) {
+            return db
+                .insertInto('auth.oauth_accounts')
+                .values(account)
+                .returningAll()
+                .executeTakeFirst();
         }
     };
 }

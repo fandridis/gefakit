@@ -31,7 +31,7 @@ describe('Todo API Integration Tests', () => {
       email: userEmail,
       username: `testuser-${Date.now()}`,
       password_hash: hashedPassword,
-      email_verified: true,
+      email_verified: true
     };
 
     const insertedUser = await testDb.insertInto('auth.users')
@@ -40,11 +40,15 @@ describe('Todo API Integration Tests', () => {
       .executeTakeFirstOrThrow();
     testUser = insertedUser;
 
+    console.log('gg1 testUser', testUser);
+
     const loginRes = await app.request('/api/v1/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, password: testPassword }),
     });
+
+    console.log('gg2 testuser logged in: ', loginRes);
 
     expect(loginRes.status).toBe(200);
     const setCookieHeader = loginRes.headers.get('Set-Cookie');

@@ -52,4 +52,10 @@ export const authErrors = {
     401,
     { code: 'AUTH_EMAIL_NOT_VERIFIED' }
   ),
+
+  oauthEmailRequired: ({ provider }: { provider: string }) => new AppError(
+    `An email address is required to sign up or link your ${provider} account. Please ensure your ${provider} account has a public email address or try another sign-in method.`,
+    400,
+    { code: 'AUTH_OAUTH_EMAIL_REQUIRED', provider }
+  ),
 } as const;

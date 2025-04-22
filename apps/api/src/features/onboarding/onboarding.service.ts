@@ -12,6 +12,7 @@ import { createAppError } from "../../errors";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
 import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
+import { createUserWithOrganizationAndMembership } from "../user/user-creation.util";
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
@@ -56,45 +57,32 @@ export function createOnboardingService({
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {
-      const authRepoTx = createAuthRepository({ db: trx });
-      const orgRepoTx = createOrganizationRepository({ db: trx });
-
-      const user = await authRepoTx.createUser({
-        user: {
+      const { user, orgId } = await createUserWithOrganizationAndMembership(
+        trx,
+        createAuthRepository,
+        createOrganizationRepository,
+        {
           email,
-          password_hash: passwordHash,
           username,
+          password_hash: passwordHash,
+          default_org_name: orgName
         }
-      });
-
-      if (!user) {
-        throw createAppError.auth.userCreationFailed(); // Can't really happen.
-      }
+      );
 
       const verificationToken = randomUUID();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
+      const authRepoTx = createAuthRepository({ db: trx });
       await authRepoTx.createEmailVerificationToken({
         user_id: user.id,
         value: verificationToken,
         expires_at: expiresAt,
-        identifier: user.email // Assuming identifier is the email
-      });
-
-      const org = await orgRepoTx.createOrganization({
-        name: orgName ?? `${user.username}'s org`
-      });
-
-      await orgRepoTx.createMembership({
-        organization_id: org.id,
-        user_id: user.id,
-        is_default: true,
-        role: 'owner'
+        identifier: user.email
       });
 
       console.log('Send welcome email to ', user.email);
 
-      return { user, orgId: org.id, verificationToken };
+      return { user, orgId, verificationToken };
     });
   }
 

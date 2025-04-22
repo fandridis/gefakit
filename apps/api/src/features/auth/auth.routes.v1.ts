@@ -8,17 +8,51 @@ import { createAppError } from "../../errors";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthService, AuthService } from "./auth.service";
+import { createAuthService, AuthService, OAuthUserDetails } from "./auth.service";
 import { OnboardingService, createOnboardingService } from "../onboarding/onboarding.service";
 import { createAuthRepository } from "./auth.repository";
 import { createOrganizationRepository } from "../organizations/organization.repository";
 import { EmailService, createEmailService } from "../emails/email.service";
+import { generateState, generateCodeVerifier, OAuth2RequestError } from "arctic";
+import { createOAuthClients, OAuthClients } from "../../lib/oauth";
+
+// Define interfaces for expected OAuth user data structures
+interface GitHubUser {
+    id: number;
+    login: string;
+    email: string | null;
+}
+
+interface GitHubEmail {
+    email: string;
+    primary: boolean;
+    verified: boolean;
+}
+
+interface GoogleUser {
+    sub: string;
+    name?: string;
+    email?: string;
+    email_verified?: boolean;
+}
 
 type AuthRouteVariables = DbMiddleWareVariables & {
     authService: AuthService;
     onboardingService: OnboardingService;
     emailService: EmailService;
+    oauthClients: OAuthClients;
 }
+
+const setStateCookie = (c: any, name: string, value: string) => {
+    setCookie(c, name, value, {
+        path: "/",
+        secure: true,
+        httpOnly: true,
+        maxAge: 60 * 10,
+        sameSite: "Lax"
+    });
+};
+
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
 app.use('/*', async (c, next) => {
@@ -27,12 +61,14 @@ app.use('/*', async (c, next) => {
     const orgRepository = createOrganizationRepository({db});
 
     const emailService = createEmailService();
-    const authService = createAuthService({db, authRepository, createAuthRepository});
+    const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
     const onboardingService = createOnboardingService({db, authRepository, createAuthRepository, createOrganizationRepository});
+    const oauthClients = createOAuthClients();
     
     c.set('authService', authService);
     c.set('onboardingService', onboardingService);
     c.set('emailService', emailService);
+    c.set('oauthClients', oauthClients);
     await next();
 });
 
@@ -107,5 +143,184 @@ app.get('/verify-email', async (c) => {
     const response = { message: 'Email verified successfully' };
     return c.json(response);
 });
+
+app.get('/sign-in/github', async (c) => {
+    const state = generateState();
+    const oauthClients = c.get('oauthClients');
+    const url = await oauthClients.github.createAuthorizationURL(state, []);
+
+    console.log('Redirecting to GitHub OAuth: ', url.toString());
+    
+    setStateCookie(c, 'github_oauth_state', state);
+    
+    return c.redirect(url.toString());
+});
+
+app.get('/login/github/callback', async (c) => {
+    const oauthClients = c.get('oauthClients');
+    const service = c.get('authService');
+    
+    const code = c.req.query('code');
+    const state = c.req.query('state');
+    const storedState = getCookie(c, 'github_oauth_state');
+
+    deleteCookie(c, 'github_oauth_state');
+
+    if (!code || !state || !storedState || state !== storedState) {
+        console.error('GitHub OAuth Error: State mismatch or missing params', { code, state, storedState });
+        return c.redirect('/sign-in?error=oauth_state_mismatch'); 
+    }
+
+    try {
+        const tokens = await oauthClients.github.validateAuthorizationCode(code);
+        console.log('GitHub OAuth Tokens:', tokens);
+        const accessToken = (tokens as any)?.data?.access_token;
+        console.log('Access Token for GitHub API:', accessToken);
+
+        if (typeof accessToken !== 'string') {
+            console.error('Failed to extract access token from GitHub OAuth response:', tokens);
+            throw new Error('Access token not found or invalid in GitHub OAuth response');
+        }
+
+        const githubUserResponse = await fetch("https://api.github.com/user", {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "User-Agent": "gefakit-api"
+            }
+        });
+        const githubUser = await githubUserResponse.json() as GitHubUser;
+        
+        if (!githubUserResponse.ok || !githubUser.id) {
+            console.error('GitHub API Error:', githubUser);
+            // TODO: It will probably redirect to the client with an error message.
+            return c.redirect('/sign-in?error=github_api_failed');
+        }
+
+        let email = githubUser.email;
+        if (email === undefined) email = null;
+
+        if (!email) {
+            console.log('Attempting to fetch GitHub emails. Access Token:', accessToken);
+            const emailsResponse = await fetch("https://api.github.com/user/emails", {
+                 headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "User-Agent": "gefakit-api"
+                }
+            });
+            if (emailsResponse.ok) {
+                const emails = await emailsResponse.json() as GitHubEmail[];
+                const primaryEmail = emails.find(e => e.primary && e.verified);
+                email = primaryEmail?.email ?? null;
+            } else {
+                 console.warn('Could not fetch GitHub emails:', await emailsResponse.text());
+            }
+        }
+        
+        const oauthDetails: OAuthUserDetails = {
+            provider: 'github',
+            providerUserId: githubUser.id.toString(),
+            email: email,
+            username: githubUser.login
+        };
+
+        const { user, sessionToken } = await service.handleOAuthCallback(oauthDetails);
+        console.log('Result from handleOAuthCallback - User:', user);
+        console.log('Result from handleOAuthCallback - Session Token:', sessionToken);
+
+        setCookie(c, 'gefakit-session', sessionToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Lax',
+        });
+
+        return c.redirect('/'); 
+
+    } catch (e) {
+        console.error('GitHub OAuth Callback Error:', e);
+        if (e instanceof OAuth2RequestError) {
+            return c.redirect('/sign-in?error=oauth_invalid_code'); 
+        }
+        return c.redirect('/sign-in?error=oauth_callback_failed'); 
+    }
+});
+
+// app.get('/login/google', async (c) => {
+//     const state = generateState();
+//     const codeVerifier = generateCodeVerifier();
+//     const oauthClients = c.get('oauthClients');
+//     const url = await oauthClients.google.createAuthorizationURL(state, codeVerifier, ["profile", "email"]);
+
+//     setStateCookie(c, 'google_oauth_state', state);
+//     setStateCookie(c, 'google_oauth_code_verifier', codeVerifier);
+
+//     return c.redirect(url.toString());
+// });
+
+// app.get('/login/google/callback', async (c) => {
+//     const oauthClients = c.get('oauthClients');
+//     const service = c.get('authService');
+
+//     const code = c.req.query('code');
+//     const state = c.req.query('state');
+//     const storedState = getCookie(c, 'google_oauth_state');
+//     const storedCodeVerifier = getCookie(c, 'google_oauth_code_verifier');
+
+//     deleteCookie(c, 'google_oauth_state');
+//     deleteCookie(c, 'google_oauth_code_verifier');
+
+//     if (!code || !state || !storedState || !storedCodeVerifier || state !== storedState) {
+//         console.error('Google OAuth Error: State/Verifier mismatch or missing params', { code, state, storedState, storedCodeVerifier });
+//         return c.redirect('/sign-in?error=oauth_state_mismatch');
+//     }
+
+//     try {
+//         const tokens = await oauthClients.google.validateAuthorizationCode(code, storedCodeVerifier);
+//         const googleUserResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+//             headers: {
+//                 Authorization: `Bearer ${tokens.accessToken}`
+//             }
+//         });
+//         const googleUser = await googleUserResponse.json() as GoogleUser;
+
+//         if (!googleUserResponse.ok || !googleUser.sub) {
+//             console.error('Google UserInfo Error:', googleUser);
+//             return c.redirect('/sign-in?error=google_api_failed');
+//         }
+
+//         let email = googleUser.email_verified ? googleUser.email : null;
+//         if (email === undefined) email = null;
+        
+//         let username = googleUser.name ?? googleUser.email ?? 'Google User';
+//         if (username === undefined) username = 'Google User';
+
+//         const oauthDetails: OAuthUserDetails = {
+//             provider: 'google',
+//             providerUserId: googleUser.sub,
+//             email: email,
+//             username: username
+//         };
+        
+//         if (!oauthDetails.email) {
+//              console.warn('Google OAuth: Email not provided or not verified.', googleUser);
+//         }
+
+//         const { user, sessionToken } = await service.handleOAuthCallback(oauthDetails);
+
+//         setCookie(c, 'gefakit-session', sessionToken, {
+//             httpOnly: true,
+//             secure: true,
+//             sameSite: 'Lax'
+//         });
+
+//         return c.redirect('/');
+
+//     } catch (e) {
+//         console.error('Google OAuth Callback Error:', e);
+//         if (e instanceof OAuth2RequestError) {
+//             return c.redirect('/sign-in?error=oauth_invalid_code');
+//         }
+//         return c.redirect('/sign-in?error=oauth_callback_failed');
+//     }
+// });
 
 export const authRoutesV1 = app;
