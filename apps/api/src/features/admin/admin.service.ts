@@ -35,11 +35,11 @@ export function createAdminService({
     // }
 
     // 2. Update the session record using the repository method
-    const updated = await authRepository.updateSessionImpersonation(
+    const updated = await authRepository.updateSessionImpersonation({
         sessionId,
-        targetUserId, // Set the session's user_id to the target
-        adminUserId   // Set the impersonator_user_id
-    );
+        userId: targetUserId, // Set the session's user_id to the target
+        impersonatorUserId: adminUserId   // Set the impersonator_user_id
+    });
 
     if (!updated) {
         // Use a more specific error if possible
@@ -50,11 +50,11 @@ export function createAdminService({
 
   async function stopImpersonation(sessionId: string, adminUserId: number): Promise<void> {
     // Update the session record back to the original admin user
-     const updated = await authRepository.updateSessionImpersonation(
+     const updated = await authRepository.updateSessionImpersonation({
         sessionId,
-        adminUserId, // Set user_id back to the admin
-        null         // Clear the impersonator_user_id
-    );
+        userId: adminUserId, // Set user_id back to the admin
+        impersonatorUserId: null         // Clear the impersonator_user_id
+    });
 
      if (!updated) {
         // Use a more specific error if possible

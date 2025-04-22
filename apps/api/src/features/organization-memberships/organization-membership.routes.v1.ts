@@ -27,6 +27,8 @@ app.get('/', async (c) => {
   const user = c.get('user');
   const service = c.get('organizationMembershipService');
 
+  console.log('[membership route] user: ', user);
+
   const memberships = await service.findAllOrganizationMembershipsByUserId({userId: user.id});
 
   const response = { memberships };

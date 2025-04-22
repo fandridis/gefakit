@@ -33,7 +33,6 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
             throw createAppError.auth.unauthorized('Invalid session token.');
         }
 
-        // These set calls should now be type-safe
         c.set('user', user);
         c.set('session', session);
 
@@ -47,7 +46,6 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
 
         await next();
     } catch (error: any) {
-        // Log the error for debugging?
         console.error("Auth Middleware Error:", error.message); 
         // Re-throw a specific unauthorized error for the client
         throw createAppError.auth.unauthorized('Invalid session token.');

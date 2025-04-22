@@ -40,7 +40,6 @@ app.post(
        throw new AppError('Cannot impersonate yourself', 400);
     }
 
-    // Use dependency injection pattern similar to your existing routes
     const authRepository = createAuthRepository({db});
     const adminService = createAdminService({db, authRepository});
 
@@ -71,6 +70,7 @@ app.post(
       const adminService = createAdminService({db, authRepository});
       
       const sessionDetails = await authService.findSessionById({ id: session.id });
+      console.log('[stop-impersonation] sessionDetails: ', sessionDetails);
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {
           throw new AppError('Not currently impersonating or session invalid', 400);
       }

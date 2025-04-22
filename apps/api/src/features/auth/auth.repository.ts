@@ -113,7 +113,7 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .execute();
         },
 
-        async updateSessionImpersonation(sessionId: string, userId: number, impersonatorUserId: number | null): Promise<boolean> {
+        async updateSessionImpersonation({ sessionId, userId, impersonatorUserId }: { sessionId: string, userId: number, impersonatorUserId: number | null }): Promise<boolean> {
             const result = await db
                 .updateTable('auth.sessions')
                 .set({
@@ -122,7 +122,7 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                     // updated_at: new Date(), // Consider adding if you track session updates
                 })
                 .where('id', '=', sessionId)
-                .executeTakeFirst(); // Use executeTakeFirst to get result info
+                .executeTakeFirst();
 
             // Kysely returns numUpdatedRows as a bigint, ensure comparison is correct
             return result.numUpdatedRows > 0n;

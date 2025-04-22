@@ -13,6 +13,7 @@ export const sessionSchema = z.object({
     id: z.string(),
     user_id: z.number(),
     impersonator_user_id: z.number().nullable(),
+    role: z.string(),
     expires_at: z.date()
 });
 

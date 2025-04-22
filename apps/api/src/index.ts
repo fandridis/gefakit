@@ -11,7 +11,7 @@ import { userRoutesV1 } from "./features/users/user.routes.v1";
 import { organizationMembershipRoutesV1 } from "./features/organization-memberships/organization-membership.routes.v1";
 import { organizationInvitationRoutesV1 } from "./features/organization-invitations/organization-invitation.routes.v1";
 import {adminRoutesV1} from "./features/admin/admin.routes.v1";
-
+import { impersonationLogMiddleware } from "./middleware/impersonation-log";
 const app = new Hono<{ Bindings: Bindings}>();
 
 app.use('/api/*', async (c, next) => {
@@ -49,11 +49,15 @@ app.route("/api/v1/organizations", organizationsRoutesV1);
 
 // Organization membership routes
 app.use("/api/v1/organization-memberships/*", authMiddleware);
+// Impersonation log middleware
+app.use('/api/*', impersonationLogMiddleware);
 app.route("/api/v1/organization-memberships", organizationMembershipRoutesV1);
 
 // Organization invitation routes
 app.use("/api/v1/organization-invitations/*", authMiddleware);
 app.route("/api/v1/organization-invitations", organizationInvitationRoutesV1);
+
+
 
 // Not found route
 app.notFound((c) => {

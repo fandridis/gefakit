@@ -120,7 +120,8 @@ export function createAuthService(
             id: result.id,
             user_id: result.user_id,
             expires_at: result.expires_at,
-            impersonator_user_id: null
+            impersonator_user_id: result.impersonator_user_id,
+            role: result.role
         };
 
         // Handle expired session
