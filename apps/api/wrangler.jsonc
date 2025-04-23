@@ -35,6 +35,10 @@
 		{
 			"binding": "KV",
 			"id": "f0217db8f2b54628baa26e0a2d8f97f1"
+		},
+		{
+			"binding": "GEFAKIT_RATE_LIMITER_KV",
+			"id": "52f1f88462794700b3cae7fed8f255a3"
 		}
 	],
 	"env": {
@@ -54,6 +58,10 @@
 				{
 					"binding": "KV",
 					"id": "e54d39e0b71f40609e438f4f871f690d"
+				},
+				{
+					"binding": "GEFAKIT_RATE_LIMITER_KV",
+					"id": "c51c2fe56e214e0bb2911501a8fe2e7a"
 				}
 			]
 		},
@@ -73,6 +81,10 @@
 				{
 					"binding": "KV",
 					"id": "fcd4f648528b42e19c1504f75332ae74"
+				},
+				{
+					"binding": "GEFAKIT_RATE_LIMITER_KV",
+					"id": "d0fa476dd3024ae38bce685c05501239"
 				}
 			]
 		}

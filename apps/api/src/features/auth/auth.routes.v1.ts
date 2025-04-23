@@ -22,6 +22,23 @@ import { createOrganizationRepository } from "../organizations/organization.repo
 import { EmailService, createEmailService } from "../emails/email.service";
 import { generateState, generateCodeVerifier, OAuth2RequestError } from "arctic";
 import { createOAuthClients, OAuthClients } from "../../lib/oauth";
+import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
+
+const authRateLimiter = kvTokenBucketRateLimiter({
+    kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
+    maxTokens: 15, // Allow a burst of 15 requests 
+    refillRatePerSecond: 0.167, // Refill at ~10 tokens per minute
+    kvExpirationTtl: 3600, // Default TTL 1 hour
+    keyGenerator: (c) => `auth-rate-limit:${c.req.header('cf-connecting-ip')}`
+  });
+
+const emailRateLimiter = kvTokenBucketRateLimiter({
+    kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
+    maxTokens: 5, // Allow a small burst of 5 requests
+    refillRatePerSecond: 0.00058, // Refill at ~50 tokens per day (50 / 86400 ≈ 0.00058)
+    kvExpirationTtl: 7200, // Expire keys after 2 hours
+    keyGenerator: (c) => `auth-email-limit:${c.req.header('cf-connecting-ip')}`
+});
 
 // Define interfaces for expected OAuth user data structures
 interface GitHubUser {
@@ -71,6 +88,9 @@ const setSessionCookie = (c: any, sessionToken: string) => {
 };
 
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
+
+
+app.use('/*', authRateLimiter);
 
 app.use('/*', async (c, next) => {
     const db = c.get("db") as Kysely<DB>;
@@ -348,7 +368,7 @@ app.get('/login/github/callback', async (c) => {
 
 // --- Password Reset Routes ---
 
-app.post('/request-password-reset', zValidator('json', requestPasswordResetRequestBodySchema), async (c) => {
+app.post('/request-password-reset', emailRateLimiter, zValidator('json', requestPasswordResetRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
     const authService = c.get('authService');
     const emailService = c.get('emailService');
@@ -388,7 +408,7 @@ app.post('/reset-password', zValidator('json', resetPasswordRequestBodySchema), 
 
 // --- OTP Sign In Routes ---
 
-app.post('/sign-in/request-otp', zValidator('json', requestOtpBodySchema), async (c) => {
+app.post('/sign-in/request-otp', emailRateLimiter, zValidator('json', requestOtpBodySchema), async (c) => {
     const body = c.req.valid('json');
     const authService = c.get('authService');
     const emailService = c.get('emailService');

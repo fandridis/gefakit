@@ -12,7 +12,17 @@ import { organizationMembershipRoutesV1 } from "./features/organization-membersh
 import { organizationInvitationRoutesV1 } from "./features/organization-invitations/organization-invitation.routes.v1";
 import {adminRoutesV1} from "./features/admin/admin.routes.v1";
 import { impersonationLogMiddleware } from "./middleware/impersonation-log";
+import { kvTokenBucketRateLimiter } from "./middleware/rate-limiter";
 const app = new Hono<{ Bindings: Bindings}>();
+
+// Generic rate limiter - apply to all API routes as a baseline
+const genericRateLimiter = kvTokenBucketRateLimiter({
+  kvBindingName: 'GEFAKIT_RATE_LIMITER_KV', // Use the same KV store
+  maxTokens: 60, // Allow a burst of 60 requests
+  refillRatePerSecond: 1, // Refill 1 token per second (~60 per minute)
+  kvExpirationTtl: 3600, // Default TTL 1 hour
+  keyGenerator: (c) => `app-rate-limit:${c.req.header('cf-connecting-ip')}`
+});
 
 app.use('/api/*', async (c, next) => {
   c.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
@@ -29,10 +39,13 @@ app.use('/api/*', async (c, next) => {
 // All routes will have access to the db instance via context set by this middleware.
 app.use('/api/*', dbMiddleware);
 
+// Apply generic rate limiting to all API routes after db setup
+app.use('/api/*', genericRateLimiter);
+
 // Admin routes
 app.route('/api/v1/admin', adminRoutesV1);
 
-// Auth routes (without auth middleware)
+// Auth routes
 app.route("/api/v1/auth", authRoutesV1);
 
 // User routes
