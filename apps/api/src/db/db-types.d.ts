@@ -48,6 +48,22 @@ export interface AuthOauthAccount {
   user_id: number;
 }
 
+export interface AuthOtpCode {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  hashed_code: string;
+  id: Generated<number>;
+  user_id: number;
+}
+
+export interface AuthPasswordResetToken {
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  hashed_token: string;
+  id: Generated<number>;
+  user_id: number;
+}
+
 export interface AuthSession {
   active_organization_id: number | null;
   expires_at: Timestamp;
@@ -121,6 +137,8 @@ export interface OrganizationsOrganization {
 export interface DB {
   "auth.email_verifications": AuthEmailVerification;
   "auth.oauth_accounts": AuthOauthAccount;
+  "auth.otp_codes": AuthOtpCode;
+  "auth.password_reset_tokens": AuthPasswordResetToken;
   "auth.sessions": AuthSession;
   "auth.users": AuthUser;
   "core.notifications": CoreNotification;

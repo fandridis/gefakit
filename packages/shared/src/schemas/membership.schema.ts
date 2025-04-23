@@ -7,6 +7,7 @@ export const membershipSchema = z.object({
   user_id: z.number().int().positive(),
   organization_id: z.number().int().positive(),
   role: membershipRoleSchema,
+  is_default: z.boolean(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 })

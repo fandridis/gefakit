@@ -1,9 +1,16 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
-import { signUpEmailRequestBodySchema, signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema";
+import { 
+    signUpEmailRequestBodySchema, 
+    signInEmailRequestBodySchema, 
+    requestPasswordResetRequestBodySchema,
+    resetPasswordRequestBodySchema,
+    requestOtpBodySchema,
+    verifyOtpBodySchema
+} from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
-import { GetSessionResponseDTO, SignInEmailResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO } from "@gefakit/shared/src/types/auth";
+import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
 import { createAppError } from "../../errors";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
@@ -53,6 +60,16 @@ const setStateCookie = (c: any, name: string, value: string) => {
     });
 };
 
+const setSessionCookie = (c: any, sessionToken: string) => {
+    setCookie(c, 'gefakit-session', sessionToken, {
+        httpOnly: true,
+        secure: true, // Ensure this is true in production
+        sameSite: 'Lax',
+        path: '/', 
+        maxAge: 60 * 60 * 24 * 7 // 7 days
+    });
+};
+
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
 app.use('/*', async (c, next) => {
@@ -82,6 +99,20 @@ app.get('/session', async (c) => {
     const service = c.get('authService');
     const result = await service.getCurrentSession({ token: sessionToken });
 
+    // If the session was extended, a new token is issued. Set the new cookie.
+    if (result.newToken) {
+        setSessionCookie(c, result.newToken);
+    }
+
+    // Ensure result.user and result.session are not null before creating response
+    if (!result.session || !result.user) {
+        // This case should ideally be handled by the service throwing an error 
+        // or validateSession returning nulls which lead to an error earlier.
+        // But as a safeguard:
+        deleteCookie(c, 'gefakit-session'); // Clear potentially invalid cookie
+        throw createAppError.auth.unauthorized(); 
+    }
+
     const response: GetSessionResponseDTO = { session: result.session, user: result.user };
     return c.json(response);
 });
@@ -92,11 +123,7 @@ app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), asy
     const service = c.get('authService');
     const result = await service.signInWithEmail(body);
     
-    setCookie(c, 'gefakit-session', result.sessionToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax'
-    });
+    setSessionCookie(c, result.sessionToken);
 
     const response: SignInEmailResponseDTO = { user: result.user };
     return c.json(response);
@@ -227,11 +254,7 @@ app.get('/login/github/callback', async (c) => {
         console.log('Result from handleOAuthCallback - User:', user);
         console.log('Result from handleOAuthCallback - Session Token:', sessionToken);
 
-        setCookie(c, 'gefakit-session', sessionToken, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'Lax',
-        });
+        setSessionCookie(c, sessionToken);
 
         return c.redirect('/'); 
 
@@ -322,5 +345,81 @@ app.get('/login/github/callback', async (c) => {
 //         return c.redirect('/sign-in?error=oauth_callback_failed');
 //     }
 // });
+
+// --- Password Reset Routes ---
+
+app.post('/request-password-reset', zValidator('json', requestPasswordResetRequestBodySchema), async (c) => {
+    const body = c.req.valid('json');
+    const authService = c.get('authService');
+    const emailService = c.get('emailService');
+
+    const plainToken = await authService.requestPasswordReset({ email: body.email });
+
+    if (plainToken) {
+        try {
+            // TODO: Replace with actual implementation
+            await emailService.sendPasswordResetEmail({ email: body.email, token: plainToken });
+            console.log(`Password reset email nominally sent to ${body.email}`);
+        } catch (error) {
+            console.error(`Failed to send password reset email to ${body.email}:`, error);
+            // Log the error, but don't expose failure details to the client
+        }
+    }
+
+    // Always return a generic success response to prevent email enumeration
+    return c.json({ message: "If an account with that email exists, a password reset link has been sent." }, 200);
+});
+
+app.post('/reset-password', zValidator('json', resetPasswordRequestBodySchema), async (c) => {
+    const body = c.req.valid('json');
+    const authService = c.get('authService');
+
+    await authService.resetPassword({ 
+        token: body.token, 
+        newPassword: body.newPassword 
+    });
+
+    // On successful password reset, potentially invalidate the cookie 
+    // if you want to force re-login, although the service already invalidates sessions.
+    deleteCookie(c, 'gefakit-session'); 
+
+    return c.json({ message: "Password has been reset successfully." }, 200);
+});
+
+// --- OTP Sign In Routes ---
+
+app.post('/sign-in/request-otp', zValidator('json', requestOtpBodySchema), async (c) => {
+    const body = c.req.valid('json');
+    const authService = c.get('authService');
+    const emailService = c.get('emailService');
+
+    const plainOtp = await authService.requestOtpSignIn({ email: body.email });
+    console.log('plainOtp', plainOtp);
+
+    if (plainOtp) {
+        try {
+            await emailService.sendOtpEmail({ email: body.email, otp: plainOtp });
+            console.log(`OTP email nominally sent to ${body.email}`);
+        } catch (error) {
+            console.error(`Failed to send OTP email to ${body.email}:`, error);
+            // Log the error, but don't expose failure details to the client
+        }
+    }
+
+    // Always return a generic success response
+    return c.json({ message: "If an account with that email exists and is verified, an OTP code has been sent." }, 200);
+});
+
+app.post('/sign-in/verify-otp', zValidator('json', verifyOtpBodySchema), async (c) => {
+    const body = c.req.valid('json');
+    const authService = c.get('authService');
+
+    const result = await authService.verifyOtpAndSignIn(body);
+    
+    setSessionCookie(c, result.sessionToken);
+
+    const response: SignInOtpResponseDTO = { user: result.user }; // Use the defined interface
+    return c.json(response);
+});
 
 export const authRoutesV1 = app;

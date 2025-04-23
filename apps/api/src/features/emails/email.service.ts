@@ -1,6 +1,8 @@
 import { sendEmail } from "../../lib/emails";
 import emailVerificationTemplate from "./templates/email-verification.template";
 import organizationInvitationTemplate from './templates/organization-invitation.template';
+import passwordResetTemplate from "./templates/password-reset.template";
+import otpTemplate from "./templates/otp.template";
 
 export type EmailService = ReturnType<typeof createEmailService>;
 
@@ -60,5 +62,44 @@ export function createEmailService() {
     });
   }
 
-  return { sendWelcomeEmail, sendOrganizationInvitationEmail, sendVerificationEmail };
+  async function sendPasswordResetEmail({
+    email,
+    token,
+  }: {
+    email: string;
+    token: string;
+  }) {
+    // TODO: Make base URL configurable (e.g., process.env.FRONTEND_URL)
+    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+    const htmlTemplate = passwordResetTemplate({ resetUrl });
+
+    console.log(`Sending password reset email to ${email}`);
+
+    await sendEmail({
+      to: email,
+      subject: 'Reset Your GefaKit Password', 
+      htmlTemplate,
+    });
+  }
+
+  async function sendOtpEmail({ email, otp }: { email: string; otp: string }) {
+    // Remove placeholder comments and implement OTP email sending
+    const htmlTemplate = otpTemplate({ otp }); 
+    
+    console.log(`Sending OTP email to ${email}`); // Optional: keep logging for debugging
+
+    await sendEmail({
+      to: email,
+      subject: 'Your GefaKit Sign-In Code',
+      htmlTemplate,
+    });
+  }
+
+  return { 
+    sendWelcomeEmail, 
+    sendOrganizationInvitationEmail, 
+    sendVerificationEmail,
+    sendPasswordResetEmail,
+    sendOtpEmail
+  };
 }

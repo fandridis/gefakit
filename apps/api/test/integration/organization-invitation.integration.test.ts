@@ -231,10 +231,6 @@ describe('Organization Invitation API Integration Tests', () => {
          expect(dbInvite?.status).toBe('pending'); // Status should not change
     });
 
-    // Test accepting with sender's cookie (should ideally fail, maybe 403 if implemented, or just not create membership for receiver)
-    // Note: Current service logic doesn't prevent accepting user matching inviter, just checks token validity.
-    // A more robust test would check that the *receiver* gets the membership.
-
     it('should return 404 Not Found for invalid token (using receiver session)', async () => {
         const invalidToken = 'invalid-token-accept-two-user';
         const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
@@ -248,10 +244,6 @@ describe('Organization Invitation API Integration Tests', () => {
 
   describe('POST /api/v1/organization-invitations/:token/decline', () => {
      beforeEach(async () => {
-        // Sender creates an invitation for the receiver
-        // login with sender
-        // senderSessionCookie = await loginUser(senderUser.email, senderPassword);
-        
         testInvitation = await createTestInvite(testOrg.id, receiverUser.email);
         expect(testInvitation.status).toBe('pending');
      });
@@ -304,5 +296,4 @@ describe('Organization Invitation API Integration Tests', () => {
          expect(res.status).toBe(404);
      });
   });
-
-}); // End describe('Organization Invitation API Integration Tests - Two Users') 
+});

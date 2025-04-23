@@ -3,7 +3,7 @@ import { Kysely, Transaction, Insertable, Selectable } from "kysely";
 import { DB, AuthUser } from "../../db/db-types";
 import { AuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
-import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
+import { encodeBase32LowerCaseNoPadding, encodeBase64url } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
 import { createAppError } from "../../errors";
 import { AppError } from "../../errors/app-error";
@@ -35,6 +35,9 @@ export function createAuthService(
     }) {
     const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
+    const PASSWORD_RESET_TOKEN_DURATION = 15 * 60 * 1000; // 15 minutes
+    const OTP_CODE_DURATION = 5 * 60 * 1000; // 5 minutes
+    const OTP_LENGTH = 6; // 6-digit OTP
 
     /**
      * Find user by id
@@ -66,6 +69,59 @@ export function createAuthService(
      */
     function generateSessionId({ token }: { token: string }) {
         return encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+    }
+
+    /**
+     * Generates a cryptographically secure random password reset token.
+     * 
+     * @returns A base64url encoded string representing the token.
+     */
+    function generatePasswordResetToken(): string {
+        const bytes = new Uint8Array(32); // Use more bytes for higher entropy
+        crypto.getRandomValues(bytes);
+        return encodeBase64url(bytes); // Use base64url for URL safety
+    }
+
+    /**
+     * Hashes a password reset token.
+     * 
+     * @param token - The plaintext password reset token.
+     * @returns A hex-encoded string representing the hashed token.
+     */
+    function hashPasswordResetToken({ token }: { token: string }): string {
+        // Use SHA-256 for consistency with session IDs, but other secure hash functions are also viable
+        return encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+    }
+
+    /**
+     * Generates a random OTP code of a specified length.
+     *
+     * @returns A numeric string representing the OTP code.
+     */
+    function generateOtpCode(): string {
+        if (typeof crypto === 'undefined' || !crypto.getRandomValues) {
+            throw new Error('Web Crypto API not available');
+        }
+        // Generate secure random numbers for OTP
+        const randomValues = new Uint32Array(OTP_LENGTH);
+        crypto.getRandomValues(randomValues);
+
+        let otp = '';
+        for (let i = 0; i < OTP_LENGTH; i++) {
+            otp += (randomValues[i] % 10).toString(); // Get a single digit (0-9)
+        }
+        return otp;
+    }
+
+    /**
+     * Hashes an OTP code.
+     *
+     * @param code - The plaintext OTP code.
+     * @returns A hex-encoded string representing the hashed code.
+     */
+    function hashOtpCode({ code }: { code: string }): string {
+        // Use SHA-256 for hashing, consistent with other tokens
+        return encodeHexLowerCase(sha256(new TextEncoder().encode(code)));
     }
 
     /**
@@ -128,13 +184,21 @@ export function createAuthService(
             return { session: null, user: null };
         }
 
-        // Extend session if approaching expiration
+        let newToken: string | null = null;
+
         if (Date.now() >= session.expires_at.getTime() - SESSION_RENEWAL_THRESHOLD) {
+            newToken = generateSessionToken();
+            const newSessionId = generateSessionId({ token: newToken });
             const newExpiryDate = new Date(Date.now() + SESSION_DURATION);
-            await authRepository.updateSessionExpiry({ 
-                sessionId: session.id, 
+            
+            await authRepository.updateSessionIdAndExpiry({ 
+                oldSessionId: session.id, 
+                newSessionId: newSessionId,
                 expiresAt: newExpiryDate 
             });
+
+            // Update the session object in memory for the response
+            session.id = newSessionId;
             session.expires_at = newExpiryDate;
         }
 
@@ -147,7 +211,7 @@ export function createAuthService(
             role: result.role
         };
 
-        return { session, user };
+        return { session, user, newToken };
     }
 
     /**
@@ -210,6 +274,91 @@ export function createAuthService(
      */
     async function invalidateAllSessions({ userId }: { userId: number }) {
         await authRepository.deleteAllUserSessions({ userId });
+    }
+
+    /**
+     * Generates a password reset token for a user and stores its hash.
+     *
+     * @param email The user's email address.
+     * @returns The plaintext token to be sent to the user, or null if the user is not found.
+     */
+    async function requestPasswordReset({ email }: { email: string }): Promise<string | null> {
+        const user = await authRepository.findUserWithPasswordByEmail({ email });
+        if (!user) {
+            console.warn(`Password reset requested for non-existent email: ${email}`);
+            // Return null, but don't throw an error to avoid email enumeration
+            return null;
+        }
+
+        // Invalidate any existing reset tokens for this user first
+        await authRepository.deletePasswordResetTokensByUserId({ userId: user.id });
+
+        const plainToken = generatePasswordResetToken();
+        const hashedToken = hashPasswordResetToken({ token: plainToken });
+        const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_DURATION);
+
+        await authRepository.createPasswordResetToken({
+            user_id: user.id,
+            hashed_token: hashedToken,
+            expires_at: expiresAt
+        });
+
+        console.log(`Password reset token generated for user ${user.id}`);
+        // Return the *plaintext* token to be sent via email
+        return plainToken;
+    }
+
+    /**
+     * Resets a user's password using a valid reset token.
+     *
+     * @param token The plaintext password reset token received from the user.
+     * @param newPassword The new password provided by the user.
+     * @throws AppError if the token is invalid, expired, or the password update fails.
+     */
+    async function resetPassword({ token, newPassword }: { token: string, newPassword: string }): Promise<void> {
+        const hashedToken = hashPasswordResetToken({ token });
+        const resetRecord = await authRepository.findPasswordResetTokenByHashedToken({ hashedToken });
+
+        if (!resetRecord) {
+            throw new AppError('Invalid password reset token.', 400); // Generic error
+        }
+
+        if (new Date() > resetRecord.expires_at) {
+            // Clean up expired token
+            await authRepository.deletePasswordResetToken({ tokenId: resetRecord.id });
+            throw new AppError('Password reset token has expired.', 400);
+        }
+
+        // Token is valid, proceed with password update
+        const newPasswordHash = await hashPassword(newPassword);
+
+        try {
+            await db.transaction().execute(async (trx) => {
+                const txAuthRepo = createAuthRepository({ db: trx });
+                
+                // Update password
+                await txAuthRepo.updateUserPassword({ 
+                    userId: resetRecord.user_id, 
+                    passwordHash: newPasswordHash
+                });
+                
+                // Also mark the email as verified
+                await txAuthRepo.updateUserEmailVerified({ 
+                    userId: resetRecord.user_id, 
+                    verified: true 
+                });
+
+                // Delete the used reset token
+                await txAuthRepo.deletePasswordResetToken({ tokenId: resetRecord.id });
+
+                // Optional: Invalidate all active sessions for the user for extra security
+                await txAuthRepo.deleteAllUserSessions({ userId: resetRecord.user_id });
+            });
+            console.log(`Password successfully reset for user ${resetRecord.user_id}`);
+        } catch (error) {
+            console.error(`Failed to reset password for user ${resetRecord.user_id} in transaction:`, error);
+            throw new AppError('Failed to reset password.', 500);
+        }
     }
 
     /**
@@ -418,6 +567,99 @@ export function createAuthService(
         };
     }
 
+    // --- OTP Sign In --- 
+
+    /**
+     * Generates an OTP for a user and stores its hash.
+     * Requires the user to exist and have a verified email.
+     *
+     * @param email The user's email address.
+     * @returns The plaintext OTP to be sent to the user, or null if user not found or email not verified.
+     * @throws AppError if email is not verified.
+     */
+    async function requestOtpSignIn({ email }: { email: string }): Promise<string | null> {
+        const user = await authRepository.findUserWithPasswordByEmail({ email });
+        if (!user) {
+            console.warn(`OTP sign-in requested for non-existent email: ${email}`);
+            // Return null to avoid email enumeration
+            return null;
+        }
+
+        if (!user.email_verified) {
+            // Unlike password reset, OTP sign-in should require a verified email
+            console.warn(`OTP sign-in requested for unverified email: ${email}`);
+            throw createAppError.auth.emailNotVerified();
+        }
+
+        // Invalidate any existing OTP codes for this user first
+        await authRepository.deleteOtpCodesByUserId({ userId: user.id });
+
+        const plainOtp = generateOtpCode();
+        const hashedCode = hashOtpCode({ code: plainOtp });
+        const expiresAt = new Date(Date.now() + OTP_CODE_DURATION);
+
+        await authRepository.createOtpCode({
+            user_id: user.id,
+            hashed_code: hashedCode,
+            expires_at: expiresAt
+        });
+
+        console.log(`OTP code generated for user ${user.id}`);
+        // Return the *plaintext* OTP to be sent via email
+        return plainOtp;
+    }
+
+    /**
+     * Verifies an OTP code and signs the user in by creating a session.
+     *
+     * @param email The user's email address.
+     * @param otp The plaintext OTP code provided by the user.
+     * @returns A Promise resolving to the user object and session token.
+     * @throws AppError if the user is not found, OTP is invalid/expired, or session creation fails.
+     */
+    async function verifyOtpAndSignIn({ email, otp }: { email: string; otp: string }) {
+        const user = await authRepository.findUserWithPasswordByEmail({ email });
+        if (!user) {
+            console.warn(`OTP verification attempt for non-existent email: ${email}`);
+            throw createAppError.auth.invalidOtp(); // Generic error
+        }
+
+        const otpRecord = await authRepository.findActiveOtpCodeByUserId({ userId: user.id });
+
+        if (!otpRecord) {
+            console.warn(`OTP verification attempt with no active code for user: ${user.id}`);
+            throw createAppError.auth.invalidOtp(); // Generic error (no active code)
+        }
+
+        // Note: findActiveOtpCodeByUserId already checks expiry in the query,
+        // but a double check here is harmless and protects against race conditions.
+        if (new Date() > otpRecord.expires_at) {
+             console.warn(`OTP verification attempt with expired code for user: ${user.id}`);
+             // Clean up expired code
+             await authRepository.deleteOtpCodeById({ id: otpRecord.id });
+             throw createAppError.auth.expiredOtp();
+        }
+
+        const hashedInputOtp = hashOtpCode({ code: otp });
+
+        if (hashedInputOtp !== otpRecord.hashed_code) {
+            console.warn(`OTP verification attempt with incorrect code for user: ${user.id}`);
+            // Consider adding rate limiting or lockout logic here for repeated failures
+            throw createAppError.auth.invalidOtp();
+        }
+
+        // OTP is valid, delete it and create a session
+        await authRepository.deleteOtpCodeById({ id: otpRecord.id });
+
+        const { token } = await createSession({ userId: user.id });
+
+        const { password_hash, ...userWithoutPassword } = user;
+        return {
+            user: userWithoutPassword,
+            sessionToken: token
+        };
+    }
+
     return {
         findUserById,
         findSessionById,
@@ -432,6 +674,11 @@ export function createAuthService(
         hashPassword,
         verifyPassword,
         verifyEmail,
-        handleOAuthCallback
+        handleOAuthCallback,
+        requestPasswordReset,
+        resetPassword,
+        // Add new OTP methods
+        requestOtpSignIn,
+        verifyOtpAndSignIn
     };
 }

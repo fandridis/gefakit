@@ -58,4 +58,16 @@ export const authErrors = {
     400,
     { code: 'AUTH_OAUTH_EMAIL_REQUIRED', provider }
   ),
+
+  invalidOtp: () => new AppError(
+    'Invalid or expired OTP code provided',
+    400, // Bad Request
+    { code: 'AUTH_INVALID_OTP' }
+  ),
+
+  expiredOtp: () => new AppError(
+    'OTP code has expired',
+    400, // Bad Request
+    { code: 'AUTH_EXPIRED_OTP' }
+  ),
 } as const;

@@ -1,5 +1,5 @@
-import { Insertable, Kysely, Transaction } from "kysely";
-import { AuthSession, AuthUser, DB, AuthEmailVerification, AuthOauthAccount } from "../../db/db-types";
+import { Insertable, Kysely, Transaction, sql } from "kysely";
+import { AuthSession, AuthUser, DB, AuthEmailVerification, AuthOauthAccount, AuthPasswordResetToken, AuthOtpCode } from "../../db/db-types";
 
 type DbClient = Kysely<DB> | Transaction<DB>
 
@@ -64,6 +64,14 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .updateTable('auth.sessions')
                 .set({ expires_at: expiresAt })
                 .where('id', '=', sessionId)
+                .execute();
+        },
+
+        async updateSessionIdAndExpiry({ oldSessionId, newSessionId, expiresAt }: { oldSessionId: string; newSessionId: string; expiresAt: Date }) {
+            return db
+                .updateTable('auth.sessions')
+                .set({ id: newSessionId, expires_at: expiresAt })
+                .where('id', '=', oldSessionId)
                 .execute();
         },
 
@@ -151,6 +159,80 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .values(account)
                 .returningAll()
                 .executeTakeFirst();
+        },
+
+        // --- Password Reset ---
+
+        async createPasswordResetToken(data: Insertable<AuthPasswordResetToken>) {
+            return db
+                .insertInto('auth.password_reset_tokens')
+                .values(data)
+                .returning(['id', 'user_id', 'hashed_token', 'expires_at'])
+                .executeTakeFirst();
+        },
+
+        async findPasswordResetTokenByHashedToken({ hashedToken }: { hashedToken: string }) {
+            return db
+                .selectFrom('auth.password_reset_tokens')
+                .selectAll()
+                .where('hashed_token', '=', hashedToken)
+                .executeTakeFirst();
+        },
+
+        async deletePasswordResetToken({ tokenId }: { tokenId: number }) {
+            return db
+                .deleteFrom('auth.password_reset_tokens')
+                .where('id', '=', tokenId)
+                .execute();
+        },
+
+        async deletePasswordResetTokensByUserId({ userId }: { userId: number }) {
+            return db
+                .deleteFrom('auth.password_reset_tokens')
+                .where('user_id', '=', userId)
+                .execute();
+        },
+
+        async updateUserPassword({ userId, passwordHash }: { userId: number; passwordHash: string }) {
+            return db
+                .updateTable('auth.users')
+                .set({ password_hash: passwordHash })
+                .where('id', '=', userId)
+                .executeTakeFirst(); // Check numUpdatedRows if needed
+        },
+
+        // --- OTP Sign In ---
+
+        async createOtpCode(data: Insertable<AuthOtpCode>) {
+            return db
+                .insertInto('auth.otp_codes')
+                .values(data)
+                .returning(['id', 'user_id', 'hashed_code', 'expires_at'])
+                .executeTakeFirst();
+        },
+
+        async findActiveOtpCodeByUserId({ userId }: { userId: number }) {
+            return db
+                .selectFrom('auth.otp_codes')
+                .selectAll()
+                .where('user_id', '=', userId)
+                .where('expires_at', '>', new Date())
+                .orderBy('created_at', 'desc') // Get the latest active one
+                .executeTakeFirst();
+        },
+
+        async deleteOtpCodeById({ id }: { id: number }) {
+            return db
+                .deleteFrom('auth.otp_codes')
+                .where('id', '=', id)
+                .executeTakeFirst(); // Use executeTakeFirst to check numDeletedRows
+        },
+
+        async deleteOtpCodesByUserId({ userId }: { userId: number }) {
+            return db
+                .deleteFrom('auth.otp_codes')
+                .where('user_id', '=', userId)
+                .execute();
         }
     };
 }

@@ -7,6 +7,7 @@ export const userSchema = z.object({
     created_at: z.date(),
     email_verified: z.boolean(),
     role: z.string(),
+    recovery_code: z.string().nullable().optional(),
 });
 
 export const sessionSchema = z.object({
@@ -15,6 +16,23 @@ export const sessionSchema = z.object({
     impersonator_user_id: z.number().nullable(),
     role: z.string(),
     expires_at: z.date()
+});
+
+export const emailVerificationSchema = z.object({
+    id: z.number(),
+    user_id: z.number(),
+    value: z.string(),
+    identifier: z.string(),
+    expires_at: z.date(),
+    created_at: z.date(),
+    updated_at: z.date(),
+});
+
+export const passwordResetTokenSchema = z.object({
+    id: z.number(),
+    user_id: z.number(),
+    hashed_token: z.string(),
+    expires_at: z.date(),
 });
 
 export const getSessionResponseSchema = z.object({
@@ -45,3 +63,20 @@ export const signOutResponseSchema = z.object({
     message: z.string(),
 });
 
+export const requestPasswordResetRequestBodySchema = z.object({
+    email: z.string().email("Invalid email address"),
+});
+
+export const resetPasswordRequestBodySchema = z.object({
+    token: z.string().min(1, "Reset token is required"),
+    newPassword: z.string().min(8, "Password must be at least 8 characters long"),
+});
+
+export const requestOtpBodySchema = z.object({
+    email: z.string().email("Invalid email address"),
+  });
+  
+export const verifyOtpBodySchema = z.object({
+    email: z.string().email("Invalid email address"),
+    otp: z.string().length(6, "OTP must be 6 digits"), // Assuming 6-digit OTP
+  });

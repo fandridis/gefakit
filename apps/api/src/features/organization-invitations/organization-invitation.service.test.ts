@@ -94,7 +94,8 @@ describe('OrganizationInvitationService', () => {
     password_hash: 'hash',
     email_verified: true,
     created_at: now,
-    recovery_code: null
+    recovery_code: null,
+    role: 'USER',
   };
 
   const mockPendingInvitation: Selectable<OrganizationsInvitation> = {
