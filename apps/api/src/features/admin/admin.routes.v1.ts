@@ -18,7 +18,7 @@ type AuthRouteVariables = DbMiddleWareVariables & {
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
 
 const impersonateSchema = z.object({
-  targetUserId: z.string(),
+  targetUserId: z.coerce.number(),
 });
 
 app.post(
@@ -36,19 +36,19 @@ app.post(
     if (!adminUser || !session) {
       throw new AppError('Authentication required', 401);
     }
-    if (adminUser.id === parseInt(targetUserId)) {
+    if (adminUser.id === targetUserId) {
        throw new AppError('Cannot impersonate yourself', 400);
     }
 
     const authRepository = createAuthRepository({db});
     const adminService = createAdminService({db, authRepository});
 
-    await adminService.startImpersonation(session.id, adminUser.id, parseInt(targetUserId));
+    await adminService.startImpersonation(session.id, adminUser.id, targetUserId);
 
     // Log the action
     console.log(`AUDIT: User ${adminUser.id} started impersonating user ${targetUserId}`);
 
-    return c.json({ ok: true, message: 'Impersonation started' });
+    return c.json({ ok: true, message: `Admin ${adminUser.id} is now impersonating user ${targetUserId}` });
   }
 );
 

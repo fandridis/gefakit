@@ -16,7 +16,7 @@ import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
 
-describe('Organization Invitation API Integration Tests - Two Users', () => {
+describe('Organization Invitation API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let senderUser: UserDTO;
   let receiverUser: UserDTO;
@@ -76,27 +76,22 @@ describe('Organization Invitation API Integration Tests - Two Users', () => {
     const senderEmail = `test-sender-${Date.now()}@integration.com`;
     const senderInsert: Insertable<AuthUser> = { email: senderEmail, username: `sender-${Date.now()}`, password_hash: senderHashedPassword, email_verified: true };
     senderUser = await testDb.insertInto('auth.users').values(senderInsert).returningAll().executeTakeFirstOrThrow() as UserDTO;
-    console.log(`Created sender user: ${senderUser.email}`);
 
      // Create Receiver User
     const receiverHashedPassword = await hashPassword(receiverPassword);
     const receiverEmail = `test-receiver-${Date.now()}@integration.com`;
     const receiverInsert: Insertable<AuthUser> = { email: receiverEmail, username: `receiver-${Date.now()}`, password_hash: receiverHashedPassword, email_verified: true };
     receiverUser = await testDb.insertInto('auth.users').values(receiverInsert).returningAll().executeTakeFirstOrThrow() as UserDTO;
-    console.log(`Created receiver user: ${receiverUser.email}`);
 
 
     // Log in sender
     senderSessionCookie = await loginUser(senderUser.email, senderPassword);
-    console.log(`Logged in sender user: ${senderUser.email}`);
 
     // Create Org using sender
     testOrg = await createTestOrg(`Two User Invite Org ${Date.now()}`);
-    console.log(`Created test org: ${testOrg.id} by sender ${senderUser.email}`);
   });
 
   afterAll(async () => {
-    console.log('Cleaning up two-user invitation tests...');
     if (testDb) {
       try {
         // Clean invitations first (less likely to have FK constraints)
@@ -110,21 +105,19 @@ describe('Organization Invitation API Integration Tests - Two Users', () => {
 
         // Clean organization
         await testDb.deleteFrom('organizations.organizations').where('id', '=', testOrg.id).execute().catch(e => console.warn("Cleanup: Couldn't delete organization:", e.message));
-        console.log(`Deleted org ${testOrg.id}`);
 
         // Clean users
         if (senderUser) await testDb.deleteFrom('auth.users').where('id', '=', senderUser.id).execute().catch(e => console.warn("Cleanup: Couldn't delete sender user:", e.message));
         if (receiverUser) await testDb.deleteFrom('auth.users').where('id', '=', receiverUser.id).execute().catch(e => console.warn("Cleanup: Couldn't delete receiver user:", e.message));
-        console.log(`Deleted users`);
 
       } catch (error) {
-        console.error(`Error during two-user cleanup:`, error);
+        console.error(`[organization-invitation.integration.test] Error during cleanup:`, error);
       } finally {
           await testDb.destroy();
-          console.log('DB connection closed.');
+          // console.log('DB connection closed.');
       }
     } else {
-        console.log('No DB connection to close.');
+        // console.log('No DB connection to close.');
     }
   });
 

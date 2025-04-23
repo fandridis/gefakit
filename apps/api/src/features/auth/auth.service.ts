@@ -1,7 +1,7 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { Kysely, Transaction, Insertable, Selectable } from "kysely";
 import { DB, AuthUser } from "../../db/db-types";
-import { AuthRepository, createAuthRepository } from "./auth.repository";
+import { AuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
@@ -110,8 +110,6 @@ export function createAuthService(
         const sessionId = generateSessionId({ token });
         const result = await authRepository.findSessionWithUser({ sessionId });
 
-        console.log('validating session: ', {sessionId, result})
-
         if (!result) {
             return { session: null, user: null };
         }
@@ -201,7 +199,6 @@ export function createAuthService(
      */
     async function invalidateSession({ token }: { token: string }) {
         const sessionId = generateSessionId({ token });
-        console.log('invalidating sessionId: ', {sessionId})
         await authRepository.deleteSession({ sessionId });
     }
 

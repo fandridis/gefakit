@@ -61,8 +61,6 @@ describe('Organization API Integration Tests', () => {
       .values(userInsert)
       .returningAll()
       .executeTakeFirstOrThrow() as UserDTO;
-    console.log(`Created test user: ${testUser.email}`);
-
 
     // Log in the test user
     const loginRes = await app.request('/api/v1/auth/sign-in/email', {
@@ -79,51 +77,48 @@ describe('Organization API Integration Tests', () => {
       throw new Error('Set-Cookie header not found in login response');
     }
     sessionCookie = setCookieHeader;
-    console.log(`Logged in user ${testUser.email} and obtained session cookie.`);
   });
 
   afterAll(async () => {
-    console.log('Cleaning up test user and closing DB connection...');
     if (testDb && testUser) {
       try {
          // Clean up organizations and memberships first if necessary
         const memberships = await testDb.selectFrom('organizations.memberships')
-                                        .where('user_id', '=', testUser.id)
-                                        .select('organization_id')
-                                        .execute();
+          .where('user_id', '=', testUser.id)
+          .select('organization_id')
+          .execute();
         const orgIds = memberships.map(m => m.organization_id);
 
         if (orgIds.length > 0) {
              // Delete memberships associated with the user
             await testDb.deleteFrom('organizations.memberships')
-                        .where('user_id', '=', testUser.id)
-                        .execute();
-            console.log(`Deleted memberships for user ${testUser.email}`);
+              .where('user_id', '=', testUser.id)
+              .execute();
+  
 
             // Optionally, delete organizations if the test user was the only member/owner
             // Be careful with this if organizations might be shared in tests or if cleanup is complex
             // For simplicity, we might only delete organizations fully owned AND created by this test user.
             // A safer approach might be to delete orgs created in specific tests within afterEach.
             const ownedOrgs = await testDb.selectFrom('organizations.organizations as org')
-                                .innerJoin('organizations.memberships as mem', 'mem.organization_id', 'org.id')
-                                .where('mem.user_id', '=', testUser.id)
-                                .where('mem.role', '=', 'owner')
-                                .where('org.id', 'in', orgIds) // Only consider orgs the user was part of
-                                // Add a check to ensure the user is the *only* owner or member if needed
-                                .select('org.id')
-                                .execute();
+              .innerJoin('organizations.memberships as mem', 'mem.organization_id', 'org.id')
+              .where('mem.user_id', '=', testUser.id)
+              .where('mem.role', '=', 'owner')
+              .where('org.id', 'in', orgIds) // Only consider orgs the user was part of
+              // Add a check to ensure the user is the *only* owner or member if needed
+              .select('org.id')
+              .execute();
 
             const ownedOrgIds = ownedOrgs.map(o => o.id);
             if (ownedOrgIds.length > 0) {
                  // Delete memberships for these orgs first (including other users if any test added them)
                 await testDb.deleteFrom('organizations.memberships')
-                            .where('organization_id', 'in', ownedOrgIds)
-                            .execute();
+                  .where('organization_id', 'in', ownedOrgIds)
+                  .execute();
                  // Then delete the organizations
                 await testDb.deleteFrom('organizations.organizations')
-                            .where('id', 'in', ownedOrgIds)
-                            .execute();
-                console.log(`Deleted organizations owned by user ${testUser.email}: ${ownedOrgIds.join(', ')}`);
+                  .where('id', 'in', ownedOrgIds)
+                  .execute();
             }
         }
 
@@ -131,24 +126,20 @@ describe('Organization API Integration Tests', () => {
         await testDb.deleteFrom('auth.users')
           .where('id', '=', testUser.id)
           .execute();
-        console.log(`Deleted user: ${testUser.email}`);
       } catch (error) {
-        console.error(`Error during cleanup for user ${testUser.email}:`, error);
+        console.error(`[organization.integration.test] Error during cleanup ${testUser.email}:`, error);
       }
     }
 
     if (testDb) {
       await testDb.destroy();
-      console.log('Test database connection closed.');
+      // console.log('Test database connection closed.');
     } else {
-      console.log('No test database connection to close.');
+      // console.log('No test database connection to close.');
     }
   });
 
-  beforeEach(async () => {
-    console.log(`Starting test case... (User: ${testUser?.email})`);
-    // Potentially create specific org setup needed for a single test
-  });
+  // beforeEach(async () => {});
 
   afterEach(async () => {
     // Clean up resources created *during* a specific test
@@ -159,28 +150,27 @@ describe('Organization API Integration Tests', () => {
         // This might be too broad; adjust based on test needs.
         try {
             const memberships = await testDb.selectFrom('organizations.memberships')
-                                            .where('user_id', '=', testUser.id)
-                                            .where('role', '=', 'owner') // Assuming creator becomes owner
-                                            .select('organization_id')
-                                            .execute();
+              .where('user_id', '=', testUser.id)
+              .where('role', '=', 'owner') // Assuming creator becomes owner
+              .select('organization_id')
+              .execute();
             const orgIds = memberships.map(m => m.organization_id);
 
             if (orgIds.length > 0) {
                  // Cascade or delete dependencies first (e.g., memberships)
                 await testDb.deleteFrom('organizations.memberships')
-                            .where('organization_id', 'in', orgIds)
-                            .execute();
+                  .where('organization_id', 'in', orgIds)
+                  .execute();
                 // Then delete the organizations
                 await testDb.deleteFrom('organizations.organizations')
-                            .where('id', 'in', orgIds)
-                            .execute();
-                console.log(`Cleaned up organizations created by ${testUser.email} in test: ${orgIds.join(', ')}`);
+                  .where('id', 'in', orgIds)
+                  .execute();
             }
         } catch (error) {
-            console.error(`Error cleaning up orgs for user ${testUser.email} in afterEach:`, error);
+            console.error(`[organization.integration.test] Error cleaning up orgs for user ${testUser.email} in afterEach:`, error);
         }
     } else {
-        console.warn("Skipping test cleanup in afterEach: testDb or testUser not available.");
+        // console.warn("Skipping test cleanup in afterEach: testDb or testUser not available.");
     }
   });
 
@@ -350,8 +340,6 @@ describe('Organization API Integration Tests', () => {
         orgName: orgName,
         token: createdInvitation.token,
       });
-
-      // 8. Mock cleanup handled by Vitest/mockClear
     });
   });
 }); 

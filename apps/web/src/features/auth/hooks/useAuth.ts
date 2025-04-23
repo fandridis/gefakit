@@ -30,7 +30,6 @@ export function useAuth() {
 
     // Function to invalidate the session query cache
     const invalidateSession = () => {
-        console.log('Invalidating session query:', sessionQueryKey);
         queryClient.invalidateQueries({ queryKey: sessionQueryKey });
     };
 
