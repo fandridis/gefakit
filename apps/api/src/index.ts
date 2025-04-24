@@ -15,6 +15,8 @@ import { impersonationLogMiddleware } from "./middleware/impersonation-log";
 import { kvTokenBucketRateLimiter } from "./middleware/rate-limiter";
 import { envConfig } from "./lib/env-config";
 import { securityHeaders } from "./middleware/security-headers";
+import { logger } from "hono/logger";
+
 const app = new Hono<{ Bindings: Bindings}>();
 
 // Generic rate limiter - apply to all API routes as a baseline
@@ -39,31 +41,8 @@ app.use('/api/*', async (c, next) => {
 });
 
 
-// Example route that should NOT be cached (e.g., sensitive data, dynamic)
-app.get('/api/private-data', async (c) => {
-   // Simulate fetching data
-   await new Promise(resolve => setTimeout(resolve, 50));
-   const data = { secret: 'super-secret' };
-
-   return c.json(data, {
-      headers: {
-        'Cache-Control': 'no-store' // Explicitly prevent caching
-      }
-   });
-});
-
-app.get('/api/set-cookie-example', async (c) => {
-    // This response has a Set-Cookie header
-     const data = { message: 'You got a cookie!' };
-     return c.json(data, {
-        headers: {
-            'Set-Cookie': 'mycookie=abc; Path=/',
-             // Unless you add private=Set-Cookie, this will NOT be cached by cache.put
-             // To cache it, you'd need: 'Cache-Control': 'private=Set-Cookie, max-age=60'
-        }
-     });
-});
-
+// Log all requests
+app.use(logger())
 
 // All routes will have access to the db instance via context set by this middleware.
 app.use('/api/*', dbMiddleware);
