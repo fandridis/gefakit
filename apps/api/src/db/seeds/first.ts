@@ -4,9 +4,10 @@ import { Kysely } from 'kysely'
 import { DB } from '../db-types'
 import { config } from 'dotenv'
 import { NeonDialect } from 'kysely-neon'
+import { envConfig } from '../../lib/env-config'
 
 // Choose a config file based on NODE_ENV
-const env = process.env.NODE_ENV || 'development'
+const env = envConfig.NODE_ENV || 'development'
 const envFile =
   env === 'production'
     ? '.dev.vars.production'
@@ -20,7 +21,7 @@ config({ path: envFile })
 async function seed() {
   const db = new Kysely<DB>({
     dialect: new NeonDialect({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: envConfig.DATABASE_URL,
     }),
   })
 

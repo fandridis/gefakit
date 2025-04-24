@@ -5,9 +5,10 @@ import { DB } from '../db-types'
 import { config } from 'dotenv'
 import { NeonDialect } from 'kysely-neon'
 import { faker } from '@faker-js/faker'
+import { envConfig } from '../../lib/env-config'
 
 // Choose a config file based on NODE_ENV
-const env = process.env.NODE_ENV || 'development'
+const env = envConfig.NODE_ENV || 'development'
 const envFile =
   env === 'production'
     ? '.dev.vars.production'
@@ -21,7 +22,7 @@ config({ path: envFile })
 async function seed() {
   const db = new Kysely<DB>({
     dialect: new NeonDialect({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: envConfig.DATABASE_URL,
     }),
   })
 
@@ -38,7 +39,7 @@ async function seed() {
   }
 
   // Insert todos into the database
-  await db.insertInto('todo').values(todos).execute()
+  await db.insertInto('core.todos').values(todos).execute()
 
   console.log('Database seeded successfully with 100 todos!')
   await db.destroy()

@@ -7,7 +7,7 @@ import { AuthUser, CoreTodo } from '../../src/db/db-types';
 import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO } from '@gefakit/shared';
-
+import { envConfig } from '../../src/lib/env-config';
 // vi.stubEnv('DATABASE_URL_POOLED', 'postgresql://neondb_owner:npg_v9IioTkZd6RY@ep-withered-heart-a2fk19ng-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require');
 
 // --- Test Suite Setup ---
@@ -20,7 +20,7 @@ describe('Todo API Integration Tests', () => {
   beforeAll(async () => {
     testDb = new Kysely<DB>({
       dialect: new NeonDialect({
-        connectionString: process.env.DATABASE_URL_POOLED,
+        connectionString: envConfig.DATABASE_URL_POOLED,
       }),
     });
 

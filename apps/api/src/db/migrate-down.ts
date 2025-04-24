@@ -7,9 +7,10 @@ import {
 } from 'kysely'
 import { NeonDialect } from 'kysely-neon'
 import { config } from 'dotenv'
+import { envConfig } from '../lib/env-config'
 
 // Choose a config file based on NODE_ENV
-const env = process.env.NODE_ENV || 'development'
+const env = envConfig.NODE_ENV || 'development'
 const envFile =
   env === 'production'
     ? '.dev.vars.production'
@@ -22,11 +23,11 @@ config({ path: envFile })
 
 async function migrateToLatest() {
 
-    console.log('process.env.DATABASE_URL: ', process.env.DATABASE_URL)
+    console.log('envConfig.DATABASE_URL: ', envConfig.DATABASE_URL)
 
     const db = new Kysely<any>({
         dialect: new NeonDialect({
-            connectionString: process.env.DATABASE_URL,
+            connectionString: envConfig.DATABASE_URL,
         }),
     })
 

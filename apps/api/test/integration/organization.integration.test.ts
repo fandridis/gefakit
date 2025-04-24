@@ -25,6 +25,7 @@ import { Insertable } from 'kysely';
 import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
+import { envConfig } from '../../src/lib/env-config';
 
 // Mock environment variables
 // vi.stubEnv('DATABASE_URL_POOLED', 'postgresql://neondb_owner:npg_v9IioTkZd6RY@ep-withered-heart-a2fk19ng-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require');
@@ -35,7 +36,7 @@ describe('Organization API Integration Tests', () => {
   let sessionCookie: string;
 
   beforeAll(async () => {
-    const dbUrl = process.env.DATABASE_URL_POOLED;
+    const dbUrl = envConfig.DATABASE_URL_POOLED;
     if (!dbUrl) {
       throw new Error("DATABASE_URL_POOLED environment variable not set.");
     }

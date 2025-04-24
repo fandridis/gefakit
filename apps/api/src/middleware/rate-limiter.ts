@@ -5,7 +5,7 @@
  * For high-traffic applications, a more scalable solution using Durable Objects would be more appropriate.
  */
 
-import { Hono, MiddlewareHandler } from 'hono';
+import { MiddlewareHandler } from 'hono';
 import { Context } from 'hono';
 
 // Define the structure for storing bucket state in KV
@@ -64,6 +64,12 @@ export function kvTokenBucketRateLimiter(config: RateLimiterConfig): MiddlewareH
 
   // The actual middleware function
   return async (c, next) => {
+    if (!c.env) {
+        console.warn("c.env not found, skipping rate limiter. This might happen in test environments.");
+        await next();
+        return;
+    }
+
     // Retrieve KV namespace from context using the binding name
     const kvNamespace = c.env[kvBindingName] as KVNamespace | undefined;
 
@@ -113,7 +119,7 @@ export function kvTokenBucketRateLimiter(config: RateLimiterConfig): MiddlewareH
       }
 
       // Log the current token count before checking
-      console.log(`Bucket tokens left for key "${key}": ${currentTokens}`);
+      console.log(`TokenBucket "${key}": ${currentTokens}`);
 
       // 3. Check if enough tokens are available
       if (currentTokens >= requestCost) {
@@ -171,41 +177,3 @@ function defaultKeyGenerator(c: Context): string {
   // Prefix to avoid potential collisions with other KV data
   return `rate-limit:${ip}`;
 }
-
-
-// --- Usage Example ---
-
-// Assume 'RATE_LIMITER_KV' is bound in your wrangler.toml
-interface Env {
-  RATE_LIMITER_KV: KVNamespace;
-  // Add other bindings if needed
-}
-
-const app = new Hono<{ Bindings: Env }>();
-
-// Configure the middleware instance
-const globalLimiter = kvTokenBucketRateLimiter({
-  kvBindingName: 'RATE_LIMITER_KV', // Name of the binding in Env/wrangler.toml
-  maxTokens: 100, // Allow 100 requests...
-  refillRatePerSecond: 5, // ...refilling at 5 tokens per second
-  // requestCost: 1, // Default is 1
-  // keyGenerator: (c) => `user:${c.get('userId')}` // Example: Use user ID if available
-  // kvExpirationTtl: 7200 // Example: 2 hours
-});
-
-// Apply the configured middleware instance directly
-app.use('*', globalLimiter);
-
-
-app.get('/', (c) => {
-  return c.text('You reached the API!');
-});
-
-app.get('/expensive', (c) => {
-    // Example: You could potentially have another limiter instance
-    // with a higher cost or lower limits for specific routes.
-    // (This simple example uses the global one)
-    return c.text('This was an expensive operation!');
-});
-
-export default app;

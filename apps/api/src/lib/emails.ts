@@ -1,5 +1,6 @@
 // lib/emails/index.ts
 import { Resend } from "resend";
+import { envConfig } from "./env-config";
 
 export const EMAIL_CONFIG = {
   FROM: "hello@app.orcavo.com",
@@ -23,11 +24,7 @@ export const sendEmail = async ({ to, subject, reactTemplate, htmlTemplate }: Se
     // Match Resend error structure loosely
     return { ok: false, error: { name: "ValidationError", message: errorMsg } };
   }
-  console.log('Yes react or html template: ,', process.env.RESEND_KEY);
-
-  const resend = new Resend(process.env.RESEND_KEY);
-
-  console.log('resend key', process.env.RESEND_KEY);
+  const resend = new Resend(envConfig.RESEND_KEY);
 
   // Base payload
   const emailPayload: {

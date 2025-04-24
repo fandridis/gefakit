@@ -56,7 +56,7 @@ vi.mock('./todo.repository', () => ({
 
 describe('Todo Routes V1', () => {
   let app: Hono<{ Bindings: Bindings; Variables: TodoRouteVars }>; // Use the correct Bindings type
-  const mockUser: UserDTO = { id: 123, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date() };
+  const mockUser: UserDTO = { id: 123, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date(), role: 'USER' };
   const mockDb = { /* mock db instance if needed by middleware not bypassed */ } as Kysely<DB>;
 
   beforeEach(() => {
@@ -215,7 +215,13 @@ describe('Todo Routes V1', () => {
       expect(mockUpdateTodo).toHaveBeenCalledWith({ 
         id: todoId, 
         authorId: mockUser.id, 
-        todo: { ...validUpdateData, author_id: mockUser.id } 
+        todo: { 
+          title: validUpdateData.title,
+          completed: validUpdateData.completed ?? false,
+          author_id: mockUser.id,
+          description: null, 
+          due_date: null,
+        } 
       });
     });
 

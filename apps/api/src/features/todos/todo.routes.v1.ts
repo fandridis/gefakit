@@ -47,7 +47,14 @@ app.post(
     const user = c.get("user");
     const data = c.req.valid("json");
     const todoService = c.get("todoService");
-    const created = await todoService.createTodo({authorId: user.id, todo: { ...data, author_id: user.id }});
+    const created = await todoService.createTodo({authorId: user.id, todo: {
+       ...data, 
+       author_id: user.id,
+       completed: data.completed ?? false,
+       due_date: data.due_date ?? null,
+       description: data.description ?? null,
+       
+    }});
     return c.json({ createdTodo: created });
   }
 );
@@ -61,7 +68,14 @@ app.put(
     const id = Number(c.req.param("id"));
     const data = c.req.valid("json");
     const todoService = c.get("todoService");
-    const updated = await todoService.updateTodo({id, authorId: user.id, todo: { ...data, author_id: user.id }});
+    const updated = await todoService.updateTodo({id, authorId: user.id, todo: { 
+      ...data, 
+      author_id: user.id,
+      completed: data.completed ?? false,
+      due_date: data.due_date ?? null,
+      description: data.description ?? null,
+      
+    }});
     return c.json({ updatedTodo: updated });
   }
 );

@@ -15,6 +15,7 @@ import { DB, AuthUser } from '../../src/db/db-types';
 import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, GetSessionResponseDTO } from '@gefakit/shared';
+import { envConfig } from '../../src/lib/env-config';
 
 describe('Admin API Integration Tests', () => {
   let testDb: Kysely<DB>;
@@ -41,7 +42,7 @@ describe('Admin API Integration Tests', () => {
   };
 
   beforeAll(async () => {
-    const dbUrl = process.env.DATABASE_URL_POOLED;
+    const dbUrl = envConfig.DATABASE_URL_POOLED;
     if (!dbUrl) throw new Error("DATABASE_URL_POOLED not set.");
     testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
 
