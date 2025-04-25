@@ -2,15 +2,15 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { AuthService, createAuthService } from '../auth/auth.service'; // Might need auth service/repo
+import { AuthService } from '../auth/auth.service'; // Might need auth service/repo
 import { createAuthRepository } from '../auth/auth.repository';
 import { authMiddleware } from '../../middleware/auth';
 import { adminAuth } from '../../middleware/admin-auth';
-import { AppError } from '../../errors/app-error';
+import { createAppError } from '../../core/app-error';
 import { dbMiddleware, DbMiddleWareVariables } from '../../middleware/db';
 import { createAdminService } from './admin.service';
-import { createOrganizationRepository } from '../organizations/organization.repository';
 import { Bindings } from '../../types/hono';
+import { getAdminService, getAuthService } from '../../core/services';
 
 type AuthRouteVariables = DbMiddleWareVariables & {
     authService: AuthService;
@@ -34,10 +34,10 @@ app.post(
     const db = c.get('db');
 
     if (!adminUser || !session) {
-      throw new AppError('Authentication required', 401);
+      throw createAppError.admin.authenticationRequired();
     }
     if (adminUser.id === targetUserId) {
-       throw new AppError('Cannot impersonate yourself', 400);
+       throw createAppError.admin.cannotImpersonateSelf();
     }
 
     const authRepository = createAuthRepository({db});
@@ -61,18 +61,15 @@ app.post(
       const db = c.get('db');
   
       if (!session) {
-           throw new AppError('Session not found', 401);
+           throw createAppError.admin.impersonationSessionNotFound();
       }
-      // We need the *original* admin ID to revert the session correctly.
-      // The best way is to fetch it from the session table itself *before* updating.
-      const authRepository = createAuthRepository({db});
-      const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
-      const adminService = createAdminService({db, authRepository});
+      
+      const authService = getAuthService(db);
+      const adminService = getAdminService(db);
       
       const sessionDetails = await authService.findSessionById({ id: session.id });
-      console.log('[stop-impersonation] sessionDetails: ', sessionDetails);
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {
-          throw new AppError('Not currently impersonating or session invalid', 400);
+          throw createAppError.admin.notImpersonating();
       }
   
       const adminUserId = sessionDetails.impersonator_user_id;

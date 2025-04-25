@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { todoRoutesV1 } from './todo.routes.v1';
 import { TodoService } from './todo.service';
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../errors/app-error'; // Import AppError for testing error responses
+import { AppError } from '../../core/app-error'; // Import AppError for testing error responses
 import { Bindings } from '../../types/hono';
 import { Kysely } from 'kysely'; // Import Kysely for DB type
 import { DB } from '../../db/db-types'; // Import DB types

@@ -4,7 +4,6 @@ import { AuthRepository } from '../auth/auth.repository';
 import { OrganizationRepository } from '../organizations/organization.repository';
 import { Kysely, Transaction, Selectable } from 'kysely';
 import { DB } from '../../db/db-types';
-import { AppError } from '../../errors/app-error';
 import { hashPassword, isMyPasswordPwned } from '../../lib/crypto';
 import { randomUUID } from 'node:crypto';
 
@@ -55,11 +54,14 @@ const mockCrypto = {
     isMyPasswordPwned: vi.mocked(isMyPasswordPwned)
 };
 
-vi.mock('../../errors', () => {
-  const mockWeakPasswordError = vi.fn((msg = 'Weak password') => new AppError(msg, 400));
-  const mockUserCreationFailedError = vi.fn((msg = 'User creation failed') => new AppError(msg, 500));
+// Modified mock
+vi.mock('../../core/app-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/app-error');
+  const mockWeakPasswordError = vi.fn((msg = 'Weak password') => new actual.AppError(msg, 400));
+  const mockUserCreationFailedError = vi.fn((msg = 'User creation failed') => new actual.AppError(msg, 500));
   return {
-    createAppError: {
+    ...actual, // Include original AppError
+    createAppError: { // Mock factory
       auth: {
         weakPassword: mockWeakPasswordError,
         userCreationFailed: mockUserCreationFailedError,
@@ -67,7 +69,8 @@ vi.mock('../../errors', () => {
     },
   };
 });
-import { createAppError as mockErrors } from '../../errors';
+// Import AppError after mock
+import { AppError, createAppError as mockErrors } from '../../core/app-error';
 
 vi.mock('node:crypto', () => ({
   randomUUID: vi.fn(),

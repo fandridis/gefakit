@@ -7,17 +7,13 @@ import { createOrganizationInvitationRequestBodySchema, createOrganizationReques
 import { CreateOrganizationInvitationResponseDTO, CreateOrganizationResponseDTO, DeleteOrganizationMembershipResponseDTO, DeleteOrganizationResponseDTO } from '@gefakit/shared/src/types/organization';
 import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
-import { createOrganizationService, OrganizationService } from './organization.service';
-import { createOrganizationRepository } from './organization.repository';
-import { createEmailService, EmailService } from '../emails/email.service';
-import { createAppError } from '../../errors';
-import { createOrganizationMembershipService, OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
-import { createOrganizationMembershipRepository } from '../organization-memberships/organization-membership.repository';
-import { createOrganizationInvitationRepository } from '../organization-invitations/organization-invitation.repository';
-import { createOrganizationInvitationService, OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
+import { OrganizationService } from './organization.service';
+import { EmailService } from '../emails/email.service';
+import { createAppError } from '../../core/app-error';
+import { OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
+import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
 import { randomUUID } from 'node:crypto';
-import { createAuthService } from '../auth/auth.service';
-import { createAuthRepository } from '../auth/auth.repository';
+import { getEmailService, getOrganizationInvitationService, getOrganizationMembershipService, getOrganizationService } from '../../core/services';
 
 type OrganizationRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
   organizationService: OrganizationService,
@@ -30,15 +26,11 @@ const app = new Hono<{ Bindings: Bindings; Variables: OrganizationRouteVariables
 // Initialize services per-request
 app.use('/*', async (c, next) => {
   const db = c.get("db") as Kysely<DB>;
-  const organizationRepository = createOrganizationRepository({db});
-  const organizationMembershipRepository = createOrganizationMembershipRepository({db});
-  const organizationInvitationRepository = createOrganizationInvitationRepository({db});
-  const authRepository = createAuthRepository({ db });
 
-  const organizationService = createOrganizationService({db, organizationRepository, createOrganizationRepository});
-  const organizationMembershipService = createOrganizationMembershipService({db, organizationMembershipRepository});
-  const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});  const organizationInvitationService = createOrganizationInvitationService({db, organizationInvitationRepository, createOrganizationInvitationRepository, organizationService, authService});
-  const emailService = createEmailService();
+  const organizationService = getOrganizationService(db)
+  const organizationMembershipService = getOrganizationMembershipService(db);
+  const organizationInvitationService = getOrganizationInvitationService(db);
+  const emailService = getEmailService();
 
   c.set('organizationService', organizationService);
   c.set('organizationMembershipService', organizationMembershipService);
@@ -54,8 +46,8 @@ app.post('/', zValidator('json', createOrganizationRequestBodySchema), async (c)
   const organizationService = c.get('organizationService');
 
   const organization = await organizationService.createOrganization({data: body, userId: user.id});
-
   const response: CreateOrganizationResponseDTO = { createdOrganization: organization};
+
   return c.json(response, 201);
 })
 
@@ -77,8 +69,6 @@ app.delete('/:orgId/memberships/me', async (c) => {
   const orgId = c.req.param('orgId');
   const organizationMembershipService = c.get('organizationMembershipService');
 
-  console.log('[orgRoutes] delete /:orgId/memberships/me', orgId, user.id);
-
   await organizationMembershipService.removeCurrentUserMembershipFromOrg({organizationId: parseInt(orgId), userId: user.id});
   const response = { success: true };
 
@@ -87,7 +77,6 @@ app.delete('/:orgId/memberships/me', async (c) => {
 
 // DELETE - a specific organization membership
 app.delete('/:orgId/memberships/:membershipId', async (c) => {
-  const user = c.get('user');
   const orgId = c.req.param('orgId');
   const membershipId = c.req.param('membershipId');
   const organizationMembershipService = c.get('organizationMembershipService');
@@ -115,7 +104,6 @@ app.post('/:orgId/invitations', zValidator('json', createOrganizationInvitationR
     throw createAppError.organizations.organizationNotFound();
   }
 
-  console.log('About to invite user by email', { orgId, userId: user.id, email: body.email });
   const invitation = await organizationInvitationService.createInvitation({
     organizationInvitation: {
       organization_id: parseInt(orgId),
@@ -143,24 +131,10 @@ app.put('/memberships/active/:orgId', async (c) => {
   const orgId = c.req.param('orgId');
   const organizationService = c.get('organizationService');
 
-  // Assuming updateMembershipDefaultStatus is the correct service method
   await organizationService.updateMembershipDefaultStatus({userId: user.id, organizationId: parseInt(orgId)});
 
   const response = { success: true};
   return c.json(response, 200);
 })
-
-// --- Other routes will go here ---
-// GET /
-// GET /:orgId
-// DELETE /:orgId
-// POST /:orgId/activate
-// POST /:orgId/set-default
-// POST /:orgId/invitations
-// DELETE /:orgId/invitations/:invitationId
-// DELETE /:orgId/members/:userId
-// PATCH /:orgId/members/:userId/role
-// POST /invitations/:token/accept
-// POST /invitations/:token/decline
 
 export const organizationsRoutesV1 = app 

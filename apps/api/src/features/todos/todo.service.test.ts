@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTodoService, TodoService } from './todo.service';
 import { TodoRepository, createTodoRepository } from './todo.repository'; // Import real type and factory
-import { createAppError } from '../../errors';
+import { createAppError } from '../../core/app-error';
 import { CoreTodo } from '../../db/db-types';
 import { Insertable, Updateable } from 'kysely';
 
@@ -14,7 +14,7 @@ vi.mock('./todo.repository', () => ({
 }));
 
 // 2. Mock Error Factory
-vi.mock('../../errors', () => ({
+vi.mock('../../core/app-error', () => ({
   createAppError: {
     todos: {
       todoNotFound: vi.fn(() => new Error('Todo not found mock')),
@@ -25,7 +25,7 @@ vi.mock('../../errors', () => ({
 
 // 3. Import Mocked Functions/Modules AFTER mocks
 import { createTodoRepository as mockCreateTodoRepositoryFn } from './todo.repository';
-import { createAppError as mockErrors } from '../../errors';
+import { createAppError as mockErrors } from '../../core/app-error';
 
 
 // --- Test Suite Setup ---

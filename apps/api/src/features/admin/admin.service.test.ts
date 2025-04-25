@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createAdminService, AdminService } from './admin.service';
 import { AuthRepository, createAuthRepository } from '../auth/auth.repository'; // Import real type and factory
-import { createAppError } from '../../errors';
-import { AppError } from '../../errors/app-error';
-import { AuthUser } from '../../db/db-types'; // Assuming AuthUser type exists
 import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
 
@@ -14,24 +11,28 @@ vi.mock('../auth/auth.repository', () => ({
   createAuthRepository: vi.fn(),
 }));
 
-// 2. Mock Error Factory
-vi.mock('../../errors', () => ({
-  createAppError: {
-    auth: {
-      userNotFound: vi.fn(() => new AppError('User not found mock', 404)),
-      // Add other specific errors if used by admin service
+// 2. Mock Error Factory - Modified to include original AppError
+vi.mock('../../core/app-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/app-error');
+  return {
+    ...actual, // Include original exports like AppError
+    createAppError: { // Mock only the factory object
+      auth: {
+        userNotFound: vi.fn(() => new actual.AppError('User not found mock', 404)),
+        // Add other specific errors if used by admin service
+      },
+      // admin: { // Add admin-specific errors if created
+      //   impersonationFailed: vi.fn(() => new actual.AppError('Impersonation failed mock', 500)),
+      //   stopImpersonationFailed: vi.fn(() => new actual.AppError('Stop impersonation failed mock', 500)),
+      // }
     },
-    // Add admin-specific errors if created
-    // admin: {
-    //   impersonationFailed: vi.fn(() => new AppError('Impersonation failed mock', 500)),
-    //   stopImpersonationFailed: vi.fn(() => new AppError('Stop impersonation failed mock', 500)),
-    // }
-  },
-}));
+  };
+});
 
 // 3. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from '../auth/auth.repository';
-import { createAppError as mockErrors } from '../../errors';
+// Import AppError directly AFTER the mock setup
+import { AppError, createAppError as mockErrors } from '../../core/app-error';
 import { UserDTO } from '@gefakit/shared';
 
 // +++ Add Mock DB

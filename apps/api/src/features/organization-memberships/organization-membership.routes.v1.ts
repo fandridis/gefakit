@@ -4,8 +4,8 @@ import { DbMiddleWareVariables } from '../../middleware/db'
 import { AuthMiddleWareVariables } from '../../middleware/auth'
 import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
-import { createOrganizationMembershipService, OrganizationMembershipService } from './organization-membership.service';
-import { createOrganizationMembershipRepository } from './organization-membership.repository';
+import {  OrganizationMembershipService } from './organization-membership.service';
+import { getOrganizationMembershipService } from '../../core/services';
 
 type OrganizationMembershipRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
   organizationMembershipService: OrganizationMembershipService,
@@ -15,8 +15,7 @@ const app = new Hono<{ Bindings: Bindings; Variables: OrganizationMembershipRout
 // Initialize services per-request
 app.use('/*', async (c, next) => {
   const db = c.get("db") as Kysely<DB>;
-  const organizationMembershipRepository = createOrganizationMembershipRepository({ db });
-  const organizationMembershipService = createOrganizationMembershipService({ db, organizationMembershipRepository });
+  const organizationMembershipService = getOrganizationMembershipService(db);
 
   c.set('organizationMembershipService', organizationMembershipService);
   await next();

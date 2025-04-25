@@ -1,7 +1,7 @@
 import { Insertable, Updateable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
 import { TodoRepository } from "./todo.repository";
-import { createAppError } from "../../errors";
+import { createAppError } from "../../core/app-error";
 
 
 export type TodoService = ReturnType<typeof createTodoService>

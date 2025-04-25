@@ -1,7 +1,7 @@
 import { Kysely } from 'kysely'
 import { DB } from '../../db/db-types'
 import { OrganizationMembershipRepository } from './organization-membership.repository';
-import { createAppError } from '../../errors';
+import { createAppError } from '../../core/app-error';
 
 export type OrganizationMembershipService = ReturnType<typeof createOrganizationMembershipService>
 
@@ -18,7 +18,6 @@ export function createOrganizationMembershipService({
     },
 
     removeCurrentUserMembershipFromOrg: async ({organizationId, userId}: {organizationId: number, userId: number}) => {
-      console.log('[orgMembershipService] removeCurrentUserMembershipFromOrg', organizationId, userId);
       const memberships = await organizationMembershipRepository.findAllOrganizationMembershipsByUserId({userId});
       const membership = memberships.find((m) => m.organization_id === organizationId);
 

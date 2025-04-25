@@ -4,27 +4,21 @@ import { DbMiddleWareVariables } from '../../middleware/db'
 import { AuthMiddleWareVariables } from '../../middleware/auth'
 import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
-import { createOrganizationInvitationService, OrganizationInvitationService } from './organization-invitation.service';
-import { createOrganizationInvitationRepository } from './organization-invitation.repository';
-import { createOrganizationService, OrganizationService } from '../organizations/organization.service';
-import { createOrganizationRepository } from '../organizations/organization.repository';
-import { createAuthService } from '../auth/auth.service';
-import { createAuthRepository } from '../auth/auth.repository';
+import {  OrganizationInvitationService } from './organization-invitation.service';
+import { OrganizationService } from '../organizations/organization.service';
+import { getOrganizationInvitationService } from '../../core/services';
+
 type OrganizationInvitationRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
   organizationInvitationService: OrganizationInvitationService,
   organizationService: OrganizationService,
 }
 const app = new Hono<{ Bindings: Bindings; Variables: OrganizationInvitationRouteVariables }>()
 
-// Initialize services per-request
+// Initialize services per-request using factories
 app.use('/*', async (c, next) => {
   const db = c.get("db") as Kysely<DB>;
-  const organizationInvitationRepository = createOrganizationInvitationRepository({ db });
-  const organizationRepository = createOrganizationRepository({ db });
-  const authRepository = createAuthRepository({ db });
-  const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
-  const organizationService = createOrganizationService({ db, organizationRepository, createOrganizationRepository });
-  const organizationInvitationService = createOrganizationInvitationService({ db, organizationInvitationRepository, organizationService, createOrganizationInvitationRepository, authService });
+
+  const organizationInvitationService = getOrganizationInvitationService(db);
 
   c.set('organizationInvitationService', organizationInvitationService);
   await next();
@@ -43,7 +37,6 @@ app.get('/', async (c) => {
 
 // POST - accept an organization invitation
 app.post('/:token/accept', async (c) => {
-  console.log(`gefa1: with token ${c.req.param('token')} and user ${c.get('user').id}`);
   const token = c.req.param('token');
   const user = c.get('user');
   const service = c.get('organizationInvitationService');
@@ -60,12 +53,9 @@ app.post('/:token/decline', async (c) => {
   const service = c.get('organizationInvitationService');
 
   const invitation = await service.declineInvitation({token});
-  console.log('[Route] Declined invitation', { invitation });
 
   const response = { invitation };
   return c.json(response, 201);
 })
-
-
 
 export const organizationInvitationRoutesV1 = app 

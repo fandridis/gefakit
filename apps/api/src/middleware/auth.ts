@@ -1,5 +1,5 @@
 import { getCookie } from 'hono/cookie';
-import { createAppError } from '../errors';
+import { createAppError } from '../core/app-error';
 import { Bindings } from '../types/hono';
 import { createMiddleware } from 'hono/factory'
 import { SessionDTO, UserDTO } from '@gefakit/shared/src/types/auth';
@@ -14,9 +14,7 @@ export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
     impersonatorUserId: number | null | undefined
 }
 
-// Use createMiddleware instead of MiddlewareHandler directly
 export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: AuthMiddleWareVariables }>(async (c, next) => {
-    console.log('[=== authMiddleware ===]');
     const db = c.get("db");
     const sessionToken = getCookie(c, 'gefakit-session');
 

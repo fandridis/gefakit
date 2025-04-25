@@ -1,14 +1,15 @@
 import { encodeHexLowerCase } from "@oslojs/encoding";
 import { Kysely, Transaction, Insertable, Selectable } from "kysely";
 import { DB, AuthUser } from "../../db/db-types";
-import { AuthRepository } from "./auth.repository";
+import { AuthRepository, createAuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding, encodeBase64url } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
-import { createAppError } from "../../errors";
-import { AppError } from "../../errors/app-error";
+import { createAppError } from "../../core/app-error";
+import { AppError } from "../../core/app-error";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
-import { OrganizationRepository } from "../organizations/organization.repository";
+import { OrganizationRepository, createOrganizationRepository } from "../organizations/organization.repository";
+import { createUserWithOrganizationAndMembership, CreateUserWithOrgData } from "../user/user-creation.util";
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
@@ -303,8 +304,6 @@ export function createAuthService(
             expires_at: expiresAt
         });
 
-        console.log(`Password reset token generated for user ${user.id}`);
-        // Return the *plaintext* token to be sent via email
         return plainToken;
     }
 
@@ -354,7 +353,6 @@ export function createAuthService(
                 // Optional: Invalidate all active sessions for the user for extra security
                 await txAuthRepo.deleteAllUserSessions({ userId: resetRecord.user_id });
             });
-            console.log(`Password successfully reset for user ${resetRecord.user_id}`);
         } catch (error) {
             console.error(`Failed to reset password for user ${resetRecord.user_id} in transaction:`, error);
             throw new AppError('Failed to reset password.', 500);
@@ -371,8 +369,6 @@ export function createAuthService(
     async function verifyEmail({ token }: { token: string }) {
         // Use the service-level authRepository for the initial find (outside transaction)
         const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
-
-        console.log('verificationRecord: ', verificationRecord)
 
         if (!verificationRecord) {
             throw new AppError('Invalid or expired verification token.', 400);
@@ -400,7 +396,6 @@ export function createAuthService(
                     tokenId: verificationRecord.id 
                 });
             });
-            console.log(`Email verified for user ${verificationRecord.user_id}`);
         } catch (err) {
             console.error('Failed to verify email in transaction:', err);
             throw new AppError('Failed to complete email verification process.', 500);
@@ -423,20 +418,15 @@ export function createAuthService(
         let userId: number;
 
         if (user) {
-            // User found via OAuth link, id should be a number
-            userId = user.id; // Assuming user.id is number here
-            console.log(`OAuth Login: Found existing user ${userId} via ${oauthDetails.provider} account ${oauthDetails.providerUserId}`);
+            userId = user.id;
         } else {
             // No existing OAuth link found
-            // Try finding user by email (if provided by OAuth and verified)
             if (oauthDetails.email) {
                 // Note: We trust the email from Google/GitHub IF they mark it as verified.
                 // You might want stricter checks depending on your security model.
-                // findUserWithPasswordByEmail likely returns AuthUser | undefined
                 const existingUserByEmail = await authRepository.findUserWithPasswordByEmail({ email: oauthDetails.email });
                 
                 if (existingUserByEmail) {
-                    console.log(`OAuth Login: Found existing user ${existingUserByEmail.id} by email ${oauthDetails.email} from ${oauthDetails.provider}. Linking account.`);
                     userId = existingUserByEmail.id;
 
                     await authRepository.linkOAuthAccount({ 
@@ -447,67 +437,41 @@ export function createAuthService(
                         }
                     });
                     // Re-fetch user data to ensure consistency (excluding password)
-                    // findUserById likely returns AuthUser | undefined
                     const refetchedUser = await authRepository.findUserById(userId);
-                    if (!refetchedUser) { // Added check
+                    if (!refetchedUser) {
                         // This really shouldn't happen if linking succeeded and user existed
                         throw new AppError("Failed to refetch user after linking OAuth account by email.", 500); 
                     }
-                    user = refetchedUser; // Assign refetched user data
+                    user = refetchedUser;
                 } else {
-                    // User not found by email either, create a new user, org, membership and link OAuth in a transaction
-                    console.log(`OAuth Login: Creating new user, org, membership for ${oauthDetails.email || oauthDetails.username} from ${oauthDetails.provider}`);
-                    
-                    // Explicit check to ensure email is non-null for type safety within transaction
-                    if (!oauthDetails.email) {
-                        // This should theoretically be caught by the outer check, but belts and suspenders
-                        throw createAppError.auth.oauthEmailRequired({ provider: oauthDetails.provider });
-                    }
-
+                    // User not found by email either, create a new user, org, membership and link OAuth in a transaction             
                     try {
-                        // Transaction now returns AuthUser | undefined (or the specific type from findUserById)
                         const createdUserData = await db.transaction().execute(async (trx: Transaction<DB>) => {
                             const authRepoTx = createAuthRepository({ db: trx });
                             const orgRepoTx = createOrganizationRepository({ db: trx });
-            
-                            const newUserInsert: Insertable<AuthUser> = {
-                                password_hash: 'oauth_no_password', // Placeholder - MUST NOT be usable for password login
-                                email: oauthDetails.email!, // Use non-null assertion
-                                username: oauthDetails.username, 
-                                email_verified: true, // If email is provided via OAuth, assume verified by provider
-                                role: 'USER' // Default role
-                            };
-                            
-                            // createUser likely returns AuthUser | undefined
-                            const createdUser = await authRepoTx.createUser({ user: newUserInsert });
-                            if (!createdUser) {
-                                // Throw error inside transaction to trigger rollback
-                                throw new AppError('Failed to create user during OAuth callback transaction', 500);
-                            }
-                            const createdUserId = createdUser.id; // Assuming id is number
-                            
-                            // Create default organization
-                            const org = await orgRepoTx.createOrganization({
-                                name: `${createdUser.username}'s org`
-                            });
-                            if (!org) { // Check org creation
-                                 throw new AppError('Failed to create organization during OAuth callback transaction', 500);
+
+                            if (!oauthDetails.email) {
+                                throw createAppError.auth.oauthEmailRequired({ provider: oauthDetails.provider });
                             }
 
-                            // Create default membership
-                            const membership = await orgRepoTx.createMembership({
-                                organization_id: org.id,
-                                user_id: createdUserId,
-                                is_default: true,
-                                role: 'owner'
-                            });
-                             if (!membership) { // Check membership creation
-                                 throw new AppError('Failed to create membership during OAuth callback transaction', 500);
-                            }
-                            
-                            // Link the new OAuth account
-                            const linkedAccount = await authRepoTx.linkOAuthAccount({ 
-                                account: { 
+                            const { user: createdUser, orgId } = await createUserWithOrganizationAndMembership(
+                                trx,
+                                createAuthRepository,
+                                createOrganizationRepository,
+                                {
+                                    email: oauthDetails.email,
+                                    username: oauthDetails.username,
+                                    password_hash: 'oauth_no_password', // Specific for OAuth
+                                    email_verified: true, // Verified via OAuth provider
+                                    role: 'USER', // Default role
+
+                                }
+                            );
+                            const createdUserId = createdUser.id;
+
+                            // Link the new OAuth account (This step remains separate)
+                            const linkedAccount = await authRepoTx.linkOAuthAccount({
+                                account: {
                                     user_id: createdUserId,
                                     provider: oauthDetails.provider,
                                     provider_user_id: oauthDetails.providerUserId
@@ -517,25 +481,18 @@ export function createAuthService(
                                  throw new AppError('Failed to link OAuth account during transaction', 500);
                             }
 
-                            console.log(`OAuth Login: Created new user ${createdUserId}, org ${org.id}, membership, and linked ${oauthDetails.provider} account ${oauthDetails.providerUserId} in transaction.`);
-                            
-                            // Fetch the complete user record from the transaction context before returning
-                            // findUserById likely returns AuthUser | undefined
-                            const finalUser = await authRepoTx.findUserById(createdUserId);
-                            if (!finalUser) {
-                                throw new AppError('Failed to fetch newly created user within transaction', 500);
-                            }
-                            return finalUser; // Return the full user data from the transaction
+                            // The utility function already returns the created user object
+                            return createdUser;
                         });
 
                         // Assign the user data returned from the successful transaction
-                        // createdUserData is AuthUser | undefined here
                         if (!createdUserData) {
-                            // Should be caught by errors within transaction, but for type safety:
-                            throw new AppError('Transaction succeeded but returned no user data', 500);
+                            // This should ideally be caught by errors within the transaction,
+                            // but this check handles potential edge cases and satisfies the type checker.
+                            throw new AppError('Transaction failed to return user data', 500);
                         }
                         user = createdUserData;
-                        // userId = user.id; // Assign userId after confirming user is not null
+                        userId = user.id; // Assign userId after confirming user is not null
 
                     } catch (error) {
                         console.error("OAuth user creation transaction failed:", error);
@@ -604,8 +561,6 @@ export function createAuthService(
             expires_at: expiresAt
         });
 
-        console.log(`OTP code generated for user ${user.id}`);
-        // Return the *plaintext* OTP to be sent via email
         return plainOtp;
     }
 
@@ -677,7 +632,6 @@ export function createAuthService(
         handleOAuthCallback,
         requestPasswordReset,
         resetPassword,
-        // Add new OTP methods
         requestOtpSignIn,
         verifyOtpAndSignIn
     };

@@ -1,7 +1,7 @@
 import { Kysely, Insertable, Transaction, Selectable } from 'kysely'
 import { DB, OrganizationsOrganization, OrganizationsMembership, OrganizationsInvitation } from '../../db/db-types'
 import { OrganizationRepository } from './organization.repository';
-import { createAppError } from '../../errors';
+import { createAppError } from '../../core/app-error';
 
 export type OrganizationService = ReturnType<typeof createOrganizationService>
 

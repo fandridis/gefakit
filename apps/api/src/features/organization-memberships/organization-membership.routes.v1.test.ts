@@ -6,7 +6,7 @@ import { AuthMiddleWareVariables } from '../../middleware/auth';
 import type { OrganizationMembershipService } from './organization-membership.service';
 import { Selectable } from 'kysely';
 import { OrganizationsMembership } from '../../db/db-types';
-import { AppError } from '../../errors/app-error';
+import { AppError } from '../../core/app-error';
 import { ZodError } from 'zod';
 
 // --- Mock Dependencies ---

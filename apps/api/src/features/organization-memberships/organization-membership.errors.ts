@@ -2,7 +2,7 @@
  * This file should be defined at src/errors/index.ts
  */
 
-import { AppError } from "../../errors/app-error";
+import { AppError } from "../../core/app-error";
 
 export const organizationMembershipErrors = {
   organizationMembershipNotFound: () =>

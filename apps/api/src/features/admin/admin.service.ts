@@ -1,9 +1,9 @@
 // apps/api/src/features/admin/admin.service.ts
 import { Kysely, Transaction } from 'kysely';
 import { DB } from '../../db/db-types'; 
-import { AuthRepository, createAuthRepository } from '../auth/auth.repository';
-import { createAppError } from '../../errors';
-import { AppError } from '../../errors/app-error'; // Assuming AppError is needed alongside createAppError
+import { AuthRepository } from '../auth/auth.repository';
+import { createAppError } from '../../core/app-error';
+import { AppError } from '../../core/app-error'; // Assuming AppError is needed alongside createAppError
 
 // Define the service type
 export type AdminService = ReturnType<typeof createAdminService>;

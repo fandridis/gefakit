@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import app from '../../src/index';
-import { Kysely } from 'kysely';
+import { Kysely, Selectable } from 'kysely';
 import { DB } from '../../src/db/db-types';
 import { Insertable } from 'kysely';
 import { AuthUser, CoreTodo } from '../../src/db/db-types';
@@ -13,7 +13,7 @@ import { envConfig } from '../../src/lib/env-config';
 // --- Test Suite Setup ---
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
-  let testUser: UserDTO | undefined;
+  let testUser: Selectable<AuthUser> | undefined;
 
   let sessionCookie: string;
 
@@ -40,15 +40,11 @@ describe('Todo API Integration Tests', () => {
       .executeTakeFirstOrThrow();
     testUser = insertedUser;
 
-    console.log('gg1 testUser', testUser);
-
     const loginRes = await app.request('/api/v1/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, password: testPassword }),
     });
-
-    console.log('gg2 testuser logged in: ', loginRes);
 
     expect(loginRes.status).toBe(200);
     const setCookieHeader = loginRes.headers.get('Set-Cookie');
@@ -60,13 +56,11 @@ describe('Todo API Integration Tests', () => {
   });
 
   afterAll(async () => {
-    console.log('Cleaning up test user and closing DB connection...');
     if (testDb && testUser) {
       try {
         await testDb.deleteFrom('auth.users')
           .where('id', '=', testUser.id)
           .execute();
-        console.log(`Deleted user: ${testUser.email}`);
       } catch (error) {
         console.error(`Error deleting user ${testUser.email}:`, error);
       }
@@ -74,9 +68,9 @@ describe('Todo API Integration Tests', () => {
 
     if (testDb) {
       await testDb.destroy();
-      console.log('Test database connection closed.');
+      // console.log('Test database connection closed.');
     } else {
-      console.log('No test database connection to close.');
+      // console.log('No test database connection to close.');
     }
   });
 
@@ -85,7 +79,7 @@ describe('Todo API Integration Tests', () => {
     // Now primarily for setting up test-specific data *if needed*.
     // We no longer create the user here.
     // Example: If a GET test needs a pre-existing todo, create it here.
-    console.log(`Starting test case... (User: ${testUser?.email})`);
+    // console.log(`Starting test case... (User: ${testUser?.email})`);
   });
 
   afterEach(async () => {
@@ -97,13 +91,11 @@ describe('Todo API Integration Tests', () => {
         const deleteResult = await testDb.deleteFrom('core.todos')
           .where('author_id', '=', testUser.id)
           .executeTakeFirst();
-        console.log(`Cleaned up todos for user ${testUser.email}. Rows affected: ${deleteResult.numDeletedRows}`);
       } catch (error) {
           console.error(`Error cleaning up todos for user ${testUser.email}:`, error);
-          // Decide if you want to throw or just log here
       }
     } else {
-        console.warn("Skipping test cleanup: testDb or testUser not available.");
+        // console.log("Skipping test cleanup: testDb or testUser not available.");
     }
   });
 

@@ -32,8 +32,6 @@ export function createEmailService() {
 
     const htmlTemplate = emailVerificationTemplate({ verificationUrl });
 
-    console.log(`Sending verification email to ${email} with URL ${verificationUrl}`);
-
     await sendEmail({
       to: email,
       subject: 'Verify Your Email Address',
@@ -51,7 +49,6 @@ export function createEmailService() {
     token: string;
   }) {
     const invitationUrl = `${envConfig.APP_URL}/accept-invitation?token=${token}`;
-    // Generate HTML from the template function
     const htmlTemplate = organizationInvitationTemplate({ orgName, invitationUrl });
 
     const res = await sendEmail({
@@ -71,8 +68,6 @@ export function createEmailService() {
     const resetUrl = `${envConfig.APP_URL}/reset-password?token=${token}`;
     const htmlTemplate = passwordResetTemplate({ resetUrl });
 
-    console.log(`Sending password reset email to ${email}`);
-
     await sendEmail({
       to: email,
       subject: 'Reset Your GefaKit Password', 
@@ -81,11 +76,8 @@ export function createEmailService() {
   }
 
   async function sendOtpEmail({ email, otp }: { email: string; otp: string }) {
-    // Remove placeholder comments and implement OTP email sending
     const htmlTemplate = otpTemplate({ otp }); 
     
-    console.log(`Sending OTP email to ${email}`); // Optional: keep logging for debugging
-
     await sendEmail({
       to: email,
       subject: 'Your GefaKit Sign-In Code',

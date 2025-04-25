@@ -5,12 +5,11 @@ import { OrganizationService } from './organization.service';
 import { OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
 import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
 import { EmailService } from '../emails/email.service';
-import { AuthService } from '../auth/auth.service'; // Keep auth service mock for invitation route
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../errors/app-error';
+import { AppError } from '../../core/app-error';
 import { Bindings } from '../../types/hono';
 import { Kysely, Selectable } from 'kysely';
-import { DB, OrganizationsOrganization, OrganizationsMembership, OrganizationsInvitation } from '../../db/db-types';
+import { DB, OrganizationsOrganization, OrganizationsInvitation } from '../../db/db-types';
 import { ZodError } from 'zod';
 import { CreateOrganizationResponseDTO, DeleteOrganizationResponseDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared/src/types/organization'; // Add required DTOs
 
@@ -117,7 +116,7 @@ vi.mock('../auth/auth.repository', () => ({
 
 describe('Organization Routes V1', () => {
   let app: Hono<{ Bindings: Bindings; Variables: OrganizationRouteVariables }>;
-  const mockUser: UserDTO = { id: 1, email: 'owner@test.com', username: 'owner', email_verified: true, created_at: new Date() };
+  const mockUser: UserDTO = { id: 1, email: 'owner@test.com', username: 'owner', email_verified: true, created_at: new Date(), role: "USER" };
   const mockDb = { /* mock db instance */ } as Kysely<DB>;
   const now = new Date();
   const mockOrganization: Selectable<OrganizationsOrganization> = { id: 10, name: 'Test Org', created_at: now, updated_at: now };

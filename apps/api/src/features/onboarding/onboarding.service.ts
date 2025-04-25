@@ -8,7 +8,7 @@
 import { Kysely, Transaction } from "kysely";
 import { randomUUID } from 'node:crypto';
 import { DB } from "../../db/db-types";
-import { createAppError } from "../../errors";
+import { createAppError } from "../../core/app-error";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
 import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
@@ -79,8 +79,6 @@ export function createOnboardingService({
         expires_at: expiresAt,
         identifier: user.email
       });
-
-      console.log('Send welcome email to ', user.email);
 
       return { user, orgId, verificationToken };
     });

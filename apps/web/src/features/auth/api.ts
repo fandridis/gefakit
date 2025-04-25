@@ -14,7 +14,6 @@ export const apiGetSession = async (): Promise<{ session: SessionDTO; user: User
 
     //  Handle explicit "No Session Cookie" case
     if (response.status === 401) {
-      console.log('Session check: 401 - No session cookie found or sent.');
       return null;
     }
 
@@ -32,7 +31,6 @@ export const apiGetSession = async (): Promise<{ session: SessionDTO; user: User
       // console.log('Session check: Valid session found.');
       return data as { session: SessionDTO; user: UserDTO };
     } else {
-      console.log('Session check: 200 OK, but session/user data is null (invalid/expired token).');
       return null; // Treat as not authenticated
     }
 

@@ -11,18 +11,18 @@ import {
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
-import { createAppError } from "../../errors";
+import { createAppError } from "../../core/app-error";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
-import { createAuthService, AuthService, OAuthUserDetails } from "./auth.service";
-import { OnboardingService, createOnboardingService } from "../onboarding/onboarding.service";
-import { createAuthRepository } from "./auth.repository";
-import { createOrganizationRepository } from "../organizations/organization.repository";
-import { EmailService, createEmailService } from "../emails/email.service";
-import { generateState, generateCodeVerifier, OAuth2RequestError } from "arctic";
+import { AuthService, OAuthUserDetails } from "./auth.service";
+import { OnboardingService } from "../onboarding/onboarding.service";
+import { EmailService } from "../emails/email.service";
+import { generateState, OAuth2RequestError } from "arctic";
 import { createOAuthClients, OAuthClients } from "../../lib/oauth";
 import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
+import { getAuthService, getOnboardingService } from "../../core/services";
+import { getEmailService } from "../../core/services";
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -94,12 +94,10 @@ app.use('/*', authRateLimiter);
 
 app.use('/*', async (c, next) => {
     const db = c.get("db") as Kysely<DB>;
-    const authRepository = createAuthRepository({db});
-    const orgRepository = createOrganizationRepository({db});
 
-    const emailService = createEmailService();
-    const authService = createAuthService({db, authRepository, createAuthRepository, createOrganizationRepository});
-    const onboardingService = createOnboardingService({db, authRepository, createAuthRepository, createOrganizationRepository});
+    const emailService = getEmailService(); 
+    const authService = getAuthService(db);
+    const onboardingService = getOnboardingService(db);
     const oauthClients = createOAuthClients();
     
     c.set('authService', authService);
@@ -195,8 +193,6 @@ app.get('/sign-in/github', async (c) => {
     const state = generateState();
     const oauthClients = c.get('oauthClients');
     const url = await oauthClients.github.createAuthorizationURL(state, []);
-
-    console.log('Redirecting to GitHub OAuth: ', url.toString());
     
     setStateCookie(c, 'github_oauth_state', state);
     
@@ -220,12 +216,9 @@ app.get('/login/github/callback', async (c) => {
 
     try {
         const tokens = await oauthClients.github.validateAuthorizationCode(code);
-        console.log('GitHub OAuth Tokens:', tokens);
         const accessToken = (tokens as any)?.data?.access_token;
-        console.log('Access Token for GitHub API:', accessToken);
 
         if (typeof accessToken !== 'string') {
-            console.error('Failed to extract access token from GitHub OAuth response:', tokens);
             throw new Error('Access token not found or invalid in GitHub OAuth response');
         }
 
@@ -247,7 +240,6 @@ app.get('/login/github/callback', async (c) => {
         if (email === undefined) email = null;
 
         if (!email) {
-            console.log('Attempting to fetch GitHub emails. Access Token:', accessToken);
             const emailsResponse = await fetch("https://api.github.com/user/emails", {
                  headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -270,9 +262,7 @@ app.get('/login/github/callback', async (c) => {
             username: githubUser.login
         };
 
-        const { user, sessionToken } = await service.handleOAuthCallback(oauthDetails);
-        console.log('Result from handleOAuthCallback - User:', user);
-        console.log('Result from handleOAuthCallback - Session Token:', sessionToken);
+        const { sessionToken } = await service.handleOAuthCallback(oauthDetails);
 
         setSessionCookie(c, sessionToken);
 
@@ -377,12 +367,9 @@ app.post('/request-password-reset', emailRateLimiter, zValidator('json', request
 
     if (plainToken) {
         try {
-            // TODO: Replace with actual implementation
             await emailService.sendPasswordResetEmail({ email: body.email, token: plainToken });
-            console.log(`Password reset email nominally sent to ${body.email}`);
         } catch (error) {
             console.error(`Failed to send password reset email to ${body.email}:`, error);
-            // Log the error, but don't expose failure details to the client
         }
     }
 
@@ -414,15 +401,12 @@ app.post('/sign-in/request-otp', emailRateLimiter, zValidator('json', requestOtp
     const emailService = c.get('emailService');
 
     const plainOtp = await authService.requestOtpSignIn({ email: body.email });
-    console.log('plainOtp', plainOtp);
 
     if (plainOtp) {
         try {
             await emailService.sendOtpEmail({ email: body.email, otp: plainOtp });
-            console.log(`OTP email nominally sent to ${body.email}`);
         } catch (error) {
             console.error(`Failed to send OTP email to ${body.email}:`, error);
-            // Log the error, but don't expose failure details to the client
         }
     }
 

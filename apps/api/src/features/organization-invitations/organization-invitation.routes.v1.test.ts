@@ -4,7 +4,7 @@ import { organizationInvitationRoutesV1 } from './organization-invitation.routes
 import { OrganizationInvitationService } from './organization-invitation.service';
 import { OrganizationService } from '../organizations/organization.service'; // Needed for middleware setup
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../errors/app-error';
+import { AppError } from '../../core/app-error';
 import { Bindings } from '../../types/hono';
 import { Kysely, Selectable } from 'kysely';
 import { DB, OrganizationsInvitation } from '../../db/db-types';
@@ -77,7 +77,7 @@ vi.mock('../auth/auth.repository', () => ({
 
 describe('Organization Invitation Routes V1', () => {
   let app: Hono<{ Bindings: Bindings; Variables: OrganizationInvitationRouteVariables }>;
-  const mockUser: UserDTO = { id: 1, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date() };
+  const mockUser: UserDTO = { id: 1, email: 'delivered@resend.dev', username: 'tester', email_verified: true, created_at: new Date(), role: "USER" };
   const mockDb = { /* mock db instance */ } as Kysely<DB>;
   const now = new Date();
   const mockInvitation: CoreInvitation = {

@@ -1,8 +1,8 @@
 import { Kysely, Transaction, Insertable, Selectable } from "kysely";
 import { DB, AuthUser } from "../../db/db-types";
-import { AuthRepository, createAuthRepository } from "../auth/auth.repository";
-import { OrganizationRepository, createOrganizationRepository } from "../organizations/organization.repository";
-import { AppError } from "../../errors/app-error";
+import { AuthRepository } from "../auth/auth.repository";
+import { OrganizationRepository } from "../organizations/organization.repository";
+import { AppError } from "../../core/app-error";
 
 /**
  * Input data for creating a user along with their default organization and membership.
@@ -77,8 +77,6 @@ export async function createUserWithOrganizationAndMembership(
     if (!membership) {
         throw new AppError('Failed to create default membership within transaction', 500);
     }
-
-    console.log(`User+Org+Membership created: User ${createdUser.id}, Org ${org.id}`);
 
     // Re-fetch user to ensure we have the Selectable type consistency if needed, though createUser might already return it.
     // If createUser already returns Selectable<AuthUser>, this might be redundant.

@@ -11,6 +11,7 @@ import {
 } from "@gefakit/shared/src/schemas/todo.schema";
 import { Selectable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
+import { getTodoService } from "../../core/services";
 
 type TodoRouteVars = DbMiddleWareVariables & AuthMiddleWareVariables & {
     todoService: TodoService;
@@ -21,8 +22,8 @@ const app = new Hono<{ Bindings: Bindings; Variables: TodoRouteVars }>();
 // Initialize service per-request
 app.use("/*", async (c, next) => {
   const db = c.get("db");
-  const todoRepository = createTodoRepository({ db });
-  const todoService = createTodoService({ todoRepository });
+  const todoService = getTodoService(db);
+  
   c.set("todoService", todoService);
   await next();
 });

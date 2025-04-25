@@ -46,12 +46,10 @@ export function TodoView() {
             onBlur: createTodoRequestBodySchema,
         },
         onSubmit: async ({ value }) => {
-            console.log('value ', value);
             createTodo(value);
         }
     })
 
-    console.log('form errors ', form.getAllErrors());
     // const form = useForm({
     //     defaultValues: {
     //         title: "",
@@ -107,7 +105,6 @@ export function TodoView() {
                 onSubmit={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Submitting.')
                     form.handleSubmit();
                 }}
             >

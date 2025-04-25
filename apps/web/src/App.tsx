@@ -34,13 +34,11 @@ function AppContent() {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     if (token) {
-      console.log('Token found: ', token);
       verifyEmail({ token });
     }
   }, []);
 
   const handleFetchPersons = async () => {
-    console.log('Fetching persons...');
     try {
       const res = await fetch('http://localhost:8787/api/v1/persons', {
         method: 'GET',
@@ -51,7 +49,6 @@ function AppContent() {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
       const data = await res.json();
-      console.log('Persons data: ', data);
     } catch (error) {
       console.error("Failed to fetch persons:", error);
       // Handle error (e.g., show message) - likely needs authentication

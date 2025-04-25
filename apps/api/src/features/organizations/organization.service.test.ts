@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOrganizationService, OrganizationService } from './organization.service';
 import { OrganizationRepository } from './organization.repository'; // Real repository type
-import { createAppError } from '../../errors';
+import { createAppError } from '../../core/app-error';
 import { DB, OrganizationsOrganization, OrganizationsMembership, OrganizationsInvitation } from '../../db/db-types';
 import { Insertable, Selectable, Kysely, Transaction } from 'kysely';
-import { randomUUID } from 'node:crypto';
 
 // --- Mock Dependencies ---
 
@@ -36,7 +35,7 @@ const mockDb = {
 } as unknown as Kysely<DB>; 
 
 // 3. Mock the error factory (keep as is, looks okay)
-vi.mock('../../errors', () => ({
+vi.mock('../../core/app-error', () => ({
   createAppError: {
     organizations: {
       organizationNotFound: vi.fn(() => new Error('Organization not found mock')),

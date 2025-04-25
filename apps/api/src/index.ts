@@ -3,7 +3,7 @@ import { Bindings } from "./types/hono";
 import { dbMiddleware } from "./middleware/db";
 import { authRoutesV1 } from "./features/auth/auth.routes.v1";
 import { ZodError } from "zod";
-import { AppError } from "./errors/app-error";
+import { AppError } from "./core/app-error";
 import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
 import { organizationsRoutesV1 } from "./features/organizations/organization.routes.v1";
@@ -89,9 +89,9 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
-  console.log('=');
-  console.log('===================== onError =====================');
-  console.log('=');
+  console.log('====================================================');
+  console.log('=                      onError                     =');
+  console.log('====================================================');
   console.error('App Error:', err);
   
   
@@ -119,6 +119,7 @@ app.onError((err, c) => {
   }
 
   if (err instanceof AppError) {
+    console.log('IT IS A APP ERROR');
     const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599 
       ? err.status 
       : 500;

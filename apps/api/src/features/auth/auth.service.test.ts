@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Kysely, Transaction, Selectable } from 'kysely';
 import { createAuthService, AuthService, OAuthUserDetails } from './auth.service';
-import { AuthRepository } from './auth.repository'; // Import real types and factory
-import { OrganizationRepository } from '../organizations/organization.repository'; // Import real types and factory
-import { AppError } from '../../errors/app-error';
+import { AuthRepository, createAuthRepository } from './auth.repository'; // Import real type and factory
+import { OrganizationRepository, createOrganizationRepository } from '../organizations/organization.repository'; // Import related factories
 import { DB, AuthUser, AuthSession, AuthPasswordResetToken, AuthEmailVerification, OrganizationsOrganization, OrganizationsMembership, AuthOauthAccount } from '../../db/db-types';
 import { UserDTO, SessionDTO,} from '@gefakit/shared';
 
@@ -50,23 +49,33 @@ const mockGetRandomValues = vi.fn((array: Uint8Array) => { // Explicitly type ar
     return array;
 });
 
-// 4. Mock Error Factory
-vi.mock('../../errors', () => ({
-  createAppError: {
-    auth: {
-      invalidCredentials: vi.fn(() => new AppError('Invalid credentials mock', 401)),
-      emailNotVerified: vi.fn(() => new AppError('Email not verified mock', 403)),
-      oauthEmailRequired: vi.fn(({ provider }: { provider: string }) => new AppError(`OAuth email required mock for ${provider}`, 400)),
-      userNotFound: vi.fn(() => new AppError('User not found mock', 404)), // Added for handleOAuthCallback etc.
+// 4. Mock Error Factory - Modified
+vi.mock('../../core/app-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/app-error');
+  return {
+    ...actual, // Include original exports like AppError
+    createAppError: { // Mock only the factory object
+      auth: {
+        invalidCredentials: vi.fn(() => new actual.AppError('Invalid credentials mock', 401)),
+        emailNotVerified: vi.fn(() => new actual.AppError('Email not verified mock', 401)), // Added missing mock
+        oauthEmailRequired: vi.fn(({ provider }: { provider: string }) => new actual.AppError(`OAuth email required mock for ${provider}`, 400)),
+        userNotFound: vi.fn(() => new actual.AppError('User not found mock', 404)),
+        userCreationFailed: vi.fn((reason: string) => new actual.AppError(reason || 'User creation failed mock', 500)), // Add userCreationFailed
+        weakPassword: vi.fn((reason: string) => new actual.AppError(reason || 'Weak password mock', 400)),     // Add weakPassword
+        invalidOtp: vi.fn(() => new actual.AppError('Invalid OTP mock', 400)),                  // Add invalidOtp
+        expiredOtp: vi.fn(() => new actual.AppError('Expired OTP mock', 400)),                  // Add expiredOtp
+      },
+      organizations: { // Keep other mocks if needed
+          notFound: vi.fn((id: any) => new actual.AppError(`Organization not found mock: ${id}`, 404)),
+      }
     },
-    // Add other specific errors if needed by auth service directly
-  },
-}));
+  };
+});
 
 // 5. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from './auth.repository';
 import { createOrganizationRepository as mockCreateOrganizationRepositoryFn } from '../organizations/organization.repository';
-import { createAppError as mockErrors } from '../../errors';
+import { AppError, createAppError as mockErrors } from '../../core/app-error';
 import { hashPassword as mockHashPassword, verifyPassword as mockVerifyPassword } from '../../lib/crypto';
 import { sha256 as mockSha256 } from '@oslojs/crypto/sha2';
 import { encodeHexLowerCase as mockEncodeHexLowerCase, encodeBase32LowerCaseNoPadding as mockEncodeBase32, encodeBase64url as mockEncodeBase64url } from '@oslojs/encoding';
@@ -291,14 +300,12 @@ describe('AuthService', () => {
     // IMPORTANT: Must mock the result of the hash/encode functions used internally
     vi.mocked(mockSha256).mockImplementation((input: Uint8Array) => {
         const text = new TextDecoder().decode(input);
-        // console.log(`Mock SHA256 input: '${text}'`); // Debugging
         if (text === sessionToken) return new TextEncoder().encode('hashed_session_token_bytes');
         if (text === resetTokenPlain) return new TextEncoder().encode('hashed_reset_token_bytes');
         return new TextEncoder().encode('generic_hash_bytes'); // Default hash
     });
     vi.mocked(mockEncodeHexLowerCase).mockImplementation((input: Uint8Array) => {
         const text = new TextDecoder().decode(input);
-         // console.log(`Mock EncodeHex input: '${text}'`); // Debugging
         if (text === 'hashed_session_token_bytes') return sessionId;
         if (text === 'hashed_reset_token_bytes') return resetTokenHashed;
         return 'generic_hex_hash'; // Default hex hash
@@ -369,11 +376,6 @@ describe('AuthService', () => {
             expires_at: expect.any(Date),
          })
       });
-      // Expect DTO shape for the final returned user
-      console.log(`======== signInWithEmail =========`)
-      console.log('result.user', result.user)
-      console.log('mockUserDTO', mockUserDTO)
-      console.log(`======== signInWithEmail =========`)
       expect({...result.user}).toEqual({...mockUserDTO, recovery_code: null});
       expect(result.sessionToken).toBe(sessionToken); // Ensure crypto mocks generate this
       expect(mockErrors.auth.invalidCredentials).not.toHaveBeenCalled();
@@ -428,11 +430,6 @@ describe('AuthService', () => {
       const { session, user } = await authService.validateSession({ token: sessionToken });
 
       expect(mockAuthRepoInstance.findSessionWithUser).toHaveBeenCalledWith({ sessionId });
-      // Expect DTO shapes for the return values
-      console.log('======== validateSession =========')
-      console.log('session', session)
-      console.log('mockSessionDTO', mockSessionDTO)
-      console.log('======== validateSession =========')
       expect(session).toEqual(mockSessionDTO);
       expect(user).toEqual(mockUserDTO);
       expect(mockAuthRepoInstance.deleteSession).not.toHaveBeenCalled();
@@ -804,7 +801,6 @@ describe('AuthService', () => {
                     provider_user_id: oauthDetails.providerUserId,
                 }
             });
-             expect(mockTxAuthRepoInstance.findUserById).toHaveBeenCalledWith(createdOauthUser.id); // Final fetch in tx
 
             // Verify session creation (outside tx)
              // Check createSession call with the correct STRUCTURE

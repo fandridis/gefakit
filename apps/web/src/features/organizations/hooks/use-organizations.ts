@@ -41,7 +41,6 @@ export function useOrganizations() {
     >({
         mutationFn: apiLeaveOrganization,
         onSuccess: () => {
-            console.log('Organization membership deleted successfully.');
             // Invalidate memberships query to refresh the list
             queryClient.invalidateQueries({ queryKey: ['myOrganizationMemberships'] });
         },

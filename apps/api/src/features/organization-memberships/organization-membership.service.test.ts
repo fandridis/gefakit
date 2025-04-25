@@ -4,7 +4,7 @@ import { createOrganizationMembershipService, OrganizationMembershipService } fr
 import { OrganizationMembershipRepository } from './organization-membership.repository';
 import { DB, OrganizationsMembership } from '../../db/db-types';
 import { Kysely, Selectable } from 'kysely';
-import { AppError } from '../../errors/app-error'; // Import AppError
+// Removed duplicate AppError import
 
 // --- Mock Dependencies ---
 
@@ -18,16 +18,20 @@ vi.mock('./organization-membership.repository', () => ({
 import { createOrganizationMembershipRepository as mockCreateOrganizationMembershipRepositoryFn } from './organization-membership.repository';
 
 
-// 3. Mock the error factory
-vi.mock('../../errors', () => ({
-  createAppError: {
-    organizations: {
-      actionNotAllowed: vi.fn((msg) => new AppError(msg ?? 'Action not allowed mock', 403)),
-      // Add other error types if needed by the service
-    },
-  },
-}));
-import { createAppError as mockCreateAppError } from '../../errors'; // Import the mocked factory
+// 3. Mock the error factory - Modified
+vi.mock('../../core/app-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/app-error');
+  return {
+      ...actual, // Include original AppError
+      createAppError: { // Mock factory
+          organizations: {
+            actionNotAllowed: vi.fn((msg) => new actual.AppError(msg ?? 'Action not allowed mock', 403)),
+          },
+      },
+  };
+});
+// Import AppError after mock
+import { AppError, createAppError as mockCreateAppError } from '../../core/app-error';
 
 // 4. Mock Kysely DB (minimal mock, as it's not directly used by the service logic shown)
 const mockDb = {} as Kysely<DB>;
