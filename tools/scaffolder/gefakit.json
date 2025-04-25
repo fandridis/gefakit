@@ -1,0 +1,21 @@
+{
+    "$schema": {
+        "type": "object",
+        "properties": {
+            "componentsPath": {
+                "type": "string",
+                "description": "Path to components directory"
+            },
+            "globalsCssPath": {
+                "type": "string",
+                "description": "Path to globals CSS file"
+            }
+        },
+        "required": [
+            "componentsPath",
+            "globalCssPath"
+        ]
+    },
+    "componentsPath": "/components/gefakit",
+    "globalsCssPath": "/app/globals.css"
+}

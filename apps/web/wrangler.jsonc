@@ -14,12 +14,12 @@
 		"enabled": true
 	},
 	"vars": {
-		"MY_VAR": "Top-level var 1"
+		"MY_VAR": "Top-level var 1 (Still development)"
 	},
 	"env": {
-		"staging": {
+		"development": {
 			"vars": {
-				"MY_VAR": "Staging var 1"
+				"MY_VAR": "Development var 1"
 			}
 		},
 		"production": {

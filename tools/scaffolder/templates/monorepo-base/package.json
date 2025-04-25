@@ -1,0 +1,14 @@
+{
+    "name": "gefakit",
+    "version": "0.0.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:web": "pnpm --filter gefakit-web dev",
+        "dev:api": "pnpm --filter gefakit-api dev"
+    },
+    "packageManager": "pnpm@10.8.0"
+}
