@@ -9,7 +9,7 @@ import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
 import { OrganizationService } from './organization.service';
 import { EmailService } from '../emails/email.service';
-import { createAppError } from '../../core/app-error';
+import { createApiError } from '../../core/api-error';
 import { OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
 import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
 import { randomUUID } from 'node:crypto';
@@ -101,7 +101,7 @@ app.post('/:orgId/invitations', zValidator('json', createOrganizationInvitationR
   const organization = await organizationService.findOrganizationById({organizationId: parseInt(orgId)});
 
   if (!organization) {
-    throw createAppError.organizations.organizationNotFound();
+    throw createApiError.organizations.organizationNotFound();
   }
 
   const invitation = await organizationInvitationService.createInvitation({

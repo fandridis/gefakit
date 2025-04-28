@@ -1,4 +1,4 @@
-import { AppError } from '../core/app-error';
+import { ApiError } from '@gefakit/shared';
 import { createMiddleware } from 'hono/factory';
 import { Bindings } from '../types/hono';
 import { AuthMiddleWareVariables } from './auth';
@@ -13,11 +13,11 @@ export const adminAuth = createMiddleware<{ Bindings: Bindings, Variables: Admin
 
     if (!user || typeof user.role !== 'string') {
       // Should never happen, as auth middleware should have already checked this.
-      throw new AppError('Forbidden: Access denied.', 403);
+      throw new ApiError('Forbidden: Access denied.', 403);
     }
 
     if (!ALLOWED_ROLES.has(user.role)) {
-      throw new AppError('Forbidden: You do not have permission to perform this action.', 403);
+      throw new ApiError('Forbidden: You do not have permission to perform this action.', 403);
     }
     
     await next();

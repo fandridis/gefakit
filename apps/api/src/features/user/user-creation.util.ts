@@ -2,7 +2,7 @@ import { Kysely, Transaction, Insertable, Selectable } from "kysely";
 import { DB, AuthUser } from "../../db/db-types";
 import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
-import { AppError } from "../../core/app-error";
+import { ApiError } from "@gefakit/shared";
 
 /**
  * Input data for creating a user along with their default organization and membership.
@@ -33,7 +33,7 @@ type CreatedUserType = Omit<Selectable<AuthUser>, 'password_hash' | 'recovery_co
  * @param createOrganizationRepository Factory function for OrganizationRepository.
  * @param data The user and organization details.
  * @returns A promise resolving to the newly created user (as returned by createUser) and organization ID.
- * @throws AppError if any creation step fails. Ensure the calling transaction handles rollbacks.
+ * @throws ApiError if any creation step fails. Ensure the calling transaction handles rollbacks.
  */
 export async function createUserWithOrganizationAndMembership(
     trx: Transaction<DB>,
@@ -56,14 +56,14 @@ export async function createUserWithOrganizationAndMembership(
     const createdUser = await authRepoTx.createUser({ user: newUserInsert });
     if (!createdUser) {
         // Throw within the transaction to ensure rollback
-        throw new AppError('Failed to create user within transaction', 500);
+        throw new ApiError('Failed to create user within transaction', 500);
     }
 
     // 2. Create the Default Organization
     const orgName = data.default_org_name ?? `${createdUser.username}'s org`;
     const org = await orgRepoTx.createOrganization({ name: orgName });
     if (!org) {
-        throw new AppError('Failed to create default organization within transaction', 500);
+        throw new ApiError('Failed to create default organization within transaction', 500);
     }
 
     // 3. Create the Default Membership
@@ -75,14 +75,14 @@ export async function createUserWithOrganizationAndMembership(
         role: membershipRole
     });
     if (!membership) {
-        throw new AppError('Failed to create default membership within transaction', 500);
+        throw new ApiError('Failed to create default membership within transaction', 500);
     }
 
     // Re-fetch user to ensure we have the Selectable type consistency if needed, though createUser might already return it.
     // If createUser already returns Selectable<AuthUser>, this might be redundant.
     // const finalUser = await authRepoTx.findUserById(createdUser.id);
     // if (!finalUser) {
-    //      throw new AppError('Failed to re-fetch newly created user within transaction', 500);
+    //      throw new ApiError('Failed to re-fetch newly created user within transaction', 500);
     // }
 
     // Return the user object directly from createUser

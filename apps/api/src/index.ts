@@ -3,7 +3,7 @@ import { Bindings } from "./types/hono";
 import { dbMiddleware } from "./middleware/db";
 import { authRoutesV1 } from "./features/auth/auth.routes.v1";
 import { ZodError } from "zod";
-import { AppError } from "./core/app-error";
+import { ApiError } from "@gefakit/shared";
 import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
 import { organizationsRoutesV1 } from "./features/organizations/organization.routes.v1";
@@ -29,14 +29,25 @@ const genericRateLimiter = kvTokenBucketRateLimiter({
 });
 
 app.use('/api/*', async (c, next) => {
-  c.header('Access-Control-Allow-Origin', envConfig.APP_URL || 'http://localhost:5173');
+  const origin = envConfig.APP_URL || 'http://localhost:5173'; // Get the allowed origin
+  c.header('Access-Control-Allow-Origin', origin);
   c.header('Access-Control-Allow-Credentials', 'true');
   c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); 
+  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
   if (c.req.method === 'OPTIONS') {
-    // Return OK status for preflight requests
-    return c.text('OK', 200); 
+    // Respond immediately and explicitly for OPTIONS preflight requests
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      },
+    });
   }
+
   await next();
 });
 
@@ -118,15 +129,16 @@ app.onError((err, c) => {
     }, 400);
   }
 
-  if (err instanceof AppError) {
-    console.log('IT IS A APP ERROR');
+  if (err instanceof ApiError) {
+    console.log('IT IS A API ERROR: ', err);
     const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599 
       ? err.status 
       : 500;
     return c.json({ 
-      ok: false, 
-      errorMessage: err.message,
-      errorDetails: err.details 
+      ok: false,
+      name: err.name, 
+      message: err.message,
+      details: err.details
     }, statusCode as any);
   }
 

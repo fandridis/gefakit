@@ -6,7 +6,7 @@ import { AuthMiddleWareVariables } from '../../middleware/auth';
 import type { OrganizationMembershipService } from './organization-membership.service';
 import { Selectable } from 'kysely';
 import { OrganizationsMembership } from '../../db/db-types';
-import { AppError } from '../../core/app-error';
+import { ApiError } from '@gefakit/shared';
 import { ZodError } from 'zod';
 
 // --- Mock Dependencies ---
@@ -71,7 +71,7 @@ describe('Organization Membership Routes v1', () => {
     app.use('/*', async (c, next) => {
       if (simulateAuthFailure) {
         // Simulate auth failure by throwing an error that onError will catch
-        throw new AppError('Unauthorized', 401);
+        throw new ApiError('Unauthorized', 401);
       } else {
         // Simulate successful auth
         c.set('user', testUser as AuthMiddleWareVariables['user']);
@@ -95,7 +95,7 @@ describe('Organization Membership Routes v1', () => {
           errors: zodError.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
         }, 400);
       }
-      if (err instanceof AppError) {
+      if (err instanceof ApiError) {
         const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599 
           ? err.status 
           : 500;

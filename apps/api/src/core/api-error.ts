@@ -1,18 +1,3 @@
-export class AppError extends Error {
-  readonly status: number;
-  readonly details?: Record<string, any>;
-  
-  constructor(message: string, status = 400, details?: Record<string, any>) {
-    super(message);
-    // Set the prototype explicitly for correct instanceof checks
-    Object.setPrototypeOf(this, new.target.prototype);
-
-    this.name = 'AppError';
-    this.status = status;
-    this.details = details;
-  }
-}
-
 /**
  * Import all feature-specific error creators here.
  */
@@ -26,10 +11,10 @@ import { adminErrors } from '../features/admin/admin.errors';
 
 /**
  * Central object for creating application-specific errors.
- * Usage: `throw createAppError.auth.invalidCredentials();`
- * `throw createAppError.todos.notFound('123');`
+ * Usage: `throw createApiError.auth.invalidCredentials();`
+ * `throw createApiError.todos.notFound('123');`
  */
-export const createAppError = {
+export const createApiError = {
   auth: authErrors,
   todos: todoErrors,
   organizations: organizationErrors,

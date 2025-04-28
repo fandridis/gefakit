@@ -1,5 +1,5 @@
 import { getCookie } from 'hono/cookie';
-import { createAppError } from '../core/app-error';
+import { createApiError } from '../core/api-error';
 import { Bindings } from '../types/hono';
 import { createMiddleware } from 'hono/factory'
 import { SessionDTO, UserDTO } from '@gefakit/shared/src/types/auth';
@@ -19,7 +19,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
     const sessionToken = getCookie(c, 'gefakit-session');
 
     if (!sessionToken) {
-        throw createAppError.auth.unauthorized('No session token provided.');
+        throw createApiError.auth.unauthorized('No session token provided.');
     }
 
     try {
@@ -28,7 +28,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
         const { user, session } = await authService.getCurrentSession({token: sessionToken}); 
 
         if (!user || !session) {
-            throw createAppError.auth.unauthorized('Invalid session token.');
+            throw createApiError.auth.unauthorized('Invalid session token.');
         }
 
         c.set('user', user);
@@ -46,6 +46,6 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings, Variables: 
     } catch (error: any) {
         console.error("Auth Middleware Error:", error.message); 
         // Re-throw a specific unauthorized error for the client
-        throw createAppError.auth.unauthorized('Invalid session token.');
+        throw createApiError.auth.unauthorized('Invalid session token.');
     }
 }); 

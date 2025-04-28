@@ -6,7 +6,7 @@ import { OrganizationMembershipService } from '../organization-memberships/organ
 import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
 import { EmailService } from '../emails/email.service';
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../core/app-error';
+import { ApiError } from '@gefakit/shared';
 import { Bindings } from '../../types/hono';
 import { Kysely, Selectable } from 'kysely';
 import { DB, OrganizationsOrganization, OrganizationsInvitation } from '../../db/db-types';
@@ -41,9 +41,9 @@ interface SuccessResponse {
 // --- Mock Dependencies ---
 
 // Mock the error factory
-const mockOrganizationNotFound = vi.fn(() => new AppError('Organization not found mock', 404));
-const mockActionNotAllowed = vi.fn((msg?: string) => new AppError(msg || 'Action not allowed mock', 403));
-const createAppError = {
+const mockOrganizationNotFound = vi.fn(() => new ApiError('Organization not found mock', 404));
+const mockActionNotAllowed = vi.fn((msg?: string) => new ApiError(msg || 'Action not allowed mock', 403));
+const createApiError = {
   organizations: {
     organizationNotFound: mockOrganizationNotFound,
     actionNotAllowed: mockActionNotAllowed,
@@ -150,7 +150,7 @@ describe('Organization Routes V1', () => {
         }, 400);
       }
 
-      if (err instanceof AppError) {
+      if (err instanceof ApiError) {
         const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599
           ? err.status
           : 500;
@@ -255,8 +255,8 @@ describe('Organization Routes V1', () => {
             expect(mockDeleteOrganization).toHaveBeenCalledWith({ organizationId: orgIdToDelete, userId: mockUser.id });
       });
 
-      it('should return 404 if service throws organizationNotFound AppError', async () => {
-            const notFoundError = createAppError.organizations.organizationNotFound();
+      it('should return 404 if service throws organizationNotFound ApiError', async () => {
+            const notFoundError = createApiError.organizations.organizationNotFound();
             mockDeleteOrganization.mockRejectedValue(notFoundError);
 
             const res = await app.request(`/organizations/${orgIdToDelete}`, {
@@ -270,8 +270,8 @@ describe('Organization Routes V1', () => {
             expect(mockDeleteOrganization).toHaveBeenCalledWith({ organizationId: orgIdToDelete, userId: mockUser.id });
       });
 
-      it('should return 403 if service throws actionNotAllowed AppError', async () => {
-            const actionNotAllowedError = createAppError.organizations.actionNotAllowed('Cannot delete');
+      it('should return 403 if service throws actionNotAllowed ApiError', async () => {
+            const actionNotAllowedError = createApiError.organizations.actionNotAllowed('Cannot delete');
             mockDeleteOrganization.mockRejectedValue(actionNotAllowedError);
 
             const res = await app.request(`/organizations/${orgIdToDelete}`, {
@@ -303,8 +303,8 @@ describe('Organization Routes V1', () => {
           expect(mockRemoveCurrentUserMembershipFromOrg).toHaveBeenCalledWith({ organizationId: orgId, userId: mockUser.id });
       });
 
-      it('should return 403 if service throws AppError (e.g., owner cannot leave)', async () => {
-          const error = createAppError.organizations.actionNotAllowed("Owner cannot leave"); // Assuming this error exists or is mocked
+      it('should return 403 if service throws ApiError (e.g., owner cannot leave)', async () => {
+          const error = createApiError.organizations.actionNotAllowed("Owner cannot leave"); // Assuming this error exists or is mocked
           mockRemoveCurrentUserMembershipFromOrg.mockRejectedValue(error);
 
           const res = await app.request(`/organizations/${orgId}/memberships/me`, {
@@ -339,9 +339,9 @@ describe('Organization Routes V1', () => {
           expect(mockRemoveUserMembershipFromOrg).toHaveBeenCalledWith({ organizationId: orgId, userId: membershipUserIdToRemove });
       });
 
-       it('should return 403 if service throws AppError (e.g., permission denied)', async () => {
+       it('should return 403 if service throws ApiError (e.g., permission denied)', async () => {
           // Assume the service layer handles authorization and throws if needed.
-          const error = createAppError.organizations.actionNotAllowed("Permission denied to remove member");
+          const error = createApiError.organizations.actionNotAllowed("Permission denied to remove member");
           mockRemoveUserMembershipFromOrg.mockRejectedValue(error);
 
           const res = await app.request(`/organizations/${orgId}/memberships/${membershipUserIdToRemove}`, {
@@ -445,7 +445,7 @@ describe('Organization Routes V1', () => {
               body: JSON.stringify(requestBody),
           });
 
-          expect(res.status).toBe(404); // Expecting 404 based on createAppError.organizations.organizationNotFound()
+          expect(res.status).toBe(404); // Expecting 404 based on createApiError.organizations.organizationNotFound()
           const body = await res.json() as ErrorResponse;
           expect(body.ok).toBe(false);
           // Assuming the route throws the specific error

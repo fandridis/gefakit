@@ -49,33 +49,44 @@ const mockGetRandomValues = vi.fn((array: Uint8Array) => { // Explicitly type ar
     return array;
 });
 
-// 4. Mock Error Factory - Modified
-vi.mock('../../core/app-error', async (importOriginal) => {
-  const actual = await importOriginal() as typeof import('../../core/app-error');
+// 4. Mock Error Factory - Corrected
+vi.mock('../../core/api-error', async (importOriginal) => {
+  // Import the factory module we are mocking
+  const actualFactoryModule = await importOriginal() as typeof import('../../core/api-error');
+  // Import the *real* ApiError class from its actual location
+  const { ApiError } = await import('@gefakit/shared');
+
   return {
-    ...actual, // Include original exports like AppError
-    createAppError: { // Mock only the factory object
+    // Do NOT spread the original module here (actualFactoryModule)
+    // Only return the mocked parts
+    createApiError: { // Mock only the factory object
       auth: {
-        invalidCredentials: vi.fn(() => new actual.AppError('Invalid credentials mock', 401)),
-        emailNotVerified: vi.fn(() => new actual.AppError('Email not verified mock', 401)), // Added missing mock
-        oauthEmailRequired: vi.fn(({ provider }: { provider: string }) => new actual.AppError(`OAuth email required mock for ${provider}`, 400)),
-        userNotFound: vi.fn(() => new actual.AppError('User not found mock', 404)),
-        userCreationFailed: vi.fn((reason: string) => new actual.AppError(reason || 'User creation failed mock', 500)), // Add userCreationFailed
-        weakPassword: vi.fn((reason: string) => new actual.AppError(reason || 'Weak password mock', 400)),     // Add weakPassword
-        invalidOtp: vi.fn(() => new actual.AppError('Invalid OTP mock', 400)),                  // Add invalidOtp
-        expiredOtp: vi.fn(() => new actual.AppError('Expired OTP mock', 400)),                  // Add expiredOtp
+        invalidCredentials: vi.fn(() => new ApiError('Invalid credentials mock', 401)),
+        emailNotVerified: vi.fn(() => new ApiError('Email not verified mock', 401)),
+        oauthEmailRequired: vi.fn(({ provider }: { provider: string }) => new ApiError(`OAuth email required mock for ${provider}`, 400)),
+        userNotFound: vi.fn(() => new ApiError('User not found mock', 404)),
+        userCreationFailed: vi.fn((reason: string) => new ApiError(reason || 'User creation failed mock', 500)),
+        weakPassword: vi.fn((reason: string) => new ApiError(reason || 'Weak password mock', 400)),
+        invalidOtp: vi.fn(() => new ApiError('Invalid OTP mock', 400)),
+        expiredOtp: vi.fn(() => new ApiError('Expired OTP mock', 400)),
       },
-      organizations: { // Keep other mocks if needed
-          notFound: vi.fn((id: any) => new actual.AppError(`Organization not found mock: ${id}`, 404)),
+      organizations: {
+          notFound: vi.fn((id: any) => new ApiError(`Organization not found mock: ${id}`, 404)),
       }
     },
+    // If the original module had other exports needed by the test file,
+    // explicitly re-export them from actualFactoryModule here.
+    // e.g., someErrorCode: actualFactoryModule.someErrorCode
   };
 });
 
 // 5. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from './auth.repository';
 import { createOrganizationRepository as mockCreateOrganizationRepositoryFn } from '../organizations/organization.repository';
-import { AppError, createAppError as mockErrors } from '../../core/app-error';
+// Import the mocked factory
+import { createApiError as mockErrors } from '../../core/api-error';
+// Import the REAL ApiError class from its actual location
+import { ApiError } from '@gefakit/shared';
 import { hashPassword as mockHashPassword, verifyPassword as mockVerifyPassword } from '../../lib/crypto';
 import { sha256 as mockSha256 } from '@oslojs/crypto/sha2';
 import { encodeHexLowerCase as mockEncodeHexLowerCase, encodeBase32LowerCaseNoPadding as mockEncodeBase32, encodeBase64url as mockEncodeBase64url } from '@oslojs/encoding';
@@ -577,7 +588,7 @@ describe('AuthService', () => {
             mockAuthRepoInstance.findPasswordResetTokenByHashedToken.mockResolvedValue(null);
 
             await expect(authService.resetPassword({ token: resetTokenPlain, newPassword }))
-                .rejects.toThrow(AppError); // Expecting AppError
+                .rejects.toThrow(ApiError); // Expecting ApiError
             expect(mockAuthRepoInstance.findPasswordResetTokenByHashedToken).toHaveBeenCalledWith({ hashedToken: resetTokenHashed });
             expect(vi.mocked(mockHashPassword)).not.toHaveBeenCalled();
             expect(mockDb.transaction).not.toHaveBeenCalled();
@@ -590,7 +601,7 @@ describe('AuthService', () => {
             mockAuthRepoInstance.deletePasswordResetToken.mockResolvedValue({ count: 1n });
 
             await expect(authService.resetPassword({ token: resetTokenPlain, newPassword }))
-                .rejects.toThrow(AppError); // Expecting AppError for expiry
+                .rejects.toThrow(ApiError); // Expecting ApiError for expiry
             expect(mockAuthRepoInstance.findPasswordResetTokenByHashedToken).toHaveBeenCalledWith({ hashedToken: resetTokenHashed });
             expect(mockAuthRepoInstance.deletePasswordResetToken).toHaveBeenCalledWith({ tokenId: expiredResetRecord.id }); // Should clean up expired token
             expect(vi.mocked(mockHashPassword)).not.toHaveBeenCalled();
@@ -606,7 +617,7 @@ describe('AuthService', () => {
             mockExecute.mockRejectedValueOnce(txError);
 
             await expect(authService.resetPassword({ token: resetTokenPlain, newPassword }))
-                .rejects.toThrow(AppError); // Service wraps tx error in AppError
+                .rejects.toThrow(ApiError); // Service wraps tx error in ApiError
 
             expect(mockAuthRepoInstance.findPasswordResetTokenByHashedToken).toHaveBeenCalledWith({ hashedToken: resetTokenHashed });
             expect(vi.mocked(mockHashPassword)).toHaveBeenCalledWith(newPassword);
@@ -642,7 +653,7 @@ describe('AuthService', () => {
             mockAuthRepoInstance.findEmailVerificationTokenByValue.mockResolvedValue(null);
 
             await expect(authService.verifyEmail({ token: verificationToken }))
-                .rejects.toThrow(AppError); // Expecting AppError
+                .rejects.toThrow(ApiError); // Expecting ApiError
             expect(mockAuthRepoInstance.findEmailVerificationTokenByValue).toHaveBeenCalledWith({ tokenValue: verificationToken });
             expect(mockDb.transaction).not.toHaveBeenCalled();
         });
@@ -652,7 +663,7 @@ describe('AuthService', () => {
             mockAuthRepoInstance.findEmailVerificationTokenByValue.mockResolvedValue(expiredVerification);
 
             await expect(authService.verifyEmail({ token: verificationToken }))
-                .rejects.toThrow(AppError); // Expecting AppError for expiry
+                .rejects.toThrow(ApiError); // Expecting ApiError for expiry
             expect(mockAuthRepoInstance.findEmailVerificationTokenByValue).toHaveBeenCalledWith({ tokenValue: verificationToken });
             // No cleanup mentioned for expired verification tokens in service, unlike password reset
             expect(mockDb.transaction).not.toHaveBeenCalled();
@@ -666,7 +677,7 @@ describe('AuthService', () => {
             mockExecute.mockRejectedValueOnce(txError);
 
             await expect(authService.verifyEmail({ token: verificationToken }))
-                .rejects.toThrow(AppError); // Service wraps tx error in AppError
+                .rejects.toThrow(ApiError); // Service wraps tx error in ApiError
 
             expect(mockAuthRepoInstance.findEmailVerificationTokenByValue).toHaveBeenCalledWith({ tokenValue: verificationToken });
             expect(mockDb.transaction).toHaveBeenCalledTimes(1);
@@ -826,7 +837,7 @@ describe('AuthService', () => {
             expect(mockErrors.auth.oauthEmailRequired).toHaveBeenCalledWith({ provider: oauthDetailsNoEmail.provider });
         });
 
-        it('should re-throw AppError if transaction fails during user creation', async () => {
+        it('should re-throw ApiError if transaction fails during user creation', async () => {
              mockAuthRepoInstance.findUserByProviderId.mockResolvedValue(null); // No link
              mockAuthRepoInstance.findUserWithPasswordByEmail.mockResolvedValue(null); // No email match
              const txError = new Error("DB constraint failed");
@@ -835,7 +846,7 @@ describe('AuthService', () => {
              mockTxAuthRepoInstance.createUser.mockRejectedValue(txError);
 
              await expect(authService.handleOAuthCallback(oauthDetails))
-                .rejects.toThrow(AppError); // Service should wrap the error
+                .rejects.toThrow(ApiError); // Service should wrap the error
 
              expect(mockDb.transaction).toHaveBeenCalledTimes(1);
              expect(mockExecute).toHaveBeenCalledTimes(1);

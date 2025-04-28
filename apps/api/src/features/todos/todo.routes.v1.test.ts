@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { todoRoutesV1 } from './todo.routes.v1';
 import { TodoService } from './todo.service';
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../core/app-error'; // Import AppError for testing error responses
+import { ApiError } from '@gefakit/shared'; // Import ApiError for testing error responses
 import { Bindings } from '../../types/hono';
 import { Kysely } from 'kysely'; // Import Kysely for DB type
 import { DB } from '../../db/db-types'; // Import DB types
@@ -91,7 +91,7 @@ describe('Todo Routes V1', () => {
         }, 400); 
       }
 
-      if (err instanceof AppError) {
+      if (err instanceof ApiError) {
         const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599 
           ? err.status 
           : 500;
@@ -242,9 +242,9 @@ describe('Todo Routes V1', () => {
       expect(body.errors?.some((e: any) => e.field === 'title')).toBe(true);
     });
 
-    it('should return 404 if todoService throws todoNotFound AppError', async () => {
-      // Simulate the service throwing a specific AppError
-      const notFoundError = new AppError('Todo not found', 404);
+    it('should return 404 if todoService throws todoNotFound ApiError', async () => {
+      // Simulate the service throwing a specific ApiError
+      const notFoundError = new ApiError('Todo not found', 404);
       mockUpdateTodo.mockRejectedValue(notFoundError);
 
       const res = await app.request(`/todos/${todoId}`, {
@@ -260,9 +260,9 @@ describe('Todo Routes V1', () => {
       expect(body.errorMessage).toBe('Todo not found');
     });
     
-    it('should return 403 if todoService throws actionNotAllowed AppError', async () => {
-      // Simulate the service throwing a specific AppError
-      const notAllowedError = new AppError('Action not allowed', 403); // Assuming 403 for forbidden
+    it('should return 403 if todoService throws actionNotAllowed ApiError', async () => {
+      // Simulate the service throwing a specific ApiError
+      const notAllowedError = new ApiError('Action not allowed', 403); // Assuming 403 for forbidden
       mockUpdateTodo.mockRejectedValue(notAllowedError);
 
       const res = await app.request(`/todos/${todoId}`, {
@@ -271,7 +271,7 @@ describe('Todo Routes V1', () => {
         body: JSON.stringify(validUpdateData),
       });
 
-      // Now expecting the onError handler to catch AppError and set status
+      // Now expecting the onError handler to catch ApiError and set status
       expect(res.status).toBe(403); 
       expect(mockUpdateTodo).toHaveBeenCalledTimes(1);
       const body = await res.json() as ErrorResponse;
@@ -302,15 +302,15 @@ describe('Todo Routes V1', () => {
       expect(mockDeleteTodo).toHaveBeenCalledWith({ id: todoId, authorId: mockUser.id });
     });
 
-    it('should return 404 if todoService throws todoNotFound AppError', async () => {
-      const notFoundError = new AppError('Todo not found', 404);
+    it('should return 404 if todoService throws todoNotFound ApiError', async () => {
+      const notFoundError = new ApiError('Todo not found', 404);
       mockDeleteTodo.mockRejectedValue(notFoundError);
 
       const res = await app.request(`/todos/${todoId}`, {
         method: 'DELETE',
       });
 
-      // Now expecting the onError handler to catch AppError and set status
+      // Now expecting the onError handler to catch ApiError and set status
       expect(res.status).toBe(404);
       expect(mockDeleteTodo).toHaveBeenCalledTimes(1);
       const body = await res.json() as ErrorResponse;
@@ -318,15 +318,15 @@ describe('Todo Routes V1', () => {
       expect(body.errorMessage).toBe('Todo not found');
     });
 
-    it('should return 403 if todoService throws actionNotAllowed AppError', async () => {
-      const notAllowedError = new AppError('Action not allowed', 403);
+    it('should return 403 if todoService throws actionNotAllowed ApiError', async () => {
+      const notAllowedError = new ApiError('Action not allowed', 403);
       mockDeleteTodo.mockRejectedValue(notAllowedError);
 
       const res = await app.request(`/todos/${todoId}`, {
         method: 'DELETE',
       });
 
-      // Now expecting the onError handler to catch AppError and set status
+      // Now expecting the onError handler to catch ApiError and set status
       expect(res.status).toBe(403);
       expect(mockDeleteTodo).toHaveBeenCalledTimes(1);
       const body = await res.json() as ErrorResponse;

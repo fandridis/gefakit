@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOrganizationService, OrganizationService } from './organization.service';
 import { OrganizationRepository } from './organization.repository'; // Real repository type
-import { createAppError } from '../../core/app-error';
+import { createApiError } from '../../core/api-error';
+import { ApiError } from '@gefakit/shared';
 import { DB, OrganizationsOrganization, OrganizationsMembership, OrganizationsInvitation } from '../../db/db-types';
 import { Insertable, Selectable, Kysely, Transaction } from 'kysely';
 
@@ -35,8 +36,8 @@ const mockDb = {
 } as unknown as Kysely<DB>; 
 
 // 3. Mock the error factory (keep as is, looks okay)
-vi.mock('../../core/app-error', () => ({
-  createAppError: {
+vi.mock('../../core/api-error', () => ({
+  createApiError: {
     organizations: {
       organizationNotFound: vi.fn(() => new Error('Organization not found mock')),
       actionNotAllowed: vi.fn((msg: string) => new Error(`Action not allowed mock: ${msg}`)),
@@ -301,8 +302,8 @@ describe('OrganizationService', () => {
       expect(mockTransactionalRepoInstance.deleteOrganization).toHaveBeenCalledWith({ organizationId });
       expect(result).toEqual(deleteResult);
       // Ensure errors not called
-      expect(createAppError.organizations.actionNotAllowed).not.toHaveBeenCalled();
-      expect(createAppError.organizations.organizationNotFound).not.toHaveBeenCalled();
+      expect(createApiError.organizations.actionNotAllowed).not.toHaveBeenCalled();
+      expect(createApiError.organizations.organizationNotFound).not.toHaveBeenCalled();
     });
 
     it('should throw actionNotAllowed if user tries to delete their only organization', async () => {
@@ -316,7 +317,7 @@ describe('OrganizationService', () => {
       expect(mockDirectRepoInstance.findAllOrganizationMembershipsByUserId).toHaveBeenCalledWith({ userId });
       // Transaction should not even start
       expect(mockDb.transaction).not.toHaveBeenCalled();
-      expect(createAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('Cannot delete your only organization...');
+      expect(createApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('Cannot delete your only organization...');
     });
 
     it('should throw organizationNotFound if organization does not exist (inside transaction)', async () => {
@@ -335,8 +336,8 @@ describe('OrganizationService', () => {
       expect(mockTransactionalRepoInstance.findOrganizationById).toHaveBeenCalledWith({ organizationId });
       // Deletion should not be attempted
       expect(mockTransactionalRepoInstance.deleteOrganization).not.toHaveBeenCalled();
-      expect(createAppError.organizations.organizationNotFound).toHaveBeenCalledTimes(1);
-      expect(createAppError.organizations.actionNotAllowed).not.toHaveBeenCalled();
+      expect(createApiError.organizations.organizationNotFound).toHaveBeenCalledTimes(1);
+      expect(createApiError.organizations.actionNotAllowed).not.toHaveBeenCalled();
     });
 
     it('should throw actionNotAllowed if user is not the owner (inside transaction)', async () => {
@@ -366,8 +367,8 @@ describe('OrganizationService', () => {
       expect(mockTransactionalRepoInstance.findOrganizationById).toHaveBeenCalledWith({ organizationId });
       // Deletion should not be attempted
       expect(mockTransactionalRepoInstance.deleteOrganization).not.toHaveBeenCalled();
-      expect(createAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('Only the owner can delete the organization');
-      expect(createAppError.organizations.organizationNotFound).not.toHaveBeenCalled();
+      expect(createApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('Only the owner can delete the organization');
+      expect(createApiError.organizations.organizationNotFound).not.toHaveBeenCalled();
     });
 
     it('should re-throw error if transactional repo findOrganizationById fails', async () => {
@@ -431,8 +432,8 @@ describe('OrganizationService', () => {
       expect(mockDirectRepoInstance.deleteOrganizationMembership).toHaveBeenCalledWith({ organizationId, userId });
       expect(result).toEqual(deleteResult);
       // Ensure errors not called
-      expect(createAppError.organizations.organizationNotFound).not.toHaveBeenCalled();
-      expect(createAppError.organizations.actionNotAllowed).not.toHaveBeenCalled();
+      expect(createApiError.organizations.organizationNotFound).not.toHaveBeenCalled();
+      expect(createApiError.organizations.actionNotAllowed).not.toHaveBeenCalled();
       // Ensure transaction not used
       expect(mockDb.transaction).not.toHaveBeenCalled();
     });
@@ -448,8 +449,8 @@ describe('OrganizationService', () => {
       expect(mockDirectRepoInstance.findOrganizationById).toHaveBeenCalledWith({ organizationId });
       // Deletion should not be attempted
       expect(mockDirectRepoInstance.deleteOrganizationMembership).not.toHaveBeenCalled();
-      expect(createAppError.organizations.organizationNotFound).toHaveBeenCalledTimes(1);
-      expect(createAppError.organizations.actionNotAllowed).not.toHaveBeenCalled();
+      expect(createApiError.organizations.organizationNotFound).toHaveBeenCalledTimes(1);
+      expect(createApiError.organizations.actionNotAllowed).not.toHaveBeenCalled();
     });
 
     it('should throw actionNotAllowed if user tries to leave as the owner', async () => {
@@ -467,8 +468,8 @@ describe('OrganizationService', () => {
       expect(mockDirectRepoInstance.findOrganizationById).toHaveBeenCalledWith({ organizationId });
       // Deletion should not be attempted
       expect(mockDirectRepoInstance.deleteOrganizationMembership).not.toHaveBeenCalled();
-      expect(createAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('Cannot leave the organization as the owner');
-      expect(createAppError.organizations.organizationNotFound).not.toHaveBeenCalled();
+      expect(createApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('Cannot leave the organization as the owner');
+      expect(createApiError.organizations.organizationNotFound).not.toHaveBeenCalled();
     });
 
     it('should re-throw error if findOrganizationById fails', async () => {

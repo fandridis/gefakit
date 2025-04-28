@@ -2,8 +2,8 @@
 import { Kysely, Transaction } from 'kysely';
 import { DB } from '../../db/db-types'; 
 import { AuthRepository } from '../auth/auth.repository';
-import { createAppError } from '../../core/app-error';
-import { AppError } from '../../core/app-error'; // Assuming AppError is needed alongside createAppError
+import { createApiError } from '../../core/api-error';
+import { ApiError } from '@gefakit/shared'; // Assuming ApiError is needed alongside createApiError
 
 // Define the service type
 export type AdminService = ReturnType<typeof createAdminService>;
@@ -27,11 +27,11 @@ export function createAdminService({
     const targetUser = await authRepository.findUserById(targetUserId);
     if (!targetUser) {
       // Use the centralized error creator
-      throw createAppError.auth.userNotFound(); // Or a specific admin error
+      throw createApiError.auth.userNotFound(); // Or a specific admin error
     }
     // Add role check - this assumes a 'role' property exists on the user object
     // if (targetUser.role === 'ADMIN' || targetUser.role === 'SUPPORT') { 
-    //   throw new AppError('Cannot impersonate an administrator or support user', 403);
+    //   throw new ApiError('Cannot impersonate an administrator or support user', 403);
     // }
 
     // 2. Update the session record using the repository method
@@ -43,8 +43,8 @@ export function createAdminService({
 
     if (!updated) {
         // Use a more specific error if possible
-       throw new AppError('Failed to update session for impersonation', 500);
-       // Consider: throw createAppError.admin.impersonationFailed(); 
+       throw new ApiError('Failed to update session for impersonation', 500);
+       // Consider: throw createApiError.admin.impersonationFailed(); 
     }
   }
 
@@ -58,8 +58,8 @@ export function createAdminService({
 
      if (!updated) {
         // Use a more specific error if possible
-       throw new AppError('Failed to update session for stopping impersonation', 500);
-       // Consider: throw createAppError.admin.stopImpersonationFailed();
+       throw new ApiError('Failed to update session for stopping impersonation', 500);
+       // Consider: throw createApiError.admin.stopImpersonationFailed();
      }
   }
 

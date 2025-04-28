@@ -6,6 +6,7 @@ import { Kysely, Transaction, Selectable } from 'kysely';
 import { DB } from '../../db/db-types';
 import { hashPassword, isMyPasswordPwned } from '../../lib/crypto';
 import { randomUUID } from 'node:crypto';
+import { ApiError } from '@gefakit/shared';
 
 // --- Mock Dependencies ---
 
@@ -55,13 +56,13 @@ const mockCrypto = {
 };
 
 // Modified mock
-vi.mock('../../core/app-error', async (importOriginal) => {
-  const actual = await importOriginal() as typeof import('../../core/app-error');
-  const mockWeakPasswordError = vi.fn((msg = 'Weak password') => new actual.AppError(msg, 400));
-  const mockUserCreationFailedError = vi.fn((msg = 'User creation failed') => new actual.AppError(msg, 500));
+vi.mock('../../core/api-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/api-error');
+  const mockWeakPasswordError = vi.fn((msg = 'Weak password') => new ApiError(msg, 400));
+  const mockUserCreationFailedError = vi.fn((msg = 'User creation failed') => new ApiError(msg, 500));
   return {
-    ...actual, // Include original AppError
-    createAppError: { // Mock factory
+    ...actual, // Include original ApiError
+    createApiError: { // Mock factory
       auth: {
         weakPassword: mockWeakPasswordError,
         userCreationFailed: mockUserCreationFailedError,
@@ -69,8 +70,8 @@ vi.mock('../../core/app-error', async (importOriginal) => {
     },
   };
 });
-// Import AppError after mock
-import { AppError, createAppError as mockErrors } from '../../core/app-error';
+// Import ApiError after mock
+import { createApiError as mockErrors } from '../../core/api-error';
 
 vi.mock('node:crypto', () => ({
   randomUUID: vi.fn(),
@@ -169,7 +170,7 @@ describe('OnboardingService', () => {
       password,
       username,
       orgName,
-    })).rejects.toThrow(AppError);
+    })).rejects.toThrow(ApiError);
     expect(mockErrors.auth.userCreationFailed).toHaveBeenCalledWith('Email already exists');
     expect(mockDb.transaction).not.toHaveBeenCalled();
     expect(mockCreateAuthRepository).not.toHaveBeenCalled();
@@ -183,7 +184,7 @@ describe('OnboardingService', () => {
       password: shortPassword,
       username,
       orgName,
-    })).rejects.toThrow(AppError);
+    })).rejects.toThrow(ApiError);
     expect(mockErrors.auth.weakPassword).toHaveBeenCalledWith('Password must be between 8 and 255 characters long.');
     expect(mockDb.transaction).not.toHaveBeenCalled();
     expect(mockCreateAuthRepository).not.toHaveBeenCalled();
@@ -197,7 +198,7 @@ describe('OnboardingService', () => {
       password,
       username,
       orgName,
-    })).rejects.toThrow(AppError);
+    })).rejects.toThrow(ApiError);
     expect(mockErrors.auth.weakPassword).toHaveBeenCalledWith(expect.stringContaining('found in a data breach'));
     expect(mockCrypto.hashPassword).toHaveBeenCalledWith(password);
     expect(mockDb.transaction).not.toHaveBeenCalled();

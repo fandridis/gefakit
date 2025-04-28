@@ -4,7 +4,7 @@ import { organizationInvitationRoutesV1 } from './organization-invitation.routes
 import { OrganizationInvitationService } from './organization-invitation.service';
 import { OrganizationService } from '../organizations/organization.service'; // Needed for middleware setup
 import { UserDTO } from '@gefakit/shared';
-import { AppError } from '../../core/app-error';
+import { ApiError } from '@gefakit/shared';
 import { Bindings } from '../../types/hono';
 import { Kysely, Selectable } from 'kysely';
 import { DB, OrganizationsInvitation } from '../../db/db-types';
@@ -122,7 +122,7 @@ describe('Organization Invitation Routes V1', () => {
         }, 400);
       }
 
-      if (err instanceof AppError) {
+      if (err instanceof ApiError) {
         const statusCode = typeof err.status === 'number' && err.status >= 100 && err.status <= 599
           ? err.status
           : 500;
@@ -197,8 +197,8 @@ describe('Organization Invitation Routes V1', () => {
       expect(mockAcceptInvitation).toHaveBeenCalledWith({ token: tokenToAccept, acceptingUserId: mockUser.id });
     });
 
-    it('should return 404 if service throws AppError (e.g., invitation not found)', async () => {
-        const error = new AppError('Invitation not found or expired', 404);
+    it('should return 404 if service throws ApiError (e.g., invitation not found)', async () => {
+        const error = new ApiError('Invitation not found or expired', 404);
         mockAcceptInvitation.mockRejectedValue(error);
 
         const res = await app.request(`/${tokenToAccept}/accept`, {
@@ -250,8 +250,8 @@ describe('Organization Invitation Routes V1', () => {
       expect(mockDeclineInvitation).toHaveBeenCalledWith({ token: tokenToDecline });
     });
 
-    it('should return 404 if service throws AppError (e.g., invitation not found)', async () => {
-        const error = new AppError('Invitation not found or already processed', 404);
+    it('should return 404 if service throws ApiError (e.g., invitation not found)', async () => {
+        const error = new ApiError('Invitation not found or already processed', 404);
         mockDeclineInvitation.mockRejectedValue(error);
 
         const res = await app.request(`/${tokenToDecline}/decline`, {

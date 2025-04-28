@@ -27,8 +27,8 @@ const mockDb = {
 } as unknown as Kysely<DB>;
 
 // 4. Mock Error Factory
-vi.mock('../../core/app-error', () => ({
-  createAppError: {
+vi.mock('../../core/api-error', () => ({
+  createApiError: {
     auth: {
       userNotFound: vi.fn(() => new Error('User not found mock')),
     },
@@ -41,7 +41,8 @@ vi.mock('../../core/app-error', () => ({
 
 // 5. Import Mocked Functions/Modules AFTER mocks
 import { createOrganizationInvitationRepository as mockCreateOrganizationInvitationRepositoryFn } from './organization-invitation.repository';
-import { createAppError as mockErrors } from '../../core/app-error';
+import { createApiError as mockErrors } from '../../core/api-error';
+import { ApiError } from '@gefakit/shared';
 
 
 // --- Test Suite Setup ---

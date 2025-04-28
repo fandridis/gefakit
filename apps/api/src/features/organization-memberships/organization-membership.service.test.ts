@@ -4,6 +4,7 @@ import { createOrganizationMembershipService, OrganizationMembershipService } fr
 import { OrganizationMembershipRepository } from './organization-membership.repository';
 import { DB, OrganizationsMembership } from '../../db/db-types';
 import { Kysely, Selectable } from 'kysely';
+import { ApiError } from '@gefakit/shared';
 // Removed duplicate AppError import
 
 // --- Mock Dependencies ---
@@ -19,19 +20,19 @@ import { createOrganizationMembershipRepository as mockCreateOrganizationMembers
 
 
 // 3. Mock the error factory - Modified
-vi.mock('../../core/app-error', async (importOriginal) => {
-  const actual = await importOriginal() as typeof import('../../core/app-error');
+vi.mock('../../core/api-error', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('../../core/api-error');
   return {
       ...actual, // Include original AppError
-      createAppError: { // Mock factory
+      createApiError: { // Mock factory
           organizations: {
-            actionNotAllowed: vi.fn((msg) => new actual.AppError(msg ?? 'Action not allowed mock', 403)),
+            actionNotAllowed: vi.fn((msg) => new ApiError(msg ?? 'Action not allowed mock', 403)),
           },
       },
   };
 });
 // Import AppError after mock
-import { AppError, createAppError as mockCreateAppError } from '../../core/app-error';
+import { createApiError as mockCreateApiError } from '../../core/api-error';
 
 // 4. Mock Kysely DB (minimal mock, as it's not directly used by the service logic shown)
 const mockDb = {} as Kysely<DB>;
@@ -71,7 +72,7 @@ describe('OrganizationMembershipService', () => {
     mockRepoFactory.mockReturnValue(mockRepoInstance as unknown as OrganizationMembershipRepository);
 
     // Reset mocked error calls
-    vi.mocked(mockCreateAppError.organizations.actionNotAllowed).mockClear();
+    vi.mocked(mockCreateApiError.organizations.actionNotAllowed).mockClear();
 
     // Create the service instance with the mocked repository instance
     organizationMembershipService = createOrganizationMembershipService({
@@ -131,7 +132,7 @@ describe('OrganizationMembershipService', () => {
 
       expect(mockRepoInstance.findAllOrganizationMembershipsByUserId).toHaveBeenCalledWith({ userId });
       expect(mockRepoInstance.deleteMembership).toHaveBeenCalledWith({ organizationId, userId });
-      expect(mockCreateAppError.organizations.actionNotAllowed).not.toHaveBeenCalled();
+      expect(mockCreateApiError.organizations.actionNotAllowed).not.toHaveBeenCalled();
       expect(result).toEqual(deleteResult);
     });
 
@@ -144,7 +145,7 @@ describe('OrganizationMembershipService', () => {
 
       expect(mockRepoInstance.findAllOrganizationMembershipsByUserId).toHaveBeenCalledWith({ userId });
       expect(mockRepoInstance.deleteMembership).not.toHaveBeenCalled();
-      expect(mockCreateAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('User is not a member of the organization');
+      expect(mockCreateApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('User is not a member of the organization');
     });
 
     it('should throw error if user is the owner', async () => {
@@ -155,7 +156,7 @@ describe('OrganizationMembershipService', () => {
 
       expect(mockRepoInstance.findAllOrganizationMembershipsByUserId).toHaveBeenCalledWith({ userId });
       expect(mockRepoInstance.deleteMembership).not.toHaveBeenCalled();
-      expect(mockCreateAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('You cannot leave the organization as the owner');
+      expect(mockCreateApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('You cannot leave the organization as the owner');
     });
 
     it('should throw error if user tries to leave their only organization', async () => {
@@ -167,7 +168,7 @@ describe('OrganizationMembershipService', () => {
 
       expect(mockRepoInstance.findAllOrganizationMembershipsByUserId).toHaveBeenCalledWith({ userId });
       expect(mockRepoInstance.deleteMembership).not.toHaveBeenCalled();
-      expect(mockCreateAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('You cannot leave your only organization');
+      expect(mockCreateApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('You cannot leave your only organization');
     });
 
     it('should re-throw error if findAllOrganizationMembershipsByUserId fails', async () => {
@@ -240,7 +241,7 @@ describe('OrganizationMembershipService', () => {
       expect(mockRepoInstance.findMembershipByUserIdAndOrgId).toHaveBeenCalledWith({ userId: userIdToRemove, organizationId });
        // The current logic proceeds to delete even if the target is admin/owner
        expect(mockRepoInstance.deleteMembership).toHaveBeenCalledWith({ organizationId, userId: userIdToRemove });
-      expect(mockCreateAppError.organizations.actionNotAllowed).not.toHaveBeenCalled(); // No error thrown based on current code
+      expect(mockCreateApiError.organizations.actionNotAllowed).not.toHaveBeenCalled(); // No error thrown based on current code
       expect(result).toEqual(deleteResult);
     });
 
@@ -254,7 +255,7 @@ describe('OrganizationMembershipService', () => {
       expect(mockRepoInstance.findMembershipByUserIdAndOrgId).toHaveBeenCalledWith({ userId: userIdToRemove, organizationId });
       expect(mockRepoInstance.deleteMembership).not.toHaveBeenCalled();
       // We can check the actual error message, no need to check the mock factory call
-      // expect(mockCreateAppError.organizations.actionNotAllowed).toHaveBeenCalledWith('User is not a member of the organization');
+      // expect(mockCreateApiError.organizations.actionNotAllowed).toHaveBeenCalledWith('User is not a member of the organization');
     });
 
     // Test repo failures

@@ -1,9 +1,0 @@
-packages:
-  - apps/*
-  - packages/*
-
-ignoredBuiltDependencies:
-  - '@swc/core'
-  - esbuild
-  - sharp
-  - workerd

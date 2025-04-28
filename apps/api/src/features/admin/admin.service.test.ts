@@ -11,28 +11,37 @@ vi.mock('../auth/auth.repository', () => ({
   createAuthRepository: vi.fn(),
 }));
 
-// 2. Mock Error Factory - Modified to include original AppError
-vi.mock('../../core/app-error', async (importOriginal) => {
-  const actual = await importOriginal() as typeof import('../../core/app-error');
+// 2. Mock Error Factory - Corrected
+vi.mock('../../core/api-error', async (importOriginal) => {
+  // Import the factory module we are mocking
+  const actualFactoryModule = await importOriginal() as typeof import('../../core/api-error');
+  // Import the *real* ApiError class from its actual location
+  const { ApiError } = await import('@gefakit/shared');
+
   return {
-    ...actual, // Include original exports like AppError
-    createAppError: { // Mock only the factory object
+    // Do NOT spread the original module
+    createApiError: { // Mock only the factory object
       auth: {
-        userNotFound: vi.fn(() => new actual.AppError('User not found mock', 404)),
+        // Use the imported ApiError constructor
+        userNotFound: vi.fn(() => new ApiError('User not found mock', 404)),
         // Add other specific errors if used by admin service
       },
       // admin: { // Add admin-specific errors if created
-      //   impersonationFailed: vi.fn(() => new actual.AppError('Impersonation failed mock', 500)),
-      //   stopImpersonationFailed: vi.fn(() => new actual.AppError('Stop impersonation failed mock', 500)),
+      //   impersonationFailed: vi.fn(() => new ApiError('Impersonation failed mock', 500)),
+      //   stopImpersonationFailed: vi.fn(() => new ApiError('Stop impersonation failed mock', 500)),
       // }
     },
+    // Explicitly re-export any other needed exports from the original factory module
+    // e.g., someErrorCode: actualFactoryModule.someErrorCode
   };
 });
 
 // 3. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from '../auth/auth.repository';
-// Import AppError directly AFTER the mock setup
-import { AppError, createAppError as mockErrors } from '../../core/app-error';
+// Import the mocked factory
+import { createApiError as mockErrors } from '../../core/api-error';
+// Import the REAL ApiError class from its actual location
+import { ApiError } from '@gefakit/shared';
 import { UserDTO } from '@gefakit/shared';
 
 // +++ Add Mock DB
@@ -153,7 +162,7 @@ describe('AdminService', () => {
       mockRepoInstance.updateSessionImpersonation.mockResolvedValue(false); // Simulate failed update
 
       await expect(adminService.startImpersonation(mockSessionId, mockAdminUserId, mockTargetUserId))
-        .rejects.toThrow(AppError); // Expect generic AppError or specific one if defined
+        .rejects.toThrow(ApiError); // Expect generic ApiError or specific one if defined
 
       expect(mockRepoInstance.findUserById).toHaveBeenCalledWith(mockTargetUserId);
       expect(mockRepoInstance.updateSessionImpersonation).toHaveBeenCalledWith({
@@ -184,7 +193,7 @@ describe('AdminService', () => {
       mockRepoInstance.updateSessionImpersonation.mockResolvedValue(false); // Simulate failed update
 
       await expect(adminService.stopImpersonation(mockSessionId, mockAdminUserId))
-        .rejects.toThrow(AppError); // Expect generic AppError or specific one if defined
+        .rejects.toThrow(ApiError); // Expect generic ApiError or specific one if defined
 
       expect(mockRepoInstance.updateSessionImpersonation).toHaveBeenCalledWith({
         sessionId: mockSessionId,

@@ -11,7 +11,7 @@ import {
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
-import { createAppError } from "../../core/app-error";
+import { createApiError } from "../../core/api-error";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
@@ -111,7 +111,7 @@ app.get('/session', async (c) => {
     const sessionToken = getCookie(c, 'gefakit-session');
 
     if (!sessionToken) {
-        throw createAppError.auth.unauthorized();
+        throw createApiError.auth.unauthorized();
     }
 
     const service = c.get('authService');
@@ -128,7 +128,7 @@ app.get('/session', async (c) => {
         // or validateSession returning nulls which lead to an error earlier.
         // But as a safeguard:
         deleteCookie(c, 'gefakit-session'); // Clear potentially invalid cookie
-        throw createAppError.auth.unauthorized(); 
+        throw createApiError.auth.unauthorized(); 
     }
 
     const response: GetSessionResponseDTO = { session: result.session, user: result.user };
@@ -179,7 +179,7 @@ app.post('/sign-out', async (c) => {
 app.get('/verify-email', async (c) => {
     const token = c.req.query('token');
     if (!token) {
-        throw createAppError.auth.emailVerificationTokenNotFound();
+        throw createApiError.auth.emailVerificationTokenNotFound();
     }
 
     const service = c.get('authService');
