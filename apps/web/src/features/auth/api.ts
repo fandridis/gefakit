@@ -1,104 +1,80 @@
+import axios from 'redaxios';
 import { SessionDTO, SignUpEmailRequestBodyDTO, UserDTO } from "@gefakit/shared";
+import { handleSimpleError } from '@/utils/api-error';
 
 const API_BASE_URL = 'http://localhost:8787/api/v1/auth';
 
+// Type guard to check if an object conforms to the AppErrorResponse interface
+// isAppError has been moved to utils/api.ts
+
 export const apiGetSession = async (): Promise<{ session: SessionDTO; user: UserDTO } | null> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/session`, {
-      method: 'GET',
+    const response = await axios.get(`${API_BASE_URL}/session`, {
       headers: {
         'Accept': 'application/json',
       },
-      credentials: 'include', 
+      withCredentials: true,
     });
 
-    //  Handle explicit "No Session Cookie" case
-    if (response.status === 401) {
-      return null;
-    }
-
-    // Handle other non-successful responses (like 500 Internal Server Error)
-    if (!response.ok) {
-      // Throwing here allows useQuery to catch it and set its error state
-      throw new Error(`Failed to fetch session: Server responded with ${response.status}`);
-    }
-
-    // Handle successful response (200 OK)
-    const data = await response.json();
+    // Axios considers 2xx successful, check data directly
+    const data = response.data;
+    // console.log('Session check:', data); // Keep for debugging if needed
 
     // If user and session are present and not null, we are authenticated.
     if (data && data.user && data.session) {
-      // console.log('Session check: Valid session found.');
       return data as { session: SessionDTO; user: UserDTO };
     } else {
+      // Should not happen with successful 2xx unless backend sends incomplete data
+      console.warn('apiGetSession: Received successful response but data is incomplete.', data);
+      return null;
+    }
+  } catch (error: any) {
+     // Handle explicit "No Session Cookie" case (401 Unauthorized)
+    if (error.response && error.response.status === 401) {
+      // console.log('Session check: No valid session found (401).'); // Keep for debugging if needed
       return null; // Treat as not authenticated
     }
 
-  } catch (error) {
-    // Handles network errors or the error thrown from !response.ok
-    console.error("Error during apiGetSession fetch:", error);
-    // Re-throw the error. useQuery will catch this and set its state accordingly (isError, error)
-    // This is generally better than returning null for network/server errors,
-    // as it differentiates between "logged out" and "system unavailable".
-    throw error;
+    // For all other errors, use the standard handler (which throws)
+    handleSimpleError(error);
+    // Because handleSimpleError always throws, we need a fallback return for type safety, although it's unreachable.
+    // Alternatively, handleSimpleError could return the error to be thrown here, but its current implementation throws directly.
+    return null; // Or throw new Error("Fell through handleSimpleError?"); This line should technically be unreachable.
   }
 };
 
+// Returns the Axios promise directly. Error handling delegated to the caller (e.g., React Query's onError).
 export const apiSignInEmail = async ({ email, password }: { email: string, password: string }) => {
-  const response = await fetch(`${API_BASE_URL}/sign-in/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to sign in' }));
-    throw new Error(errorData.message || 'Sign in failed');
-  }
-  return response.json();
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Keep or remove delay as needed
+  return axios.post(`${API_BASE_URL}/sign-in/email`,
+    { email, password },
+    { withCredentials: true }
+  ).catch(handleSimpleError);
 };
 
+// Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiSignUpEmail = async ({ username, email, password }: SignUpEmailRequestBodyDTO) => {
-  const response = await fetch(`${API_BASE_URL}/sign-up/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to sign up' }));
-    throw new Error(errorData.message || 'Sign up failed');
-  }
-
-  return response.json();
+    return axios.post(`${API_BASE_URL}/sign-up/email`,
+      { username, email, password }
+    ).catch(handleSimpleError);
 };
 
+// Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiSignOut = async () => {
-  const response = await fetch(`${API_BASE_URL}/sign-out`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to sign out' }));
-    throw new Error(errorData.message || 'Sign out failed');
-  }
-  return response.json();
+  return axios.post(`${API_BASE_URL}/sign-out`,
+    null, // No request body needed for sign-out
+    {
+      withCredentials: true,
+    }
+  ).catch(handleSimpleError);
 };
 
+// Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiVerifyEmail = async (token: string) => {
-  // Use GET and pass token as query parameter
-  const response = await fetch(`${API_BASE_URL}/verify-email?token=${encodeURIComponent(token)}`, {
-    method: 'GET',
+  return axios.get(`${API_BASE_URL}/verify-email`, {
+    params: { token },
     headers: {
-      'Accept': 'application/json', // Still expect JSON back
+      'Accept': 'application/json',
     },
-    // Removed 'credentials' and 'body'
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Failed to verify email' }));
-    throw new Error(errorData.message || 'Email verification failed');
-  }
-
-  return response.json(); // Assuming backend returns some data, maybe updated user info
+  }).catch(handleSimpleError);
 };

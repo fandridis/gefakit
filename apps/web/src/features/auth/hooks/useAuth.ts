@@ -1,18 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGetSession, apiSignInEmail, apiSignUpEmail, apiSignOut, apiVerifyEmail } from '../api';
 import { SignInEmailRequestBodyDTO, SignUpEmailRequestBodyDTO } from '@gefakit/shared/src/types/auth';
+import { ApiError } from '@gefakit/shared';
+declare module '@tanstack/react-query' {
+    interface Register {
+      defaultError: ApiError
+    }
+  }
 
-// Define a query key for the session data
-export const sessionQueryKey = ['gefakit-session'] as const; // Use 'as const' for type safety
+// Define a query key for the session data - should the same as the sessionQueryKey in the backend
+export const sessionQueryKey = ['gefakit-session'] as const;
 
 export function useAuth() {
     const queryClient = useQueryClient();
 
-    // --- Session Query (from useAuthSession) ---
     const {
         data: sessionData,
         isLoading: isLoadingSession,
         isFetching: isFetchingSession,
+        isSuccess: isSessionSuccess,
         error: sessionError,
         refetch: refetchSession,
         isError: isSessionError
@@ -26,8 +32,6 @@ export function useAuth() {
         refetchInterval: false,
     });
 
-    // --- Auth Actions (from useAuthActions) ---
-
     // Function to invalidate the session query cache
     const invalidateSession = () => {
         queryClient.invalidateQueries({ queryKey: sessionQueryKey });
@@ -35,17 +39,19 @@ export function useAuth() {
 
     // Sign In Email Mutation
     const {
-        mutate: signInEmail,
+        mutateAsync: signInEmail,
+        // mutate: signInEmail,
         isPending: isSigningIn,
-        error: signInError
+        error: signInError,
+        
     } = useMutation<unknown, Error, SignInEmailRequestBodyDTO>({
         mutationFn: apiSignInEmail,
         onSuccess: (data, variables, context) => {
-            console.log('Sign in success:', { data, variables, context });
+            console.log('Success @ signInEmail:', { data, variables, context });
             invalidateSession(); // Refresh session state after sign-in
         },
         onError: (error, variables, context) => {
-            console.error('Sign in error:', { error, variables, context });
+            console.error('Error @ signInEmail:', { error, variables, context });
         },
     });
 
@@ -54,21 +60,28 @@ export function useAuth() {
         mutate: signUpEmail,
         isPending: isSigningUp,
         error: signUpError
-    } = useMutation<unknown, Error, SignUpEmailRequestBodyDTO>({
+    } = useMutation<
+        { data: unknown },
+        Error,
+        SignUpEmailRequestBodyDTO
+    >({
         mutationFn: apiSignUpEmail,
-        onSuccess: (data, variables, context) => {
-            console.log('Sign up success:', { data, variables, context });
+        onSuccess: (response, variables, context) => {
+            const data = response.data;
+            console.log('Success @ signUpEmail:', { data, variables, context });
             // Currently assuming sign-up doesn't automatically log in
-            // invalidateSession();
+            // If sign-up *should* log the user in, we might need to invalidate session here
+            // queryClient.invalidateQueries({ queryKey: queryKeys.session });
         },
         onError: (error, variables, context) => {
-            console.error('Sign up error:', { error, variables, context });
+            console.log('error @ signUpEmail', error, variables, context);
         },
     });
 
     // Sign Out Mutation
     const {
-        mutate: signOut,
+        //mutate: signOut,
+        mutateAsync: signOut,
         isPending: isSigningOut,
         error: signOutError
      } = useMutation({
@@ -113,6 +126,7 @@ export function useAuth() {
         isFetchingSession,
         sessionError,
         isSessionError,
+        isSessionSuccess,
         refetchSession,
         isAuthenticated: !!sessionData,
 
@@ -136,3 +150,7 @@ export function useAuth() {
         verifyEmailError,
     };
 } 
+
+// infer type of return value of useAuth
+// export type UseAuthReturn = ReturnType<typeof useAuth>;
+
