@@ -4,7 +4,7 @@ import { TopNav } from "@/components/layout/top-nav"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { SearchProvider } from "@/context/search-context"
-import { useAuth } from "@/features/auth/hooks/useAuth"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 

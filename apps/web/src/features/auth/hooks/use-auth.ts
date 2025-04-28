@@ -40,7 +40,6 @@ export function useAuth() {
     // Sign In Email Mutation
     const {
         mutateAsync: signInEmail,
-        // mutate: signInEmail,
         isPending: isSigningIn,
         error: signInError,
         

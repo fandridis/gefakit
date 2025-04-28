@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { useAuth } from "../hooks/useAuth"
+import { useAuth } from "../hooks/use-auth"
 import { useAppForm } from "@/components/form/form"
 import { SignInEmailRequestBodyDTO } from "@gefakit/shared"
 import { signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema"

@@ -1,49 +1,44 @@
-import { createFileRoute, redirect, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { z } from 'zod'
-
 import { LoginForm } from '@/features/auth/components/login-form'
 import { GalleryVerticalEnd } from 'lucide-react'
-import { sessionQueryKey, useAuth } from '@/features/auth/hooks/useAuth'
-import { externalAuthStore } from '@/lib/use-external-auth'
+import { useAuth } from '@/features/auth/hooks/use-auth'
+import { externalAuthStore } from '@/features/auth/hooks/use-external-auth'
 import { useEffect } from 'react'
 
-const fallback = '/dashboard' as const
+const fallback = '/' as const
 
 export const Route = createFileRoute('/login')({
     validateSearch: z.object({
         redirect: z.string().optional().catch(''),
     }),
     beforeLoad: ({ context, search }) => {
-        console.log('[login.tsx][beforeLoad] context', context)
         if (context.authState.session) {
-            console.log('User is authenticated, redirecting to: ', search.redirect || fallback)
             throw redirect({ to: search.redirect || fallback, replace: true })
         }
-    },
-    shouldReload: ({ context }) => {
-        console.log('[login.tsx][shouldReload] context', context)
-        // return 
     },
     component: LoginComponent,
 })
 
 function LoginComponent() {
-    console.log('Rendering LoginComponent')
     const isLoading = useRouterState({ select: (s) => s.isLoading })
     const navigate = Route.useNavigate()
     const search = Route.useSearch()
-    const context = Route.useRouteContext()
     const auth = useAuth();
+    const routerContext = Route.useRouteContext()
 
     useEffect(() => {
+        /**
+         * If we reach this point and there is a session, it means it's after a successful sign-in.
+         * Because if we end up on this route while authenticated, the "beforeLoad" hook would have caught it.
+         * So we can safely set the session and user in the external auth store and navigate to the redirect/home.
+         */
         if (auth.session) {
-            console.log('Setting external session')
             externalAuthStore.setSession(auth.session.session)
             externalAuthStore.setUser(auth.session.user)
             navigate({ to: search.redirect || fallback })
         }
-    }, [auth.session])
-
+    }, [auth.session, routerContext])
 
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">

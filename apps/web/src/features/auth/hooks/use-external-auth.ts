@@ -1,28 +1,27 @@
 // src/hooks/use-auth.ts
 
-import { SessionDTO, UserDTO } from "@gefakit/shared";
-import { useQuery } from "@tanstack/react-query";
+/**
+ * This hook is used to store the auth state in the external store,
+ * so it can be used in tanstack-router hooks like "beforeLoad".
+ */
+
+import { GetSessionResponseDTO } from "@gefakit/shared";
 import { useSyncExternalStore } from "react";
-import { apiGetSession } from "@/features/auth/api";
-import { sessionQueryKey, useAuth } from "@/features/auth/hooks/useAuth";
-import { ApiError } from "@gefakit/shared";
-import { flushSync } from "react-dom";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 
 type SubscribeListener = () => void;
 
 let listeners = [] as Array<SubscribeListener>;
 export type AuthState = {
-  // isAuthenticated: boolean;
   isInitialLoading: boolean;
-  session: SessionDTO | undefined;
-  user: UserDTO | undefined;
+  session: GetSessionResponseDTO['session'];
+  user: GetSessionResponseDTO['user'];
 };
 
 export const authState = {
-  isAuthenticated: false,
   isInitialLoading: true,
-  session: undefined,
-  user: undefined,
+  session: null,
+  user: null,
 } as AuthState;
 
 export const externalAuthStore = {
@@ -30,10 +29,6 @@ export const externalAuthStore = {
     authState.isInitialLoading = isInitialLoading;
     emitChange();
   },
-//   setIsAuthenticated(isAuthenticated: AuthState["isAuthenticated"]) {
-//     authState.isAuthenticated = isAuthenticated;
-//     emitChange();
-//   },
   setSession(session: AuthState["session"]) {
     authState.session = session;
     emitChange();
@@ -63,12 +58,11 @@ export function useExternalAuthState() {
   return useSyncExternalStore(externalAuthStore.subscribe, externalAuthStore.getSnapshot);
 }
 
-export function useExternalSession() {
+export function useExternalAuth() {
   const authState = useExternalAuthState();
   const auth = useAuth();
 
   if (auth.session?.session) {
-    // authStore.setIsAuthenticated(true);
     externalAuthStore.setSession(auth.session.session);
     externalAuthStore.setUser(auth.session.user);
   }
@@ -76,9 +70,8 @@ export function useExternalSession() {
   if (
     auth.isSessionError &&
     authState.session) {
-    externalAuthStore.setSession(undefined);
-    externalAuthStore.setUser(undefined);
-    // window.location.href = "/signin";
+    externalAuthStore.setSession(null);
+    externalAuthStore.setUser(null);
   }
 
   if (authState.isInitialLoading) {

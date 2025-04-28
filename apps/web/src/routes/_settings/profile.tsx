@@ -1,8 +1,7 @@
 import { LoadingOverlay } from '@/components/loading-overlay'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/features/auth/hooks/useAuth'
-import { externalAuthStore } from '@/lib/use-external-auth'
-import { createFileRoute, useRouter, useRouterState } from '@tanstack/react-router'
+import { useAuth } from '@/features/auth/hooks/use-auth'
+import { createFileRoute, useRouterState } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_settings/profile')({
   component: RouteComponent,
@@ -10,15 +9,11 @@ export const Route = createFileRoute('/_settings/profile')({
 
 function RouteComponent() {
   const auth = useAuth()
-  const router = useRouter()
   const navigate = Route.useNavigate()
   const isLoading = useRouterState({ select: (s) => s.isLoading })
 
   const handleLogout = () => {
     auth.signOut().then(() => {
-      externalAuthStore.setSession(undefined)
-      externalAuthStore.setUser(undefined)
-
       navigate({ to: '/' })
     })
   }

@@ -2,9 +2,9 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
+import { useExternalAuth } from './features/auth/hooks/use-external-auth'
 import './index.css'
-import { useExternalSession } from './lib/use-external-auth'
-// import { useAuth } from './features/auth/hooks/useAuth'
+
 
 const queryClient = new QueryClient()
 
@@ -13,7 +13,6 @@ const router = createRouter({
   routeTree,
   context: {
     queryClient,
-    // auth: undefined!
     authState: undefined!
   },
   defaultPreload: 'intent',
@@ -31,7 +30,6 @@ declare module '@tanstack/react-router' {
 }
 
 function App() {
-  console.log('Loading App...')
   return (
     <QueryClientProvider client={queryClient}>
       <InnerApp />
@@ -40,7 +38,7 @@ function App() {
 }
 
 function InnerApp() {
-  const externalSession = useExternalSession();
+  const externalSession = useExternalAuth();
 
   if (externalSession.isInitialLoading) {
     return null;
@@ -49,16 +47,10 @@ function InnerApp() {
   return (
     <RouterProvider router={router} context={{
       queryClient,
-      authState: {
-        isInitialLoading: externalSession.isInitialLoading,
-        session: externalSession.session,
-        user: externalSession.user,
-      }
+      authState: externalSession
     }} />
   )
 }
-
-
 
 const rootElement = document.getElementById('root')!
 

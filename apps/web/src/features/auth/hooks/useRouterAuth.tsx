@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useAuth } from './useAuth'
+import { useAuth } from './use-auth'
 
 // Define the type for the object returned by useAuth
 type UseAuthReturnType = ReturnType<typeof useAuth>;

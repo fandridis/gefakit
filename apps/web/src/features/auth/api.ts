@@ -1,5 +1,5 @@
 import axios from 'redaxios';
-import { SessionDTO, SignUpEmailRequestBodyDTO, UserDTO } from "@gefakit/shared";
+import { SessionDTO, SignUpEmailRequestBodyDTO, UserDTO, GetSessionResponseDTO } from "@gefakit/shared";
 import { handleSimpleError } from '@/utils/api-error';
 
 const API_BASE_URL = 'http://localhost:8787/api/v1/auth';
@@ -7,9 +7,9 @@ const API_BASE_URL = 'http://localhost:8787/api/v1/auth';
 // Type guard to check if an object conforms to the AppErrorResponse interface
 // isAppError has been moved to utils/api.ts
 
-export const apiGetSession = async (): Promise<{ session: SessionDTO; user: UserDTO } | null> => {
+export const apiGetSession = async (): Promise<GetSessionResponseDTO | null> => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/session`, {
+    const response = await axios.get<GetSessionResponseDTO>(`${API_BASE_URL}/session`, {
       headers: {
         'Accept': 'application/json',
       },
@@ -22,7 +22,7 @@ export const apiGetSession = async (): Promise<{ session: SessionDTO; user: User
 
     // If user and session are present and not null, we are authenticated.
     if (data && data.user && data.session) {
-      return data as { session: SessionDTO; user: UserDTO };
+      return data;
     } else {
       // Should not happen with successful 2xx unless backend sends incomplete data
       console.warn('apiGetSession: Received successful response but data is incomplete.', data);

@@ -2,15 +2,11 @@ import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { QueryClient } from '@tanstack/react-query'
-import { SessionDTO, UserDTO } from '@gefakit/shared'
+import { AuthState } from '@/features/auth/hooks/use-external-auth'
 
 interface MyRouterContext {
     queryClient: QueryClient,
-    authState: {
-        isInitialLoading: boolean,
-        session: SessionDTO | undefined
-        user: UserDTO | undefined
-    }
+    authState: AuthState
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
