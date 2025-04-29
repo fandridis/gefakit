@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 import { LoginForm } from '@/features/auth/components/login-form'
 import { GalleryVerticalEnd } from 'lucide-react'
@@ -21,7 +21,6 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginComponent() {
-    const isLoading = useRouterState({ select: (s) => s.isLoading })
     const navigate = Route.useNavigate()
     const search = Route.useSearch()
     const auth = useAuth();
@@ -49,7 +48,7 @@ function LoginComponent() {
                     </div>
                     GefaKit
                 </a>
-                <LoginForm loading={isLoading} />
+                <LoginForm />
             </div>
         </div>
     )

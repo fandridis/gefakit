@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
-import { organizationsRoutesV1 } from './organization.routes.v1';
+import { organizationRoutesV1 } from './organization.routes.v1';
 import { OrganizationService } from './organization.service';
 import { OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
 import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
@@ -41,8 +41,12 @@ interface SuccessResponse {
 // --- Mock Dependencies ---
 
 // Mock the error factory
-const mockOrganizationNotFound = vi.fn(() => new ApiError('Organization not found mock', 404));
-const mockActionNotAllowed = vi.fn((msg?: string) => new ApiError(msg || 'Action not allowed mock', 403));
+const mockOrganizationNotFound = vi.fn(() => new ApiError('Organization not found mock', 404, {
+    code: 'ORGANIZATION_NOT_FOUND',
+}));
+const mockActionNotAllowed = vi.fn((msg?: string) => new ApiError(msg || 'Action not allowed mock', 403, {
+    code: 'ACTION_NOT_ALLOWED',
+}));
 const createApiError = {
   organizations: {
     organizationNotFound: mockOrganizationNotFound,
@@ -165,7 +169,7 @@ describe('Organization Routes V1', () => {
     });
 
     // Mount the organization routes
-    app.route('/organizations', organizationsRoutesV1);
+    app.route('/organizations', organizationRoutesV1);
   });
 
   // --- Test Cases ---

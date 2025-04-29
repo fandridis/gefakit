@@ -8,7 +8,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import { Search } from "lucide-react"
 
-export const Route = createFileRoute('/_settings')({
+export const Route = createFileRoute('/_protected')({
   beforeLoad: ({ context, location }) => {
     console.log('==== settings beforeLoad ====')
     console.log('context', context)

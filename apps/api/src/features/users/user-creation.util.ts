@@ -56,14 +56,18 @@ export async function createUserWithOrganizationAndMembership(
     const createdUser = await authRepoTx.createUser({ user: newUserInsert });
     if (!createdUser) {
         // Throw within the transaction to ensure rollback
-        throw new ApiError('Failed to create user within transaction', 500);
+        throw new ApiError('Failed to create user within transaction', 500, {
+            code: 'USER_CREATION_FAILED',
+        });
     }
 
     // 2. Create the Default Organization
     const orgName = data.default_org_name ?? `${createdUser.username}'s org`;
     const org = await orgRepoTx.createOrganization({ name: orgName });
     if (!org) {
-        throw new ApiError('Failed to create default organization within transaction', 500);
+        throw new ApiError('Failed to create default organization within transaction', 500, {
+            code: 'ORGANIZATION_CREATION_FAILED',
+        });
     }
 
     // 3. Create the Default Membership
@@ -75,7 +79,9 @@ export async function createUserWithOrganizationAndMembership(
         role: membershipRole
     });
     if (!membership) {
-        throw new ApiError('Failed to create default membership within transaction', 500);
+        throw new ApiError('Failed to create default membership within transaction', 500, {
+            code: 'MEMBERSHIP_CREATION_FAILED',
+        });
     }
 
     // Re-fetch user to ensure we have the Selectable type consistency if needed, though createUser might already return it.

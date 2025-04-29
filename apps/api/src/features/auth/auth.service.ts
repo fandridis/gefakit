@@ -9,7 +9,7 @@ import { createApiError } from "../../core/api-error";
 import { ApiError } from "@gefakit/shared";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
 import { OrganizationRepository, createOrganizationRepository } from "../organizations/organization.repository";
-import { createUserWithOrganizationAndMembership, CreateUserWithOrgData } from "../user/user-creation.util";
+import { createUserWithOrganizationAndMembership, CreateUserWithOrgData } from "../users/user-creation.util";
 
 export type AuthService = ReturnType<typeof createAuthService>;
 

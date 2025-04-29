@@ -9,34 +9,35 @@ import {
 } from "@/components/ui/card"
 import { sessionQueryKey } from "../hooks/use-auth"
 import { useAppForm } from "@/components/form/form"
-import { signInEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema"
+import { signUpEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { z } from "zod";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiSignInEmail } from '../api';
+import { apiSignUpEmail } from '../api';
 import { Link } from "@tanstack/react-router"
 
-type LoginFormValues = z.infer<typeof signInEmailRequestBodySchema>;
 
-export function LoginForm() {
+type RegisterFormValues = z.infer<typeof signUpEmailRequestBodySchema>;
+
+export function RegisterForm() {
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
-        mutationFn: apiSignInEmail,
+        mutationFn: apiSignUpEmail,
         onSuccess: () => {
-            return queryClient.invalidateQueries({ queryKey: sessionQueryKey }); // Refresh session state after sign-in
+            return queryClient.invalidateQueries({ queryKey: sessionQueryKey });
         },
-        // onError handled via mutation.error below
     });
 
     const form = useAppForm({
         defaultValues: {
+            username: "",
             email: "",
             password: "",
-        } as LoginFormValues,
+        } as RegisterFormValues,
         validators: {
-            onBlur: signInEmailRequestBodySchema,
+            onBlur: signUpEmailRequestBodySchema,
         },
         onSubmit: async ({ value }) => {
             mutation.mutate(value);
@@ -47,9 +48,9 @@ export function LoginForm() {
         <div className={cn("flex flex-col gap-6")}>
             <Card>
                 <CardHeader className="text-center">
-                    <CardTitle className="text-xl">Welcome back</CardTitle>
+                    <CardTitle className="text-xl">Create an account</CardTitle>
                     <CardDescription>
-                        Login with your Google or Github account
+                        Sign up with your Google or Github account
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -57,8 +58,7 @@ export function LoginForm() {
                         <Alert className="mb-4" variant="destructive">
                             <AlertCircle className="6-4 w-6" />
                             <AlertTitle>Error!</AlertTitle>
-                            {/* Displaying error message, potentially improve formatting based on ApiError structure */}
-                            <AlertDescription>{mutation.error.message || 'An unexpected error occurred.'}</AlertDescription>
+                            <AlertDescription>{mutation.error.message || 'An unexpected error occurred during registration.'}</AlertDescription>
                         </Alert>
                     )}
                     <form onSubmit={(e) => {
@@ -75,7 +75,7 @@ export function LoginForm() {
                                             fill="currentColor"
                                         />
                                     </svg>
-                                    Login with Github
+                                    Sign up with Github
                                 </Button>
                                 <Button variant="outline" className="w-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -84,16 +84,26 @@ export function LoginForm() {
                                             fill="currentColor"
                                         />
                                     </svg>
-                                    Login with Google
+                                    Sign up with Google
                                 </Button>
                             </div>
                             <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
                                 <span className="relative z-10 bg-background px-2 text-muted-foreground">
-                                    Or continue with
+                                    Or sign up with email
                                 </span>
                             </div>
                             <div className="grid gap-6">
                                 <form.AppForm>
+                                    <form.AppField
+                                        name="username"
+                                        children={(field) => (
+                                            <div className="grid gap-2">
+                                                <field.Label label="Username" />
+                                                <field.TextInput type="text" placeholder="yourusername" required />
+                                                <field.Info />
+                                            </div>
+                                        )}
+                                    />
                                     <form.AppField
                                         name="email"
                                         children={(field) => (
@@ -108,27 +118,19 @@ export function LoginForm() {
                                         name="password"
                                         children={(field) => (
                                             <div className="grid gap-2">
-                                                <div className="flex items-center">
-                                                    <field.Label label="Password" />
-                                                    <a
-                                                        href="#"
-                                                        className="ml-auto text-sm underline-offset-4 hover:underline"
-                                                    >
-                                                        Forgot your password?
-                                                    </a>
-                                                </div>
+                                                <field.Label label="Password" />
                                                 <field.TextInput type="password" required />
                                                 <field.Info />
                                             </div>
                                         )}
                                     />
-                                    <form.SubmitButton label="Login" loading={mutation.isPending} />
+                                    <form.SubmitButton label="Sign Up" loading={mutation.isPending} />
                                 </form.AppForm>
                             </div>
                             <div className="text-center text-sm">
-                                Don&apos;t have an account?{" "}
-                                <Link to='/register' className="underline underline-offset-4">
-                                    Sign up
+                                Already have an account?{" "}
+                                <Link to='/login' className="underline underline-offset-4">
+                                    Login
                                 </Link>
                             </div>
                         </div>

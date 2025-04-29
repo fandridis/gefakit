@@ -1,5 +1,5 @@
 import axios from 'redaxios';
-import { SessionDTO, SignUpEmailRequestBodyDTO, UserDTO, GetSessionResponseDTO } from "@gefakit/shared";
+import { SignUpEmailRequestBodyDTO, GetSessionResponseDTO } from "@gefakit/shared";
 import { handleSimpleError } from '@/utils/api-error';
 
 const API_BASE_URL = 'http://localhost:8787/api/v1/auth';

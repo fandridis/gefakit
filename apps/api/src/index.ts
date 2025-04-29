@@ -6,8 +6,7 @@ import { ZodError } from "zod";
 import { ApiError } from "@gefakit/shared";
 import { todoRoutesV1 } from "./features/todos/todo.routes.v1";
 import { authMiddleware } from "./middleware/auth";
-import { organizationsRoutesV1 } from "./features/organizations/organization.routes.v1";
-import { userRoutesV1 } from "./features/users/user.routes.v1";
+import { organizationRoutesV1 } from "./features/organizations/organization.routes.v1";
 import { organizationMembershipRoutesV1 } from "./features/organization-memberships/organization-membership.routes.v1";
 import { organizationInvitationRoutesV1 } from "./features/organization-invitations/organization-invitation.routes.v1";
 import {adminRoutesV1} from "./features/admin/admin.routes.v1";
@@ -16,6 +15,7 @@ import { kvTokenBucketRateLimiter } from "./middleware/rate-limiter";
 import { envConfig } from "./lib/env-config";
 import { securityHeaders } from "./middleware/security-headers";
 import { logger } from "hono/logger";
+import { userRoutesV1 } from "./features/users/user.routes.v1";
 
 const app = new Hono<{ Bindings: Bindings}>();
 
@@ -33,7 +33,7 @@ app.use('/api/*', async (c, next) => {
   c.header('Access-Control-Allow-Origin', origin);
   c.header('Access-Control-Allow-Credentials', 'true');
   c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  c.header('Access-Control-Allow-Methods', 'GET, PATCH, POST, PUT, DELETE, OPTIONS');
 
   if (c.req.method === 'OPTIONS') {
     // Respond immediately and explicitly for OPTIONS preflight requests
@@ -43,7 +43,7 @@ app.use('/api/*', async (c, next) => {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, PATCH, POST, PUT, DELETE, OPTIONS',
       },
     });
   }
@@ -80,7 +80,7 @@ app.route("/api/v1/todos", todoRoutesV1);
 
 // Organization routes
 app.use("/api/v1/organizations/*", authMiddleware);
-app.route("/api/v1/organizations", organizationsRoutesV1);
+app.route("/api/v1/organizations", organizationRoutesV1);
 
 // Organization membership routes
 app.use("/api/v1/organization-memberships/*", authMiddleware);

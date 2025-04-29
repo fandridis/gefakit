@@ -1,14 +1,21 @@
-export interface TestType {
+import { UserDTO } from "./auth";
+
+export type UpdateUserResponseDTO = {
+  user: UserDTO;
+}
+
+// START OF TEST
+export interface TestEnum {
     id: string;
     email: string;
     name: string;
-    role: TestTypeRole;
-  }
-  
+    role: TestEnumRoleType;
+}
 
-export const TestTypeRole = {
+export const TestEnumRole = {
     ADMIN: 'admin',
     USER: 'user',
 } as const;
 
-export type TestTypeRole = typeof TestTypeRole[keyof typeof TestTypeRole];
+export type TestEnumRoleType = typeof TestEnumRole[keyof typeof TestEnumRole];
+// END OF TEST

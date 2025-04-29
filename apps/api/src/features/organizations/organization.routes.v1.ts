@@ -137,4 +137,4 @@ app.put('/memberships/active/:orgId', async (c) => {
   return c.json(response, 200);
 })
 
-export const organizationsRoutesV1 = app 
+export const organizationRoutesV1 = app 

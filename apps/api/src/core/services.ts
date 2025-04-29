@@ -13,6 +13,8 @@ import { createOnboardingService } from '../features/onboarding/onboarding.servi
 import { createTodoRepository } from '../features/todos/todo.repository';
 import { createTodoService } from '../features/todos/todo.service';
 import { createAdminService } from '../features/admin/admin.service';
+import { createUserRepository } from '../features/users/user.repository';
+import { createUserService } from '../features/users/user.service';
 
 export function getAuthService(db: Kysely<DB>) {
     const authRepository = createAuthRepository({ db });
@@ -68,11 +70,14 @@ export function getAdminService(db: Kysely<DB>) {
     return createAdminService({ db, authRepository });
 }
 
+export function getUserService(db: Kysely<DB>) {
+    const userRepository = createUserRepository({ db });
+    return createUserService({ userRepository });
+}
+
 export function getEmailService() {
     // Currently no dependencies, but structured for future expansion
     // e.g., const resendClient = createResendClient(...);
     // return createEmailService({ resendClient });
     return createEmailService();
 }
-
-

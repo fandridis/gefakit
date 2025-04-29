@@ -12,7 +12,7 @@ import { createApiError } from "../../core/api-error";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
 import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
-import { createUserWithOrganizationAndMembership } from "../user/user-creation.util";
+import { createUserWithOrganizationAndMembership } from "../users/user-creation.util";
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
