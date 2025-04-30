@@ -78,7 +78,6 @@ export interface AuthUser {
   email_verified: Generated<boolean>;
   id: Generated<number>;
   password_hash: string;
-  recovery_code: Buffer | null;
   role: Generated<string>;
   username: string;
 }

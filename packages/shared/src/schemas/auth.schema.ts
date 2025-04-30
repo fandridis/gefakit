@@ -7,7 +7,6 @@ export const userSchema = z.object({
     created_at: z.date(),
     email_verified: z.boolean(),
     role: z.string(),
-    recovery_code: z.string().nullable().optional(),
 });
 
 export const sessionSchema = z.object({
@@ -77,6 +76,11 @@ export const requestOtpBodySchema = z.object({
   });
   
 export const verifyOtpBodySchema = z.object({
-    email: z.string().email("Invalid email address"),
-    otp: z.string().length(6, "OTP must be 6 digits"), // Assuming 6-digit OTP
-  });
+    email: z.string().email(),
+    otp: z.string().length(6, 'OTP must be 6 characters long')
+});
+
+// Schema for requesting a new verification email
+export const resendVerificationEmailRequestBodySchema = z.object({
+    email: z.string().email('Invalid email address'),
+});

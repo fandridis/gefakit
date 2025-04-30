@@ -19,7 +19,7 @@ export interface CreateUserWithOrgData {
 
 // Define a type that matches the structure returned by createUser (based on error message)
 // This avoids the strict dependency on Selectable<AuthUser> if createUser doesn't return all fields.
-type CreatedUserType = Omit<Selectable<AuthUser>, 'password_hash' | 'recovery_code'>;
+type CreatedUserType = Omit<Selectable<AuthUser>, 'password_hash'>;
 
 /**
  * Creates a new user, their default organization, and an initial membership
@@ -93,6 +93,5 @@ export async function createUserWithOrganizationAndMembership(
 
     // Return the user object directly from createUser
     // This assumes createUser returns an object compatible with Selectable<AuthUser>
-    // or that the consuming services don't strictly need fields like recovery_code immediately after creation.
     return { user: createdUser, orgId: org.id };
 } 

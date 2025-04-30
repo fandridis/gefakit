@@ -11,6 +11,9 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as VerifyEmailImport } from './routes/verify-email'
+import { Route as ResetPasswordImport } from './routes/reset-password'
+import { Route as RequestPasswordResetImport } from './routes/request-password-reset'
 import { Route as RegisterImport } from './routes/register'
 import { Route as LoginImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected/route'
@@ -19,6 +22,24 @@ import { Route as ProtectedDashboardImport } from './routes/_protected/dashboard
 import { Route as ProtectedSettingsProfileImport } from './routes/_protected/settings/profile'
 
 // Create/Update Routes
+
+const VerifyEmailRoute = VerifyEmailImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ResetPasswordRoute = ResetPasswordImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const RequestPasswordResetRoute = RequestPasswordResetImport.update({
+  id: '/request-password-reset',
+  path: '/request-password-reset',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const RegisterRoute = RegisterImport.update({
   id: '/register',
@@ -87,6 +108,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterImport
       parentRoute: typeof rootRoute
     }
+    '/request-password-reset': {
+      id: '/request-password-reset'
+      path: '/request-password-reset'
+      fullPath: '/request-password-reset'
+      preLoaderRoute: typeof RequestPasswordResetImport
+      parentRoute: typeof rootRoute
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordImport
+      parentRoute: typeof rootRoute
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailImport
+      parentRoute: typeof rootRoute
+    }
     '/_protected/dashboard': {
       id: '/_protected/dashboard'
       path: '/dashboard'
@@ -125,6 +167,9 @@ export interface FileRoutesByFullPath {
   '': typeof ProtectedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/request-password-reset': typeof RequestPasswordResetRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -134,6 +179,9 @@ export interface FileRoutesByTo {
   '': typeof ProtectedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/request-password-reset': typeof RequestPasswordResetRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -144,6 +192,9 @@ export interface FileRoutesById {
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/request-password-reset': typeof RequestPasswordResetRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -155,16 +206,31 @@ export interface FileRouteTypes {
     | ''
     | '/login'
     | '/register'
+    | '/request-password-reset'
+    | '/reset-password'
+    | '/verify-email'
     | '/dashboard'
     | '/settings/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/login' | '/register' | '/dashboard' | '/settings/profile'
+  to:
+    | '/'
+    | ''
+    | '/login'
+    | '/register'
+    | '/request-password-reset'
+    | '/reset-password'
+    | '/verify-email'
+    | '/dashboard'
+    | '/settings/profile'
   id:
     | '__root__'
     | '/'
     | '/_protected'
     | '/login'
     | '/register'
+    | '/request-password-reset'
+    | '/reset-password'
+    | '/verify-email'
     | '/_protected/dashboard'
     | '/_protected/settings/profile'
   fileRoutesById: FileRoutesById
@@ -175,6 +241,9 @@ export interface RootRouteChildren {
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  RequestPasswordResetRoute: typeof RequestPasswordResetRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -182,6 +251,9 @@ const rootRouteChildren: RootRouteChildren = {
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  RequestPasswordResetRoute: RequestPasswordResetRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
 }
 
 export const routeTree = rootRoute
@@ -197,7 +269,10 @@ export const routeTree = rootRoute
         "/",
         "/_protected",
         "/login",
-        "/register"
+        "/register",
+        "/request-password-reset",
+        "/reset-password",
+        "/verify-email"
       ]
     },
     "/": {
@@ -215,6 +290,15 @@ export const routeTree = rootRoute
     },
     "/register": {
       "filePath": "register.tsx"
+    },
+    "/request-password-reset": {
+      "filePath": "request-password-reset.tsx"
+    },
+    "/reset-password": {
+      "filePath": "reset-password.tsx"
+    },
+    "/verify-email": {
+      "filePath": "verify-email.tsx"
     },
     "/_protected/dashboard": {
       "filePath": "_protected/dashboard.tsx",

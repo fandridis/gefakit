@@ -110,12 +110,12 @@ export function LoginForm() {
                                             <div className="grid gap-2">
                                                 <div className="flex items-center">
                                                     <field.Label label="Password" />
-                                                    <a
-                                                        href="#"
+                                                    <Link
+                                                        to='/request-password-reset'
                                                         className="ml-auto text-sm underline-offset-4 hover:underline"
                                                     >
                                                         Forgot your password?
-                                                    </a>
+                                                    </Link>
                                                 </div>
                                                 <field.TextInput type="password" required />
                                                 <field.Info />

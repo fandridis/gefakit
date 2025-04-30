@@ -10,6 +10,7 @@ import { ApiError } from "@gefakit/shared";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
 import { OrganizationRepository, createOrganizationRepository } from "../organizations/organization.repository";
 import { createUserWithOrganizationAndMembership, CreateUserWithOrgData } from "../users/user-creation.util";
+import { randomUUID } from 'node:crypto';
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
@@ -39,6 +40,7 @@ export function createAuthService(
     const PASSWORD_RESET_TOKEN_DURATION = 15 * 60 * 1000; // 15 minutes
     const OTP_CODE_DURATION = 5 * 60 * 1000; // 5 minutes
     const OTP_LENGTH = 6; // 6-digit OTP
+    const EMAIL_VERIFICATION_TOKEN_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
     /**
      * Find user by id
@@ -123,6 +125,16 @@ export function createAuthService(
     function hashOtpCode({ code }: { code: string }): string {
         // Use SHA-256 for hashing, consistent with other tokens
         return encodeHexLowerCase(sha256(new TextEncoder().encode(code)));
+    }
+
+    /**
+     * Hashes an email verification token.
+     * 
+     * @param token - The plaintext email verification token.
+     * @returns A hex-encoded string representing the hashed token.
+     */
+    function hashEmailVerificationToken({ token }: { token: string }): string {
+        return encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
     }
 
     /**
@@ -319,13 +331,13 @@ export function createAuthService(
         const resetRecord = await authRepository.findPasswordResetTokenByHashedToken({ hashedToken });
 
         if (!resetRecord) {
-            throw new ApiError('Invalid password reset token.', 400); // Generic error
+            throw createApiError.auth.invalidPasswordResetToken();
         }
 
         if (new Date() > resetRecord.expires_at) {
             // Clean up expired token
             await authRepository.deletePasswordResetToken({ tokenId: resetRecord.id });
-            throw new ApiError('Password reset token has expired.', 400);
+            throw createApiError.auth.expiredPasswordResetToken();
         }
 
         // Token is valid, proceed with password update
@@ -355,7 +367,7 @@ export function createAuthService(
             });
         } catch (error) {
             console.error(`Failed to reset password for user ${resetRecord.user_id} in transaction:`, error);
-            throw new ApiError('Failed to reset password.', 500);
+            throw createApiError.auth.failedToResetPassword();
         }
     }
 
@@ -367,16 +379,18 @@ export function createAuthService(
      * @throws ApiError if the token is invalid, expired, or if the update fails.
      */
     async function verifyEmail({ token }: { token: string }) {
+        // Hash the incoming token before searching
+        const hashedToken = hashEmailVerificationToken({ token });
         // Use the service-level authRepository for the initial find (outside transaction)
-        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
+        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: hashedToken }); // Search by hash
 
         if (!verificationRecord) {
-            throw new ApiError('Invalid or expired verification token.', 400);
+            throw createApiError.auth.invalidVerificationToken();
         }
 
         const now = new Date();
         if (now > verificationRecord.expires_at) {
-            throw new ApiError('Verification token has expired.', 400);
+            throw createApiError.auth.expiredVerificationToken();
         }
 
         try {
@@ -398,7 +412,7 @@ export function createAuthService(
             });
         } catch (err) {
             console.error('Failed to verify email in transaction:', err);
-            throw new ApiError('Failed to complete email verification process.', 500);
+            throw createApiError.auth.failedToCompleteEmailVerification();
         }
     }
 
@@ -440,7 +454,7 @@ export function createAuthService(
                     const refetchedUser = await authRepository.findUserById(userId);
                     if (!refetchedUser) {
                         // This really shouldn't happen if linking succeeded and user existed
-                        throw new ApiError("Failed to refetch user after linking OAuth account by email.", 500); 
+                        throw createApiError.auth.failedToRefetchUserAfterLinkingOAuthAccountByEmail(); 
                     }
                     user = refetchedUser;
                 } else {
@@ -478,7 +492,7 @@ export function createAuthService(
                                 }
                             });
                              if (!linkedAccount) { // Check linking
-                                 throw new ApiError('Failed to link OAuth account during transaction', 500);
+                                 throw createApiError.auth.failedToLinkOAuthAccountDuringTransaction();
                             }
 
                             // The utility function already returns the created user object
@@ -489,7 +503,7 @@ export function createAuthService(
                         if (!createdUserData) {
                             // This should ideally be caught by errors within the transaction,
                             // but this check handles potential edge cases and satisfies the type checker.
-                            throw new ApiError('Transaction failed to return user data', 500);
+                            throw createApiError.auth.transactionFailedToReturnUserData();
                         }
                         user = createdUserData;
                         userId = user.id; // Assign userId after confirming user is not null
@@ -498,7 +512,7 @@ export function createAuthService(
                         console.error("OAuth user creation transaction failed:", error);
                         // Propagate a more generic error or handle specific cases
                         if (error instanceof ApiError) throw error;
-                        throw new ApiError("Failed to complete sign-up process.", 500);
+                        throw createApiError.auth.failedToCompleteSignUpProcess();
                     }
                 }
             } else {
@@ -513,7 +527,7 @@ export function createAuthService(
         // By this point, we should have a valid user object (either found or created)
         if (!user) {
             // This check narrows user type to AuthUser below
-            throw new ApiError('Failed to retrieve user details after OAuth process.', 500);
+            throw createApiError.auth.failedToRetrieveUserDetailsAfterOAuthProcess();
         }
 
         const { token } = await createSession({ userId: user.id });
@@ -615,6 +629,57 @@ export function createAuthService(
         };
     }
 
+    /**
+     * Handles request to resend email verification token
+     *
+     * @param email
+     * @returns A Promise that resolves to the user and plain verification token, or null.
+     */
+    async function resendVerificationEmail({ email }: { email: string }): Promise<{ user: Selectable<AuthUser>, verificationToken: string } | null> {
+        // Fetch the user including password hash to match the AuthUser type
+        const user = await authRepository.findUserWithPasswordByEmail({ email });
+        
+        if (!user) {
+            // User not found, return null to avoid enumeration
+            return null;
+        }
+
+        if (user.email_verified) {
+            // Email already verified, nothing to do
+            return null;
+        }
+
+        const plainToken = randomUUID(); // Use randomUUID
+        const tokenHash = hashEmailVerificationToken({ token: plainToken }); // Hash the token
+        const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_DURATION);
+
+        try {
+            await db.transaction().execute(async (tx) => {
+                const repo = createAuthRepository({ db: tx });
+
+                // Delete any existing verification tokens for this user
+                await repo.deleteEmailVerificationTokensByUserId({ userId: user.id });
+
+                // Insert the new verification token using the HASHED value
+                await repo.createEmailVerificationToken({
+                    user_id: user.id,
+                    value: tokenHash, // Store the hash
+                    identifier: user.email, // Use email as identifier
+                    expires_at: expiresAt
+                });
+            });
+
+            // Return full user object (as required by AuthUser type) and the PLAIN token
+            return { user, verificationToken: plainToken };
+
+        } catch (error) {
+            console.error("Failed to resend verification email transaction:", error);
+            // Depending on error handling strategy, you might want to throw a specific internal error
+            // For now, return null as the operation failed
+            return null;
+        }
+    }
+
     return {
         findUserById,
         findSessionById,
@@ -633,6 +698,7 @@ export function createAuthService(
         requestPasswordReset,
         resetPassword,
         requestOtpSignIn,
-        verifyOtpAndSignIn
+        verifyOtpAndSignIn,
+        resendVerificationEmail,
     };
 }

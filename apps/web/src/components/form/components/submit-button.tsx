@@ -8,7 +8,7 @@ export default function SubmitButton({ label, loading, disabled }: { label: stri
     return (
         <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) =>
-                <LoadingOverlay loading={isSubmitting || loading || false}>
+                <LoadingOverlay className="w-full" loading={isSubmitting || loading || false}>
                     <Button className="w-full" type="submit" disabled={isSubmitting || loading || disabled}>{label}</Button>
                 </LoadingOverlay>
             }

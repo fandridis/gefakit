@@ -15,6 +15,14 @@ export function createAuthRepository({ db }: { db: DbClient }) {
                 .executeTakeFirst();
         },
 
+        async findUserByEmail({ email }: { email: string }) {
+            return db
+                .selectFrom('auth.users')
+                .where('email', '=', email)
+                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .executeTakeFirst();
+        },
+
         async findUserWithPasswordByEmail({ email }: { email: string }) {
             return db
                 .selectFrom('auth.users')
@@ -118,6 +126,13 @@ export function createAuthRepository({ db }: { db: DbClient }) {
             return db
                 .deleteFrom('auth.email_verifications')
                 .where('id', '=', tokenId)
+                .execute();
+        },
+
+        async deleteEmailVerificationTokensByUserId({ userId }: { userId: number }) {
+            return db
+                .deleteFrom('auth.email_verifications')
+                .where('user_id', '=', userId)
                 .execute();
         },
 

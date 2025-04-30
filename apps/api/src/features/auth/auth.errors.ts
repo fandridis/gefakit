@@ -70,4 +70,70 @@ export const authErrors = {
     400, // Bad Request
     { code: 'AUTH_EXPIRED_OTP' }
   ),
+
+  invalidPasswordResetToken: () => new ApiError(
+    'Invalid password reset token',
+    400, // Bad Request
+    { code: 'AUTH_INVALID_PASSWORD_RESET_TOKEN' }
+  ),
+  expiredPasswordResetToken: () => new ApiError(
+    'Password reset token has expired',
+    400, // Bad Request
+    { code: 'AUTH_EXPIRED_PASSWORD_RESET_TOKEN' }
+  ),
+
+  failedToResetPassword: () => new ApiError(
+    'Failed to reset password due to a server error.',
+    500,
+    { code: 'AUTH_PASSWORD_RESET_FAILED' }
+  ),
+
+  invalidVerificationToken: () => new ApiError(
+    'Invalid email verification token.',
+    400,
+    { code: 'AUTH_INVALID_VERIFICATION_TOKEN' }
+  ),
+
+  expiredVerificationToken: () => new ApiError(
+    'Email verification token has expired.',
+    400,
+    { code: 'AUTH_EXPIRED_VERIFICATION_TOKEN' }
+  ),
+
+  failedToCompleteEmailVerification: () => new ApiError(
+    'Failed to complete email verification due to a server error.',
+    500,
+    { code: 'AUTH_EMAIL_VERIFICATION_FAILED' }
+  ),
+
+  failedToRefetchUserAfterLinkingOAuthAccountByEmail: () => new ApiError(
+    'Failed to retrieve user details after linking OAuth account.',
+    500,
+    { code: 'AUTH_OAUTH_LINK_REFETCH_FAILED' }
+  ),
+
+  failedToLinkOAuthAccountDuringTransaction: () => new ApiError(
+    'Failed to link OAuth account during sign up.',
+    500,
+    { code: 'AUTH_OAUTH_LINK_TX_FAILED' }
+  ),
+
+  transactionFailedToReturnUserData: () => new ApiError(
+    'User creation process failed unexpectedly.',
+    500,
+    { code: 'AUTH_SIGNUP_TX_NO_USER' }
+  ),
+
+  failedToCompleteSignUpProcess: () => new ApiError(
+    'Failed to complete the sign-up process.',
+    500,
+    { code: 'AUTH_SIGNUP_FAILED' }
+  ),
+
+  failedToRetrieveUserDetailsAfterOAuthProcess: () => new ApiError(
+    'Failed to retrieve user details after OAuth process.',
+    500,
+    { code: 'AUTH_OAUTH_POST_PROCESS_FAILED' }
+  ),
+  
 } as const;

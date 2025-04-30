@@ -12,7 +12,7 @@ export default function FieldInfo() {
     return (
         <>
             {shouldShowError && (
-                <div className="text-destructive-foreground text-sm">
+                <div className="text-destructive text-sm">
                     {typeof firstFormError === 'string' ? firstFormError : firstFormError?.message}
                 </div>
             )}

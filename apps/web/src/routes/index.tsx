@@ -30,8 +30,8 @@ function HomeComponent() {
                     </Link>
                 </li>
                 <li>
-                    <Link to="/invoices" className="text-blue-500 hover:opacity-75">
-                        Go to the auth-only invoices page.
+                    <Link to='/settings/profile' className="text-blue-500 hover:opacity-75">
+                        Go to the auth-only profile page.
                     </Link>
                 </li>
             </ol>

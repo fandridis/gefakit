@@ -78,3 +78,27 @@ export const apiVerifyEmail = async (token: string) => {
     },
   }).catch(handleSimpleError);
 };
+
+export const apiResendVerificationEmail = async (email: string) => {
+  return axios.post(`${API_BASE_URL}/resend-verification-email`, { email }, {
+    headers: {
+      'Accept': 'application/json',
+    },
+  }).catch(handleSimpleError);
+};
+
+export const apiRequestResetPassword = async (email: string) => {
+  return axios.post(`${API_BASE_URL}/request-password-reset`, { email }, {
+    headers: {
+      'Accept': 'application/json',
+    },
+  }).catch(handleSimpleError);
+};
+
+export const apiResetPassword = async (token: string, newPassword: string) => {
+  return axios.post(`${API_BASE_URL}/reset-password`, { token, newPassword }, {
+    headers: {
+      'Accept': 'application/json',
+    },
+  }).catch(handleSimpleError);
+};

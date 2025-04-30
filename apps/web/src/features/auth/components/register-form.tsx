@@ -16,16 +16,20 @@ import { z } from "zod";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiSignUpEmail } from '../api';
 import { Link } from "@tanstack/react-router"
+import { useState } from "react"
+import { MailCheck } from "lucide-react"
 
 
 type RegisterFormValues = z.infer<typeof signUpEmailRequestBodySchema>;
 
 export function RegisterForm() {
     const queryClient = useQueryClient();
+    const [hasSubmittedSuccessfully, setHasSubmittedSuccessfully] = useState(false);
 
     const mutation = useMutation({
         mutationFn: apiSignUpEmail,
         onSuccess: () => {
+            setHasSubmittedSuccessfully(true);
             return queryClient.invalidateQueries({ queryKey: sessionQueryKey });
         },
     });
@@ -43,6 +47,28 @@ export function RegisterForm() {
             mutation.mutate(value);
         }
     })
+
+    if (hasSubmittedSuccessfully) {
+        return (
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <MailCheck className="mx-auto h-12 w-12 text-green-500" />
+                    <CardTitle className="mt-4 text-2xl">Registration Successful!</CardTitle>
+                    <CardDescription>
+                        Please check your email inbox to verify your account.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                        Didn't receive an email? Check your spam folder or <button className="underline underline-offset-4 hover:text-primary">resend verification email</button>.
+                    </p>
+                    <Button asChild className="mt-6 w-full">
+                        <Link to="/login">Go to Login</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <div className={cn("flex flex-col gap-6")}>

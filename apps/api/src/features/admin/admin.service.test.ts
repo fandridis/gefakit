@@ -23,7 +23,7 @@ vi.mock('../../core/api-error', async (importOriginal) => {
     createApiError: { // Mock only the factory object
       auth: {
         // Use the imported ApiError constructor
-        userNotFound: vi.fn(() => new ApiError('User not found mock', 404)),
+        userNotFound: vi.fn(() => new ApiError('User not found mock', 404, { code: 'USER_NOT_FOUND' })),
         // Add other specific errors if used by admin service
       },
       // admin: { // Add admin-specific errors if created
@@ -78,7 +78,6 @@ describe('AdminService', () => {
       password_hash: 'dummy', 
       email_verified: true,
       created_at: new Date(),
-      recovery_code: null
   } as UserDTO;
   const mockAdminUser = { 
       id: mockAdminUserId,
@@ -89,7 +88,6 @@ describe('AdminService', () => {
       password_hash: 'dummy',
       email_verified: true,
       created_at: new Date(),
-      recovery_code: null
   } as UserDTO;
 
 

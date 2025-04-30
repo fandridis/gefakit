@@ -7,7 +7,8 @@ import {
     requestPasswordResetRequestBodySchema,
     resetPasswordRequestBodySchema,
     requestOtpBodySchema,
-    verifyOtpBodySchema
+    verifyOtpBodySchema,
+    resendVerificationEmailRequestBodySchema
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
@@ -391,6 +392,35 @@ app.post('/reset-password', zValidator('json', resetPasswordRequestBodySchema), 
     deleteCookie(c, 'gefakit-session'); 
 
     return c.json({ message: "Password has been reset successfully." }, 200);
+});
+
+// --- Resend Verification Email Route ---
+
+app.post('/resend-verification-email', emailRateLimiter, zValidator('json', resendVerificationEmailRequestBodySchema), async (c) => {
+    const body = c.req.valid('json');
+    const authService = c.get('authService');
+    const emailService = c.get('emailService');
+
+    // Call a new service method to handle resending the verification email
+    // This method should find the user, check if already verified, 
+    // generate a new token if needed, and return it.
+    const result = await authService.resendVerificationEmail({ email: body.email });
+
+    // Only send an email if a new token was actually generated (i.e., user exists and wasn't verified)
+    if (result?.verificationToken) {
+        try {
+            await emailService.sendVerificationEmail({ 
+                email: result.user.email, 
+                token: result.verificationToken 
+            });
+        } catch (error) {
+            console.error(`Failed to resend verification email to ${body.email}:`, error);
+            // Decide if you want to throw an error back to the client or just log
+        }
+    }
+
+    // Always return a generic success response to prevent enumeration attacks
+    return c.json({ message: "If your email address is registered and not verified, a new verification link has been sent." }, 200);
 });
 
 // --- OTP Sign In Routes ---

@@ -51,11 +51,13 @@ export function getOrganizationMembershipService(db: Kysely<DB>) {
 
 export function getOnboardingService(db: Kysely<DB>) {
     const authRepository = createAuthRepository({ db });
+    const authService = getAuthService(db);
     return createOnboardingService({
         db,
         authRepository,
         createAuthRepository,
-        createOrganizationRepository
+        createOrganizationRepository,
+        generateEmailVerificationToken: authService.generateEmailVerificationToken
     });
 }
 

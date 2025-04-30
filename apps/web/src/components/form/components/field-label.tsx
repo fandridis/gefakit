@@ -17,7 +17,7 @@ export default function FieldLabel({ label }: { label?: string }) {
         <Label
             className={cn(
                 "mb-0.5 text-sm",
-                shouldShowError && "text-destructive-foreground"
+                shouldShowError && 'text-destructive'
             )}
             htmlFor={field.name}
         >
