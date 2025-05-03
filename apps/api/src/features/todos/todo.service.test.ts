@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTodoService, TodoService } from './todo.service';
 import { TodoRepository, createTodoRepository } from './todo.repository'; // Import real type and factory
-import { createApiError } from '../../core/api-error';
-import { ApiError } from '@gefakit/shared';
 import { CoreTodo } from '../../db/db-types';
 import { Insertable, Updateable } from 'kysely';
 
@@ -14,19 +12,8 @@ vi.mock('./todo.repository', () => ({
   // Mock any standalone functions if necessary (likely none here)
 }));
 
-// 2. Mock Error Factory
-vi.mock('../../core/api-error', () => ({
-  createApiError: {
-    todos: {
-      todoNotFound: vi.fn(() => new Error('Todo not found mock')),
-      actionNotAllowed: vi.fn(() => new Error('Action not allowed mock')),
-    },
-  },
-}));
-
 // 3. Import Mocked Functions/Modules AFTER mocks
 import { createTodoRepository as mockCreateTodoRepositoryFn } from './todo.repository';
-import { createApiError as mockErrors } from '../../core/api-error';
 
 
 // --- Test Suite Setup ---
@@ -119,20 +106,20 @@ describe('TodoService', () => {
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.updateTodo).toHaveBeenCalledWith({ id: todoId, todo: updateData });
-      expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
+     // expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
+     // expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
       expect(result).toEqual(updatedTodo);
     });
 
     it('should throw todoNotFound error if todo is not found', async () => {
       mockRepoInstance.findTodoById.mockResolvedValue(null);
 
-      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Todo not found mock');
+      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Todo not found');
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.updateTodo).not.toHaveBeenCalled();
-      expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
-      expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
+      //expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
+      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
     });
 
     it('should throw actionNotAllowed error if author does not match', async () => {
@@ -140,12 +127,12 @@ describe('TodoService', () => {
       const todoFromOtherAuthor: CoreTodo = { ...existingTodo, author_id: otherAuthorId } as any;
       mockRepoInstance.findTodoById.mockResolvedValue(todoFromOtherAuthor);
 
-      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Action not allowed mock');
+      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Action not allowed');
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.updateTodo).not.toHaveBeenCalled();
-      expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
+      //expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
+      //expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -164,20 +151,20 @@ describe('TodoService', () => {
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).toHaveBeenCalledWith({ id: todoId });
-      expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
+      //expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
+      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
       expect(result).toEqual(deletedResult);
     });
 
     it('should throw todoNotFound error if todo is not found', async () => {
       mockRepoInstance.findTodoById.mockResolvedValue(null);
 
-      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Todo not found mock');
+      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Todo not found');
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).not.toHaveBeenCalled();
-      expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
-      expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
+      //expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
+      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
     });
 
     it('should throw actionNotAllowed error if author does not match', async () => {
@@ -185,12 +172,12 @@ describe('TodoService', () => {
       const todoFromOtherAuthor: CoreTodo = { ...existingTodo, author_id: otherAuthorId } as any;
       mockRepoInstance.findTodoById.mockResolvedValue(todoFromOtherAuthor);
 
-      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Action not allowed mock');
+      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Action not allowed');
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).not.toHaveBeenCalled();
-      expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
+     // expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
+      // expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
     });
   });
 });

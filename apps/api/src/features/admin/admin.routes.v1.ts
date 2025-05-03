@@ -6,11 +6,11 @@ import { AuthService } from '../auth/auth.service'; // Might need auth service/r
 import { createAuthRepository } from '../auth/auth.repository';
 import { authMiddleware } from '../../middleware/auth';
 import { adminAuth } from '../../middleware/admin-auth';
-import { createApiError } from '../../core/api-error';
 import { dbMiddleware, DbMiddleWareVariables } from '../../middleware/db';
 import { createAdminService } from './admin.service';
 import { Bindings } from '../../types/hono';
 import { getAdminService, getAuthService } from '../../core/services';
+import { adminErrors } from './admin.errors';
 
 type AuthRouteVariables = DbMiddleWareVariables & {
     authService: AuthService;
@@ -34,10 +34,10 @@ app.post(
     const db = c.get('db');
 
     if (!adminUser || !session) {
-      throw createApiError.admin.authenticationRequired();
+      throw adminErrors.authenticationRequired();
     }
     if (adminUser.id === targetUserId) {
-       throw createApiError.admin.cannotImpersonateSelf();
+       throw adminErrors.cannotImpersonateSelf();
     }
 
     const authRepository = createAuthRepository({db});
@@ -61,7 +61,7 @@ app.post(
       const db = c.get('db');
   
       if (!session) {
-           throw createApiError.admin.impersonationSessionNotFound();
+           throw adminErrors.impersonationSessionNotFound();
       }
       
       const authService = getAuthService(db);
@@ -69,7 +69,7 @@ app.post(
       
       const sessionDetails = await authService.findSessionById({ id: session.id });
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {
-          throw createApiError.admin.notImpersonating();
+          throw adminErrors.notImpersonating();
       }
   
       const adminUserId = sessionDetails.impersonator_user_id;

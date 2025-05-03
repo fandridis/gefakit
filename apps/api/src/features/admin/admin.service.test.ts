@@ -11,35 +11,8 @@ vi.mock('../auth/auth.repository', () => ({
   createAuthRepository: vi.fn(),
 }));
 
-// 2. Mock Error Factory - Corrected
-vi.mock('../../core/api-error', async (importOriginal) => {
-  // Import the factory module we are mocking
-  const actualFactoryModule = await importOriginal() as typeof import('../../core/api-error');
-  // Import the *real* ApiError class from its actual location
-  const { ApiError } = await import('@gefakit/shared');
-
-  return {
-    // Do NOT spread the original module
-    createApiError: { // Mock only the factory object
-      auth: {
-        // Use the imported ApiError constructor
-        userNotFound: vi.fn(() => new ApiError('User not found mock', 404, { code: 'USER_NOT_FOUND' })),
-        // Add other specific errors if used by admin service
-      },
-      // admin: { // Add admin-specific errors if created
-      //   impersonationFailed: vi.fn(() => new ApiError('Impersonation failed mock', 500)),
-      //   stopImpersonationFailed: vi.fn(() => new ApiError('Stop impersonation failed mock', 500)),
-      // }
-    },
-    // Explicitly re-export any other needed exports from the original factory module
-    // e.g., someErrorCode: actualFactoryModule.someErrorCode
-  };
-});
-
 // 3. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from '../auth/auth.repository';
-// Import the mocked factory
-import { createApiError as mockErrors } from '../../core/api-error';
 // Import the REAL ApiError class from its actual location
 import { ApiError } from '@gefakit/shared';
 import { UserDTO } from '@gefakit/shared';
@@ -129,18 +102,18 @@ describe('AdminService', () => {
         userId: mockTargetUserId,
         impersonatorUserId: mockAdminUserId,
       });
-      expect(mockErrors.auth.userNotFound).not.toHaveBeenCalled();
+      // expect(mockErrors.auth.userNotFound).not.toHaveBeenCalled();
     });
 
     it('should throw userNotFound error if target user is not found', async () => {
       mockRepoInstance.findUserById.mockResolvedValue(null);
 
       await expect(adminService.startImpersonation(mockSessionId, mockAdminUserId, mockTargetUserId))
-        .rejects.toThrow('User not found mock');
+        .rejects.toThrow('User not found');
 
       expect(mockRepoInstance.findUserById).toHaveBeenCalledWith(mockTargetUserId);
       expect(mockRepoInstance.updateSessionImpersonation).not.toHaveBeenCalled();
-      expect(mockErrors.auth.userNotFound).toHaveBeenCalledTimes(1);
+      // expect(mockErrors.auth.userNotFound).toHaveBeenCalledTimes(1);
     });
 
     // Optional: Add test for role check if implemented in the service

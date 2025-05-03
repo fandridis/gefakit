@@ -1,9 +1,10 @@
 import { Insertable, Kysely, Transaction } from 'kysely'
 import { DB, OrganizationsInvitation } from '../../db/db-types'
 import { OrganizationInvitationRepository } from './organization-invitation.repository';
-import { createApiError } from '../../core/api-error';
 import { OrganizationService } from '../organizations/organization.service';
 import { AuthService } from '../auth/auth.service';
+import { authErrors } from '../auth/auth.errors';
+import { organizationInvitationErrors } from './organization-invitation.errors';
 export type OrganizationInvitationService = ReturnType<typeof createOrganizationInvitationService>
 
 export function createOrganizationInvitationService({ 
@@ -24,7 +25,7 @@ export function createOrganizationInvitationService({
       // Get the user to find his email and then fetch all invitations for that email
       const user = await authService.findUserById({id: userId});
       if (!user) {
-        throw createApiError.auth.userNotFound();
+        throw authErrors.userNotFound();
       }
       return await organizationInvitationRepository.findAllInvitationsByUserEmail({email: user.email});
     },
@@ -37,15 +38,15 @@ export function createOrganizationInvitationService({
       const invitation = await organizationInvitationRepository.findInvitationByToken({token});
 
       if (!invitation) {
-        throw createApiError.organizationInvitations.invitationNotFound();
+        throw organizationInvitationErrors.invitationNotFound();
       }
 
       if (invitation.expires_at < new Date()) {
-        throw createApiError.organizationInvitations.actionNotAllowed('Invitation expired');
+        throw organizationInvitationErrors.invitationExpired();
       }
 
       if (invitation.status !== 'pending') {
-        throw createApiError.organizationInvitations.actionNotAllowed('Invitation already accepted/declined');
+        throw organizationInvitationErrors.invitationAlreadyProcessed();
       }
 
       return db.transaction().execute(async (trx: Transaction<DB>) => {
@@ -54,7 +55,7 @@ export function createOrganizationInvitationService({
         const acceptedInvitation = await organizationInvitationRepoTx.acceptInvitation({token});
 
         if (!acceptedInvitation) {
-          throw createApiError.organizationInvitations.invitationNotFound();
+          throw organizationInvitationErrors.invitationNotFound();
         }
 
         await organizationService.createMembershipFromInvitation({
@@ -71,21 +72,21 @@ export function createOrganizationInvitationService({
       const invitation = await organizationInvitationRepository.findInvitationByToken({token});
       
       if (!invitation) {
-        throw createApiError.organizationInvitations.invitationNotFound();
+        throw organizationInvitationErrors.invitationNotFound();
       }
 
       if (invitation.expires_at < new Date()) {
-        throw createApiError.organizationInvitations.actionNotAllowed('Invitation expired');
+        throw organizationInvitationErrors.invitationExpired();
       }
 
       if (invitation.status !== 'pending') {
-        throw createApiError.organizationInvitations.actionNotAllowed('Invitation already accepted/declined');
+        throw organizationInvitationErrors.invitationAlreadyProcessed();
       }
       
       const declinedInvitation = await organizationInvitationRepository.declineInvitation({token});
 
       if (!declinedInvitation) {
-        throw createApiError.organizationInvitations.invitationNotFound();
+        throw organizationInvitationErrors.invitationNotFound();
       }
 
       return declinedInvitation;

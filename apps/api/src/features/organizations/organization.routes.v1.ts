@@ -9,11 +9,11 @@ import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
 import { OrganizationService } from './organization.service';
 import { EmailService } from '../emails/email.service';
-import { createApiError } from '../../core/api-error';
 import { OrganizationMembershipService } from '../organization-memberships/organization-membership.service';
 import { OrganizationInvitationService } from '../organization-invitations/organization-invitation.service';
 import { randomUUID } from 'node:crypto';
 import { getEmailService, getOrganizationInvitationService, getOrganizationMembershipService, getOrganizationService } from '../../core/services';
+import { organizationErrors } from './organization.errors';
 
 type OrganizationRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
   organizationService: OrganizationService,
@@ -101,7 +101,7 @@ app.post('/:orgId/invitations', zValidator('json', createOrganizationInvitationR
   const organization = await organizationService.findOrganizationById({organizationId: parseInt(orgId)});
 
   if (!organization) {
-    throw createApiError.organizations.organizationNotFound();
+    throw organizationErrors.organizationNotFound();
   }
 
   const invitation = await organizationInvitationService.createInvitation({

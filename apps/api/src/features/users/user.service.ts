@@ -1,8 +1,6 @@
 import { Updateable } from "kysely";
 import { AuthUser } from "../../db/db-types";
 import { UserRepository } from "./user.repository";
-// import { createApiError } from "../../core/api-error"; // Keep for now, might need later
-
 
 export type UserService = ReturnType<typeof createUserService>
 

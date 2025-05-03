@@ -8,11 +8,11 @@
 import { Kysely, Transaction } from "kysely";
 import { randomUUID } from 'node:crypto';
 import { DB } from "../../db/db-types";
-import { createApiError } from "../../core/api-error";
 import { hashPassword, isMyPasswordPwned } from "../../lib/crypto";
 import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
 import { createUserWithOrganizationAndMembership } from "../users/user-creation.util";
+import { authErrors } from "../auth/auth.errors";
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
@@ -41,19 +41,19 @@ export function createOnboardingService({
     const existingUser = await authRepository.findUserWithPasswordByEmail({email});
 
     if (password.length < 8 || password.length > 255) {
-        throw createApiError.auth.weakPassword('Password must be between 8 and 255 characters long.');
+        throw authErrors.weakPassword('Password must be between 8 and 255 characters long.');
     }
 
     const isPwned = await isMyPasswordPwned(password);
 
     if (existingUser) {
-        throw createApiError.auth.userCreationFailed('Email already exists')
+        throw authErrors.userCreationFailed('Email already exists')
     }
 
     const passwordHash = await hashPassword(password);
 
     if (isPwned) {
-        throw createApiError.auth.weakPassword('Password was found in a data breach. Please choose a different password and update it on all your accounts.');
+        throw authErrors.weakPassword('Password was found in a data breach. Please choose a different password and update it on all your accounts.');
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {

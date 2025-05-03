@@ -12,7 +12,6 @@ import {
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
-import { createApiError } from "../../core/api-error";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
@@ -24,6 +23,7 @@ import { createOAuthClients, OAuthClients } from "../../lib/oauth";
 import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
 import { getAuthService, getOnboardingService } from "../../core/services";
 import { getEmailService } from "../../core/services";
+import { authErrors } from "./auth.errors";
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -112,7 +112,7 @@ app.get('/session', async (c) => {
     const sessionToken = getCookie(c, 'gefakit-session');
 
     if (!sessionToken) {
-        throw createApiError.auth.unauthorized();
+        throw authErrors.unauthorized();
     }
 
     const service = c.get('authService');
@@ -129,7 +129,7 @@ app.get('/session', async (c) => {
         // or validateSession returning nulls which lead to an error earlier.
         // But as a safeguard:
         deleteCookie(c, 'gefakit-session'); // Clear potentially invalid cookie
-        throw createApiError.auth.unauthorized(); 
+        throw authErrors.unauthorized(); 
     }
 
     const response: GetSessionResponseDTO = { session: result.session, user: result.user };
@@ -180,7 +180,7 @@ app.post('/sign-out', async (c) => {
 app.get('/verify-email', async (c) => {
     const token = c.req.query('token');
     if (!token) {
-        throw createApiError.auth.emailVerificationTokenNotFound();
+        throw authErrors.emailVerificationTokenNotFound();
     }
 
     const service = c.get('authService');

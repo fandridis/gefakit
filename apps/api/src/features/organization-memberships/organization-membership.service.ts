@@ -1,7 +1,8 @@
 import { Kysely } from 'kysely'
 import { DB } from '../../db/db-types'
 import { OrganizationMembershipRepository } from './organization-membership.repository';
-import { createApiError } from '../../core/api-error';
+import { organizationErrors } from '../organizations/organization.errors';
+import { organizationMembershipErrors } from './organization-membership.errors';
 
 export type OrganizationMembershipService = ReturnType<typeof createOrganizationMembershipService>
 
@@ -22,15 +23,15 @@ export function createOrganizationMembershipService({
       const membership = memberships.find((m) => m.organization_id === organizationId);
 
       if (!membership) {
-        throw createApiError.organizations.actionNotAllowed('User is not a member of the organization');
+        throw organizationMembershipErrors.organizationMembershipNotFound();
       }
 
       if (membership.role === 'owner') {
-        throw createApiError.organizations.actionNotAllowed('You cannot leave the organization as the owner');
+        throw organizationMembershipErrors.ownerCannotLeaveOrganization();
       }
 
       if (memberships.length === 1) {
-        throw createApiError.organizations.actionNotAllowed('You cannot leave your only organization');
+        throw organizationMembershipErrors.cannotLeaveOnlyOrganization();
       }
       
       return await organizationMembershipRepository.deleteMembership({organizationId, userId});
@@ -39,12 +40,13 @@ export function createOrganizationMembershipService({
     removeUserMembershipFromOrg: async ({organizationId, userId}: {organizationId: number, userId: number}) => {
       const membership = await organizationMembershipRepository.findMembershipByUserIdAndOrgId({userId, organizationId});
 
+      console.log('gg1 membership', membership);
       if (!membership) {
-        throw createApiError.organizations.actionNotAllowed('User is not a member of the organization');
+        throw organizationMembershipErrors.organizationMembershipNotFound();
       }
       
       if (membership.role !== 'admin' && membership.role !== 'owner') {
-        throw createApiError.organizations.actionNotAllowed('Only admins or owners can remove users from the organization');
+        throw organizationMembershipErrors.onlyAdminsCanRemoveUsers();
       }
 
       return await organizationMembershipRepository.deleteMembership({organizationId, userId});

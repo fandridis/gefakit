@@ -5,12 +5,12 @@ import { AuthRepository, createAuthRepository } from "./auth.repository";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { encodeBase32LowerCaseNoPadding, encodeBase64url } from "@oslojs/encoding";
 import { SessionDTO, UserDTO } from "@gefakit/shared";
-import { createApiError } from "../../core/api-error";
 import { ApiError } from "@gefakit/shared";
 import { hashPassword, verifyPassword } from "../../lib/crypto";
 import { OrganizationRepository, createOrganizationRepository } from "../organizations/organization.repository";
 import { createUserWithOrganizationAndMembership, CreateUserWithOrgData } from "../users/user-creation.util";
 import { randomUUID } from 'node:crypto';
+import { authErrors } from "./auth.errors";
 
 export type AuthService = ReturnType<typeof createAuthService>;
 
@@ -237,16 +237,16 @@ export function createAuthService(
     async function signInWithEmail({ email, password }: { email: string; password: string }) {
         const user = await authRepository.findUserWithPasswordByEmail({ email });
         if (!user) {
-            throw createApiError.auth.invalidCredentials();
+            throw authErrors.invalidCredentials();
         }
 
         if (!user.email_verified) {
-            throw createApiError.auth.emailNotVerified();
+            throw authErrors.emailNotVerified();
         }
 
         const isValidPassword = await verifyPassword(password, user.password_hash);
         if (!isValidPassword) {
-            throw createApiError.auth.invalidCredentials();
+            throw authErrors.invalidCredentials();
         }
 
         const { token } = await createSession({ userId: user.id });
@@ -331,13 +331,13 @@ export function createAuthService(
         const resetRecord = await authRepository.findPasswordResetTokenByHashedToken({ hashedToken });
 
         if (!resetRecord) {
-            throw createApiError.auth.invalidPasswordResetToken();
+            throw authErrors.invalidPasswordResetToken();
         }
 
         if (new Date() > resetRecord.expires_at) {
             // Clean up expired token
             await authRepository.deletePasswordResetToken({ tokenId: resetRecord.id });
-            throw createApiError.auth.expiredPasswordResetToken();
+            throw authErrors.expiredPasswordResetToken();
         }
 
         // Token is valid, proceed with password update
@@ -367,7 +367,7 @@ export function createAuthService(
             });
         } catch (error) {
             console.error(`Failed to reset password for user ${resetRecord.user_id} in transaction:`, error);
-            throw createApiError.auth.failedToResetPassword();
+            throw authErrors.failedToResetPassword();
         }
     }
 
@@ -385,12 +385,12 @@ export function createAuthService(
         const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: hashedToken }); // Search by hash
 
         if (!verificationRecord) {
-            throw createApiError.auth.invalidVerificationToken();
+            throw authErrors.invalidVerificationToken();
         }
 
         const now = new Date();
         if (now > verificationRecord.expires_at) {
-            throw createApiError.auth.expiredVerificationToken();
+            throw authErrors.expiredVerificationToken();
         }
 
         try {
@@ -412,7 +412,7 @@ export function createAuthService(
             });
         } catch (err) {
             console.error('Failed to verify email in transaction:', err);
-            throw createApiError.auth.failedToCompleteEmailVerification();
+            throw authErrors.failedToCompleteEmailVerification();
         }
     }
 
@@ -454,7 +454,7 @@ export function createAuthService(
                     const refetchedUser = await authRepository.findUserById(userId);
                     if (!refetchedUser) {
                         // This really shouldn't happen if linking succeeded and user existed
-                        throw createApiError.auth.failedToRefetchUserAfterLinkingOAuthAccountByEmail(); 
+                        throw authErrors.failedToRefetchUserAfterLinkingOAuthAccountByEmail(); 
                     }
                     user = refetchedUser;
                 } else {
@@ -465,7 +465,7 @@ export function createAuthService(
                             const orgRepoTx = createOrganizationRepository({ db: trx });
 
                             if (!oauthDetails.email) {
-                                throw createApiError.auth.oauthEmailRequired({ provider: oauthDetails.provider });
+                                throw authErrors.oauthEmailRequired({ provider: oauthDetails.provider });
                             }
 
                             const { user: createdUser, orgId } = await createUserWithOrganizationAndMembership(
@@ -492,7 +492,7 @@ export function createAuthService(
                                 }
                             });
                              if (!linkedAccount) { // Check linking
-                                 throw createApiError.auth.failedToLinkOAuthAccountDuringTransaction();
+                                 throw authErrors.failedToLinkOAuthAccountDuringTransaction();
                             }
 
                             // The utility function already returns the created user object
@@ -503,7 +503,7 @@ export function createAuthService(
                         if (!createdUserData) {
                             // This should ideally be caught by errors within the transaction,
                             // but this check handles potential edge cases and satisfies the type checker.
-                            throw createApiError.auth.transactionFailedToReturnUserData();
+                            throw authErrors.transactionFailedToReturnUserData();
                         }
                         user = createdUserData;
                         userId = user.id; // Assign userId after confirming user is not null
@@ -512,7 +512,7 @@ export function createAuthService(
                         console.error("OAuth user creation transaction failed:", error);
                         // Propagate a more generic error or handle specific cases
                         if (error instanceof ApiError) throw error;
-                        throw createApiError.auth.failedToCompleteSignUpProcess();
+                        throw authErrors.failedToCompleteSignUpProcess();
                     }
                 }
             } else {
@@ -520,14 +520,14 @@ export function createAuthService(
                 // We cannot reliably find an existing user or create a new one without an email.
                 // You might need to prompt the user for an email on the frontend 
                 // or handle this case differently based on your requirements.
-                throw createApiError.auth.oauthEmailRequired({ provider: oauthDetails.provider });
+                throw authErrors.oauthEmailRequired({ provider: oauthDetails.provider });
             }
         }
 
         // By this point, we should have a valid user object (either found or created)
         if (!user) {
             // This check narrows user type to AuthUser below
-            throw createApiError.auth.failedToRetrieveUserDetailsAfterOAuthProcess();
+            throw authErrors.failedToRetrieveUserDetailsAfterOAuthProcess();
         }
 
         const { token } = await createSession({ userId: user.id });
@@ -559,7 +559,7 @@ export function createAuthService(
         if (!user.email_verified) {
             // Unlike password reset, OTP sign-in should require a verified email
             console.warn(`OTP sign-in requested for unverified email: ${email}`);
-            throw createApiError.auth.emailNotVerified();
+            throw authErrors.emailNotVerified();
         }
 
         // Invalidate any existing OTP codes for this user first
@@ -590,14 +590,14 @@ export function createAuthService(
         const user = await authRepository.findUserWithPasswordByEmail({ email });
         if (!user) {
             console.warn(`OTP verification attempt for non-existent email: ${email}`);
-            throw createApiError.auth.invalidOtp(); // Generic error
+            throw authErrors.invalidOtp(); // Generic error
         }
 
         const otpRecord = await authRepository.findActiveOtpCodeByUserId({ userId: user.id });
 
         if (!otpRecord) {
             console.warn(`OTP verification attempt with no active code for user: ${user.id}`);
-            throw createApiError.auth.invalidOtp(); // Generic error (no active code)
+            throw authErrors.invalidOtp(); // Generic error (no active code)
         }
 
         // Note: findActiveOtpCodeByUserId already checks expiry in the query,
@@ -606,7 +606,7 @@ export function createAuthService(
              console.warn(`OTP verification attempt with expired code for user: ${user.id}`);
              // Clean up expired code
              await authRepository.deleteOtpCodeById({ id: otpRecord.id });
-             throw createApiError.auth.expiredOtp();
+             throw authErrors.expiredOtp();
         }
 
         const hashedInputOtp = hashOtpCode({ code: otp });
@@ -614,7 +614,7 @@ export function createAuthService(
         if (hashedInputOtp !== otpRecord.hashed_code) {
             console.warn(`OTP verification attempt with incorrect code for user: ${user.id}`);
             // Consider adding rate limiting or lockout logic here for repeated failures
-            throw createApiError.auth.invalidOtp();
+            throw authErrors.invalidOtp();
         }
 
         // OTP is valid, delete it and create a session

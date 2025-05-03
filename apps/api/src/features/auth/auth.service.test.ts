@@ -154,48 +154,9 @@ vi.mock('node:crypto', async (importOriginal) => {
     };
 });
 
-// 4. Mock Error Factory
-vi.mock('../../core/api-error', async (importOriginal) => {
-  const actualFactoryModule = await importOriginal() as typeof import('../../core/api-error');
-  const { ApiError } = await import('@gefakit/shared');
-
-  return {
-    createApiError: {
-      auth: {
-        invalidCredentials: vi.fn(() => new ApiError('Invalid credentials mock', 401, { code: 'AUTH_INVALID_CREDENTIALS' })),
-        emailNotVerified: vi.fn(() => new ApiError('Email not verified mock', 401, { code: 'AUTH_EMAIL_NOT_VERIFIED' })),
-        oauthEmailRequired: vi.fn(({ provider }: { provider: string }) => new ApiError(`OAuth email required mock for ${provider}`, 400, { code: 'AUTH_OAUTH_EMAIL_REQUIRED' })),
-        userNotFound: vi.fn(() => new ApiError('User not found mock', 404, { code: 'AUTH_USER_NOT_FOUND' })),
-        userCreationFailed: vi.fn((reason: string) => new ApiError(reason || 'User creation failed mock', 500, { code: 'AUTH_USER_CREATION_FAILED' })),
-        weakPassword: vi.fn((reason: string) => new ApiError(reason || 'Weak password mock', 400, { code: 'AUTH_WEAK_PASSWORD' })),
-        invalidOtp: vi.fn(() => new ApiError('Invalid OTP mock', 400, { code: 'AUTH_INVALID_OTP' })),
-        expiredOtp: vi.fn(() => new ApiError('Expired OTP mock', 400, { code: 'AUTH_EXPIRED_OTP' })),
-        invalidPasswordResetToken: vi.fn(() => new ApiError('Invalid password reset token mock', 400, { code: 'AUTH_INVALID_PASSWORD_RESET_TOKEN' })),
-        expiredPasswordResetToken: vi.fn(() => new ApiError('Expired password reset token mock', 400, { code: 'AUTH_EXPIRED_PASSWORD_RESET_TOKEN' })),
-        failedToResetPassword: vi.fn(() => new ApiError('Failed to reset password mock', 500, { code: 'AUTH_PASSWORD_RESET_FAILED' })),
-        invalidVerificationToken: vi.fn(() => new ApiError('Invalid verification token mock', 400, { code: 'AUTH_INVALID_VERIFICATION_TOKEN' })),
-        expiredVerificationToken: vi.fn(() => new ApiError('Expired verification token mock', 400, { code: 'AUTH_EXPIRED_VERIFICATION_TOKEN' })),
-        failedToCompleteEmailVerification: vi.fn(() => new ApiError('Failed to complete email verification mock', 500, { code: 'AUTH_EMAIL_VERIFICATION_FAILED' })),
-        failedToCompleteSignUpProcess: vi.fn(() => new ApiError('Failed to complete sign up process mock', 500, { code: 'AUTH_SIGNUP_FAILED' })),
-        unauthorized: vi.fn((reason?: string) => new ApiError(reason || 'Unauthorized mock', 401, { code: 'AUTH_UNAUTHORIZED' })),
-        tokenExpired: vi.fn(() => new ApiError('Token expired mock', 401, { code: 'AUTH_TOKEN_EXPIRED' })),
-        emailVerificationTokenNotFound: vi.fn(() => new ApiError('Email verification token not found mock', 404, { code: 'AUTH_EMAIL_VERIFICATION_TOKEN_NOT_FOUND' })),
-        failedToRefetchUserAfterLinkingOAuthAccountByEmail: vi.fn(() => new ApiError('Failed to refetch user mock', 500, { code: 'AUTH_OAUTH_LINK_REFETCH_FAILED' })),
-        failedToLinkOAuthAccountDuringTransaction: vi.fn(() => new ApiError('Failed to link OAuth account mock', 500, { code: 'AUTH_OAUTH_LINK_TX_FAILED' })),
-        transactionFailedToReturnUserData: vi.fn(() => new ApiError('Transaction failed to return user data mock', 500, { code: 'AUTH_SIGNUP_TX_NO_USER' })),
-        failedToRetrieveUserDetailsAfterOAuthProcess: vi.fn(() => new ApiError('Failed to retrieve user details mock', 500, { code: 'AUTH_OAUTH_POST_PROCESS_FAILED' })),
-      },
-      organizations: {
-          notFound: vi.fn((id: any) => new ApiError(`Organization not found mock: ${id}`, 404, { code: 'ORG_NOT_FOUND' })),
-      }
-    },
-  };
-});
-
 // 5. Import Mocked Functions/Modules AFTER mocks
 import { createAuthRepository as mockCreateAuthRepositoryFn } from './auth.repository';
 import { createOrganizationRepository as mockCreateOrganizationRepositoryFn } from '../organizations/organization.repository';
-import { createApiError as mockErrors } from '../../core/api-error';
 import { ApiError } from '@gefakit/shared';
 import { hashPassword as mockHashPassword, verifyPassword as mockVerifyPassword } from '../../lib/crypto';
 import { sha256 as mockSha256 } from '@oslojs/crypto/sha2';
@@ -390,32 +351,32 @@ describe('AuthService', () => {
       });
       expect({...result.user}).toEqual({...mockUserDTO});
       expect(result.sessionToken).toBe(sessionToken); // Ensure crypto mocks generate this
-      expect(mockErrors.auth.invalidCredentials).not.toHaveBeenCalled();
-      expect(mockErrors.auth.emailNotVerified).not.toHaveBeenCalled();
+      // expect(mockErrors.auth.invalidCredentials).not.toHaveBeenCalled();
+      // expect(mockErrors.auth.emailNotVerified).not.toHaveBeenCalled();
     });
 
      it('should throw invalidCredentials if user not found', async () => {
       mockAuthRepoInstance.findUserWithPasswordByEmail.mockResolvedValue(null);
 
       await expect(authService.signInWithEmail({ email, password }))
-        .rejects.toThrow('Invalid credentials mock');
+        .rejects.toThrow('Invalid credentials');
 
       expect(mockAuthRepoInstance.findUserWithPasswordByEmail).toHaveBeenCalledWith({ email });
       expect(vi.mocked(mockVerifyPassword)).not.toHaveBeenCalled();
       expect(mockAuthRepoInstance.createSession).not.toHaveBeenCalled();
-      expect(mockErrors.auth.invalidCredentials).toHaveBeenCalledTimes(1);
+     //  expect(mockErrors.auth.invalidCredentials).toHaveBeenCalledTimes(1);
     });
 
     it('should throw emailNotVerified if user email is not verified', async () => {
       mockAuthRepoInstance.findUserWithPasswordByEmail.mockResolvedValue(mockUserUnverified);
 
       await expect(authService.signInWithEmail({ email, password }))
-        .rejects.toThrow('Email not verified mock');
+        .rejects.toThrow('Email not verified');
 
       expect(mockAuthRepoInstance.findUserWithPasswordByEmail).toHaveBeenCalledWith({ email });
       expect(vi.mocked(mockVerifyPassword)).not.toHaveBeenCalled();
        expect(mockAuthRepoInstance.createSession).not.toHaveBeenCalled();
-      expect(mockErrors.auth.emailNotVerified).toHaveBeenCalledTimes(1);
+     // expect(mockErrors.auth.emailNotVerified).toHaveBeenCalledTimes(1);
     });
 
     it('should throw invalidCredentials if password verification fails', async () => {
@@ -423,13 +384,13 @@ describe('AuthService', () => {
       vi.mocked(mockVerifyPassword).mockResolvedValue(false);
 
       await expect(authService.signInWithEmail({ email, password }))
-        .rejects.toThrow('Invalid credentials mock');
+        .rejects.toThrow('Invalid credentials');
 
       expect(mockAuthRepoInstance.findUserWithPasswordByEmail).toHaveBeenCalledWith({ email });
        // Expect verifyPassword to be called with correct hash from mockUser
       expect(vi.mocked(mockVerifyPassword)).toHaveBeenCalledWith(password, mockUser.password_hash);
        expect(mockAuthRepoInstance.createSession).not.toHaveBeenCalled();
-      expect(mockErrors.auth.invalidCredentials).toHaveBeenCalledTimes(1);
+     //  expect(mockErrors.auth.invalidCredentials).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -817,7 +778,7 @@ describe('AuthService', () => {
             mockAuthRepoInstance.findUserByProviderId.mockResolvedValue(null); // No link
 
             await expect(authService.handleOAuthCallback(oauthDetailsNoEmail))
-                .rejects.toThrow('OAuth email required mock for github');
+                .rejects.toThrow('An email address is required to sign up or link your github account. Please ensure your github account has a public email address or try another sign-in method');
 
             expect(mockAuthRepoInstance.findUserByProviderId).toHaveBeenCalledWith({
                 provider: oauthDetailsNoEmail.provider,
@@ -826,7 +787,7 @@ describe('AuthService', () => {
             // Should not attempt email lookup if email is null
             expect(mockAuthRepoInstance.findUserWithPasswordByEmail).not.toHaveBeenCalled();
             expect(mockDb.transaction).not.toHaveBeenCalled();
-            expect(mockErrors.auth.oauthEmailRequired).toHaveBeenCalledWith({ provider: oauthDetailsNoEmail.provider });
+            // expect(mockErrors.auth.oauthEmailRequired).toHaveBeenCalledWith({ provider: oauthDetailsNoEmail.provider });
         });
 
         it('should re-throw ApiError if transaction fails during user creation', async () => {

@@ -1,7 +1,7 @@
 import { Kysely, Insertable, Transaction, Selectable } from 'kysely'
 import { DB, OrganizationsOrganization, OrganizationsMembership, OrganizationsInvitation } from '../../db/db-types'
 import { OrganizationRepository } from './organization.repository';
-import { createApiError } from '../../core/api-error';
+import { organizationErrors } from './organization.errors';
 
 export type OrganizationService = ReturnType<typeof createOrganizationService>
 
@@ -43,7 +43,7 @@ export function createOrganizationService({
     deleteOrganization: async ({organizationId, userId}: {organizationId: number, userId: number}) => {
       const memberships = await organizationRepository.findAllOrganizationMembershipsByUserId({userId});
       if (memberships.length === 1 && memberships[0].organization_id === organizationId) {
-        throw createApiError.organizations.actionNotAllowed('Cannot delete your only organization...');
+        throw organizationErrors.actionNotAllowed('Cannot delete your only organization...');
       }
 
       return await db.transaction().execute(async (trx: Transaction<DB>) => {
@@ -51,13 +51,13 @@ export function createOrganizationService({
         const organization = await repoTx.findOrganizationById({organizationId});
 
         if (!organization) {
-          throw createApiError.organizations.organizationNotFound();
+            throw organizationErrors.organizationNotFound();
         }
   
         const isOwner = organization.ownerMembership?.user_id === userId;
   
         if (!isOwner) {
-          throw createApiError.organizations.actionNotAllowed('Only the owner can delete the organization');
+          throw organizationErrors.actionNotAllowed('Only the owner can delete the organization');
         }
   
         return await repoTx.deleteOrganization({organizationId}); 
@@ -68,11 +68,11 @@ export function createOrganizationService({
       const organization = await organizationRepository.findOrganizationById({organizationId});
 
       if (!organization) {
-        throw createApiError.organizations.organizationNotFound();
+        throw organizationErrors.organizationNotFound();
       }
 
       if (organization.ownerMembership?.user_id === userId) {
-        throw createApiError.organizations.actionNotAllowed('Cannot leave the organization as the owner');
+        throw organizationErrors.actionNotAllowed('Cannot leave the organization as the owner');
       }
 
       return await organizationRepository.deleteOrganizationMembership({organizationId, userId});

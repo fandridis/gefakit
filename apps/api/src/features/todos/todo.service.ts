@@ -1,8 +1,7 @@
 import { Insertable, Updateable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
 import { TodoRepository } from "./todo.repository";
-import { createApiError } from "../../core/api-error";
-
+import { todoErrors } from "./todo.errors";
 
 export type TodoService = ReturnType<typeof createTodoService>
 
@@ -19,11 +18,11 @@ export function createTodoService({ todoRepository }: { todoRepository: TodoRepo
         const todoFound = await todoRepository.findTodoById({id});
 
         if (!todoFound) {
-            throw createApiError.todos.todoNotFound();
+            throw todoErrors.todoNotFound();
         }
 
         if (todoFound.author_id !== authorId) {
-            throw createApiError.todos.actionNotAllowed();
+            throw todoErrors.actionNotAllowed();
         }
 
         return todoRepository.updateTodo({id, todo});
@@ -33,11 +32,11 @@ export function createTodoService({ todoRepository }: { todoRepository: TodoRepo
         const todoFound = await todoRepository.findTodoById({id});
 
         if (!todoFound) {
-            throw createApiError.todos.todoNotFound();
+            throw todoErrors.todoNotFound();
         }
 
         if (todoFound.author_id !== authorId) {
-            throw createApiError.todos.actionNotAllowed('This is not your todo to delete!');
+            throw todoErrors.actionNotAllowed('This is not your todo to delete!');
         }
 
         return todoRepository.deleteTodo({id});

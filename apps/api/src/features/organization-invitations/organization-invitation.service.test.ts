@@ -5,6 +5,9 @@ import { OrganizationService } from '../organizations/organization.service';
 import { AuthService } from '../auth/auth.service';
 import { DB, OrganizationsInvitation, AuthUser } from '../../db/db-types';
 import { Insertable, Selectable, Kysely, Transaction } from 'kysely';
+// --- Import Errors ---
+import { organizationInvitationErrors } from './organization-invitation.errors';
+import { authErrors } from '../auth/auth.errors';
 
 // --- Mock Dependencies ---
 
@@ -26,23 +29,8 @@ const mockDb = {
   transaction: vi.fn(() => mockTransaction),
 } as unknown as Kysely<DB>;
 
-// 4. Mock Error Factory
-vi.mock('../../core/api-error', () => ({
-  createApiError: {
-    auth: {
-      userNotFound: vi.fn(() => new Error('User not found mock')),
-    },
-    organizationInvitations: {
-      invitationNotFound: vi.fn(() => new Error('Invitation not found mock')),
-      actionNotAllowed: vi.fn((msg: string) => new Error(`Action not allowed mock: ${msg}`)),
-    },
-  },
-}));
-
 // 5. Import Mocked Functions/Modules AFTER mocks
 import { createOrganizationInvitationRepository as mockCreateOrganizationInvitationRepositoryFn } from './organization-invitation.repository';
-import { createApiError as mockErrors } from '../../core/api-error';
-import { ApiError } from '@gefakit/shared';
 
 
 // --- Test Suite Setup ---
@@ -201,18 +189,18 @@ describe('OrganizationInvitationService', () => {
       expect(mockAuthServiceInstance.findUserById).toHaveBeenCalledWith({ id: userId });
       expect(mockDirectRepoInstance.findAllInvitationsByUserEmail).toHaveBeenCalledWith({ email: userEmail });
       expect(result).toEqual(expectedInvitations);
-      expect(mockErrors.auth.userNotFound).not.toHaveBeenCalled();
+     //  expect(mockErrors.auth.userNotFound).not.toHaveBeenCalled();
     });
 
     it('should throw userNotFound if authService returns null', async () => {
       mockAuthServiceInstance.findUserById.mockResolvedValue(null);
 
       await expect(organizationInvitationService.findAllInvitationsByUserId({ userId }))
-        .rejects.toThrow('User not found mock');
+        .rejects.toThrow(authErrors.userNotFound());
 
       expect(mockAuthServiceInstance.findUserById).toHaveBeenCalledWith({ id: userId });
       expect(mockDirectRepoInstance.findAllInvitationsByUserEmail).not.toHaveBeenCalled();
-      expect(mockErrors.auth.userNotFound).toHaveBeenCalledTimes(1);
+      // expect(mockErrors.auth.userNotFound).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -269,63 +257,59 @@ describe('OrganizationInvitationService', () => {
       // Verify final result
       expect(result).toEqual(mockAcceptedInvitation);
       // Ensure errors not thrown
-      expect(mockErrors.organizationInvitations.invitationNotFound).not.toHaveBeenCalled();
-      expect(mockErrors.organizationInvitations.actionNotAllowed).not.toHaveBeenCalled();
+     // expect(mockErrors.organizationInvitations.invitationNotFound).not.toHaveBeenCalled();
+     // expect(mockErrors.organizationInvitations.actionNotAllowed).not.toHaveBeenCalled();
     });
 
     it('should throw invitationNotFound if initial find returns null', async () => {
       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(null);
 
       await expect(organizationInvitationService.acceptInvitation({ token, acceptingUserId }))
-        .rejects.toThrow('Invitation not found mock');
+        .rejects.toThrow(organizationInvitationErrors.invitationNotFound());
 
       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-      // Transaction should not start
       expect(mockDb.transaction).not.toHaveBeenCalled();
-      expect(mockErrors.organizationInvitations.invitationNotFound).toHaveBeenCalledTimes(1);
-      expect(mockErrors.organizationInvitations.actionNotAllowed).not.toHaveBeenCalled();
     });
 
-    it('should throw actionNotAllowed if invitation is expired', async () => {
+    it('should throw invitationExpired if invitation is expired', async () => {
       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockExpiredInvitation);
 
       await expect(organizationInvitationService.acceptInvitation({ token, acceptingUserId }))
-        .rejects.toThrow('Action not allowed mock: Invitation expired');
+        .rejects.toThrow(organizationInvitationErrors.invitationExpired());
 
       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
       expect(mockDb.transaction).not.toHaveBeenCalled();
-      expect(mockErrors.organizationInvitations.actionNotAllowed).toHaveBeenCalledWith('Invitation expired');
-      expect(mockErrors.organizationInvitations.invitationNotFound).not.toHaveBeenCalled();
     });
 
-     it('should throw actionNotAllowed if invitation status is not pending', async () => {
-      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockAcceptedInvitation); // Already accepted
+    it('should throw invitationAlreadyProcessed if invitation status is not pending', async () => {
+      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockAcceptedInvitation); // Or mockDeclinedInvitation
 
       await expect(organizationInvitationService.acceptInvitation({ token, acceptingUserId }))
-        .rejects.toThrow('Action not allowed mock: Invitation already accepted/declined');
+        .rejects.toThrow(organizationInvitationErrors.invitationAlreadyProcessed());
 
       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
       expect(mockDb.transaction).not.toHaveBeenCalled();
-      expect(mockErrors.organizationInvitations.actionNotAllowed).toHaveBeenCalledWith('Invitation already accepted/declined');
-     });
+    });
 
-    it('should throw invitationNotFound if transactional acceptInvitation returns null', async () => {
-      // Initial find succeeds
-      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
-      // Transactional accept fails
-      mockTransactionalRepoInstance.acceptInvitation.mockResolvedValue(null);
+    it('should throw invitationNotFound if transactional accept returns null', async () => {
+        // 1. Initial find (direct repo) - success
+        mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
+        // 2. Accept within transaction (transactional repo) - returns null!
+        mockTransactionalRepoInstance.acceptInvitation.mockResolvedValue(null);
 
-      await expect(organizationInvitationService.acceptInvitation({ token, acceptingUserId }))
-        .rejects.toThrow('Invitation not found mock');
+        await expect(organizationInvitationService.acceptInvitation({ token, acceptingUserId }))
+            .rejects.toThrow(organizationInvitationErrors.invitationNotFound());
 
-      expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-      expect(mockExecute).toHaveBeenCalledTimes(1);
-      expect(mockRepoFactory).toHaveBeenCalledWith({ db: mockTrx });
-      expect(mockTransactionalRepoInstance.acceptInvitation).toHaveBeenCalledWith({ token });
-      // Membership creation should not be called
-      expect(mockOrgServiceInstance.createMembershipFromInvitation).not.toHaveBeenCalled();
-      expect(mockErrors.organizationInvitations.invitationNotFound).toHaveBeenCalledTimes(1); // Called from within transaction
+        // Verify initial check and transaction start
+        expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+        expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+        expect(mockExecute).toHaveBeenCalledTimes(1);
+        // Verify factory called within transaction
+        expect(mockRepoFactory).toHaveBeenCalledWith({ db: mockTrx });
+        // Verify transactional repo method called
+        expect(mockTransactionalRepoInstance.acceptInvitation).toHaveBeenCalledWith({ token });
+        // Verify org service method was NOT called
+        expect(mockOrgServiceInstance.createMembershipFromInvitation).not.toHaveBeenCalled();
     });
 
     it('should re-throw error if organizationService.createMembershipFromInvitation fails', async () => {
@@ -353,69 +337,61 @@ describe('OrganizationInvitationService', () => {
 
   // --- Test declineInvitation ---
   describe('declineInvitation', () => {
-     it('should decline the invitation using the direct repository', async () => {
-       // 1. Initial find (direct repo)
-       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
-       // 2. Decline (direct repo)
-       mockDirectRepoInstance.declineInvitation.mockResolvedValue(mockDeclinedInvitation);
+    it('should decline invitation and return the declined invitation', async () => {
+      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
+      mockDirectRepoInstance.declineInvitation.mockResolvedValue(mockDeclinedInvitation);
 
-       const result = await organizationInvitationService.declineInvitation({ token });
+      const result = await organizationInvitationService.declineInvitation({ token });
 
-       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-       expect(mockDirectRepoInstance.declineInvitation).toHaveBeenCalledWith({ token });
-       expect(result).toEqual(mockDeclinedInvitation);
-       expect(mockErrors.organizationInvitations.invitationNotFound).not.toHaveBeenCalled();
-       expect(mockErrors.organizationInvitations.actionNotAllowed).not.toHaveBeenCalled();
-       // No transaction expected
-       expect(mockDb.transaction).not.toHaveBeenCalled();
-     });
+      expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+      expect(mockDirectRepoInstance.declineInvitation).toHaveBeenCalledWith({ token });
+      expect(result).toEqual(mockDeclinedInvitation);
+    });
 
-     it('should throw invitationNotFound if initial find returns null', async () => {
-       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(null);
+    it('should throw invitationNotFound if initial find returns null', async () => {
+      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(null);
 
-       await expect(organizationInvitationService.declineInvitation({ token }))
-         .rejects.toThrow('Invitation not found mock');
+      await expect(organizationInvitationService.declineInvitation({ token }))
+        .rejects.toThrow(organizationInvitationErrors.invitationNotFound());
 
-       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-       expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
-       expect(mockErrors.organizationInvitations.invitationNotFound).toHaveBeenCalledTimes(1);
-     });
+      expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+      expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
+    });
 
-     it('should throw actionNotAllowed if invitation is expired', async () => {
-       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockExpiredInvitation);
+    it('should throw invitationExpired if invitation is expired', async () => {
+      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockExpiredInvitation);
 
-       await expect(organizationInvitationService.declineInvitation({ token }))
-         .rejects.toThrow('Action not allowed mock: Invitation expired');
+      await expect(organizationInvitationService.declineInvitation({ token }))
+        .rejects.toThrow(organizationInvitationErrors.invitationExpired());
 
-       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-       expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
-       expect(mockErrors.organizationInvitations.actionNotAllowed).toHaveBeenCalledWith('Invitation expired');
-     });
+      expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+      expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
+    });
 
-     it('should throw actionNotAllowed if invitation status is not pending', async () => {
-       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockDeclinedInvitation); // Already declined
+    it('should throw invitationAlreadyProcessed if invitation status is not pending', async () => {
+      mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockDeclinedInvitation); // Or mockAcceptedInvitation
 
-       await expect(organizationInvitationService.declineInvitation({ token }))
-         .rejects.toThrow('Action not allowed mock: Invitation already accepted/declined');
+      await expect(organizationInvitationService.declineInvitation({ token }))
+        .rejects.toThrow(organizationInvitationErrors.invitationAlreadyProcessed());
 
-       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-       expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
-       expect(mockErrors.organizationInvitations.actionNotAllowed).toHaveBeenCalledWith('Invitation already accepted/declined');
-     });
+      expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+      expect(mockDirectRepoInstance.declineInvitation).not.toHaveBeenCalled();
+    });
 
-     it('should throw invitationNotFound if direct declineInvitation returns null', async () => {
-       // Initial find succeeds
-       mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
-       // Decline fails (returns null)
-       mockDirectRepoInstance.declineInvitation.mockResolvedValue(null);
+     it('should throw invitationNotFound if declineInvitation returns null', async () => {
+        // 1. Initial find - success
+        mockDirectRepoInstance.findInvitationByToken.mockResolvedValue(mockPendingInvitation);
+        // 2. Decline call - returns null!
+        mockDirectRepoInstance.declineInvitation.mockResolvedValue(null);
 
-       await expect(organizationInvitationService.declineInvitation({ token }))
-         .rejects.toThrow('Invitation not found mock');
+        await expect(organizationInvitationService.declineInvitation({ token }))
+            .rejects.toThrow(organizationInvitationErrors.invitationNotFound());
 
-       expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
-       expect(mockDirectRepoInstance.declineInvitation).toHaveBeenCalledWith({ token });
-       expect(mockErrors.organizationInvitations.invitationNotFound).toHaveBeenCalledTimes(1); // From the service logic after decline fails
-     });
+        // Verify initial check
+        expect(mockDirectRepoInstance.findInvitationByToken).toHaveBeenCalledWith({ token });
+        // Verify decline method called
+        expect(mockDirectRepoInstance.declineInvitation).toHaveBeenCalledWith({ token });
+    });
   });
 
   // --- Test deleteInvitation ---
