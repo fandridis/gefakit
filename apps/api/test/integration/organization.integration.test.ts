@@ -20,7 +20,7 @@ vi.mock('../../src/features/emails/email.service', () => {
 
 // Import factory and types
 // import app from '../../src/index';
-import { createAppInstance } from '../../src/app-factory';
+import { createAppInstance, AppDependencies, AppVariables } from '../../src/app-factory';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely } from 'kysely';
@@ -38,7 +38,7 @@ describe('Organization API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: UserDTO | undefined;
   let sessionCookie: string;
-  let testApp: Hono<{ Bindings: Bindings }>; // Declare testApp
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
   beforeAll(async () => {
     const dbUrl = envConfig.DATABASE_URL_POOLED;
@@ -53,7 +53,10 @@ describe('Organization API Integration Tests', () => {
     });
 
     // Create test app instance
-    testApp = createAppInstance({ db: testDb });
+    const testDependencies: Partial<AppDependencies> = {
+      db: testDb
+    };
+    testApp = createAppInstance({ dependencies: testDependencies });
 
     const testPassword = 'password1234orgtest';
     const hashedPassword = await hashPassword(testPassword);

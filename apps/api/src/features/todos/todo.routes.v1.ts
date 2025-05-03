@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
 import { zValidator } from "../../lib/zod-utils";
-import { createTodoService, TodoService } from "./todo.service";
-import { createTodoRepository } from "./todo.repository";
+import { TodoService } from "./todo.service";
 import { DbMiddleWareVariables } from "../../middleware/db";
 import { AuthMiddleWareVariables } from "../../middleware/auth";
 import {

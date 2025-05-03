@@ -1,27 +1,21 @@
-// index.ts
-import { envConfig } from "./lib/env-config";
-import { Kysely } from 'kysely';
-import { DB } from './db/db-types';
-import { NeonDialect } from 'kysely-neon';
-import { createAppInstance } from "./app-factory";
 
-const createProductionDb = (): Kysely<DB> => {
-  if (!envConfig.DATABASE_URL_POOLED) {
-    throw new Error('DATABASE_URL_POOLED environment variable is not set for production app initialization');
-  }
-  // Use the pooled URL for the main application instance
-  const dialect = new NeonDialect({
-    connectionString: envConfig.DATABASE_URL_POOLED,
-  });
+import { createAppInstance, AppDependencies } from "./app-factory";
 
-  return new Kysely<DB>({ dialect });
+// --- Dependency Instantiation ---
+// Services/Repos relying on per-request DB will be instantiated in middleware or routes.
+// Only instantiate global/non-request-specific dependencies here.
+
+// Assemble the dependencies object for AppConfig
+// Include only dependencies instantiated here (if any in the future).
+// For now, it might be empty if all services depend on per-request DB.
+const dependencies: Partial<AppDependencies> = {
+  // db: // DB handled per-request in middleware
+  // todoService: // Instantiated per-request in routes/middleware
 };
 
-// Create the production database connection
-const productionDb = createProductionDb();
-
-// Create the main application instance using the factory and the production DB
-const appInstance = createAppInstance({ db: productionDb });
+// Create the main application instance using the factory
+// Pass the (potentially empty) dependencies object
+const appInstance = createAppInstance({ dependencies });
 
 // Export the configured app instance for the server/runtime
 export default appInstance;

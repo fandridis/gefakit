@@ -11,7 +11,7 @@ vi.mock('../../src/features/emails/email.service', () => ({
 
 // Import factory and types
 // import app from '../../src/index';
-import { createAppInstance } from '../../src/app-factory';
+import { createAppInstance, AppDependencies, AppVariables } from '../../src/app-factory';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Insertable } from 'kysely';
@@ -30,7 +30,7 @@ describe('Admin API Integration Tests', () => {
   let testOrg: OrganizationDTO;
   let adminUserSessionCookie: string;
   let normalUserSessionCookie: string;
-  let testApp: Hono<{ Bindings: Bindings }>; // Declare testApp
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
@@ -52,7 +52,10 @@ describe('Admin API Integration Tests', () => {
     testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
 
     // Create test app instance
-    testApp = createAppInstance({ db: testDb });
+    const testDependencies: Partial<AppDependencies> = {
+      db: testDb, // Inject testDb
+    };
+    testApp = createAppInstance({ dependencies: testDependencies });
 
     // Create Admin User
     const adminUserHashedPassword = await hashPassword(adminUserPassword);

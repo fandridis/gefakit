@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createAppInstance } from '../../src/app-factory';
+import { createAppInstance, AppConfig, AppDependencies, AppVariables } from '../../src/app-factory';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
@@ -10,13 +10,16 @@ import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO } from '@gefakit/shared';
 import { envConfig } from '../../src/lib/env-config';
-// vi.stubEnv('DATABASE_URL_POOLED', 'postgresql://neondb_owner:npg_v9IioTkZd6RY@ep-withered-heart-a2fk19ng-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require');
+
+// Import service/repo factories
+import { createTodoRepository } from '../../src/features/todos/todo.repository';
+import { createTodoService } from '../../src/features/todos/todo.service';
 
 // --- Test Suite Setup ---
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: Selectable<AuthUser> | undefined;
-  let testApp: Hono<{ Bindings: Bindings }>;
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>;
 
   let sessionCookie: string;
 
@@ -27,7 +30,18 @@ describe('Todo API Integration Tests', () => {
       }),
     });
 
-    testApp = createAppInstance({ db: testDb });
+    // Instantiate dependencies for testing
+    const testTodoRepository = createTodoRepository({ db: testDb });
+    const testTodoService = createTodoService({ todoRepository: testTodoRepository });
+
+    // Assemble dependencies
+    const testDependencies: Partial<AppDependencies> = {
+      db: testDb, // Inject testDb
+      todoService: testTodoService, // Inject real service using testDb
+    };
+
+    // Create app instance with injected dependencies
+    testApp = createAppInstance({ dependencies: testDependencies });
 
     const testPassword = 'password1234';
     const hashedPassword = await hashPassword(testPassword);
