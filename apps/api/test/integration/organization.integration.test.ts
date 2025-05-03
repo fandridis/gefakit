@@ -18,7 +18,11 @@ vi.mock('../../src/features/emails/email.service', () => {
   };
 });
 
-import app from '../../src/index';
+// Import factory and types
+// import app from '../../src/index';
+import { createAppInstance } from '../../src/app-factory';
+import { Hono } from 'hono';
+import { Bindings } from '../../src/types/hono';
 import { Kysely } from 'kysely';
 import { DB, AuthUser } from '../../src/db/db-types';
 import { Insertable } from 'kysely';
@@ -34,6 +38,7 @@ describe('Organization API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: UserDTO | undefined;
   let sessionCookie: string;
+  let testApp: Hono<{ Bindings: Bindings }>; // Declare testApp
 
   beforeAll(async () => {
     const dbUrl = envConfig.DATABASE_URL_POOLED;
@@ -46,6 +51,9 @@ describe('Organization API Integration Tests', () => {
         connectionString: dbUrl,
       }),
     });
+
+    // Create test app instance
+    testApp = createAppInstance({ db: testDb });
 
     const testPassword = 'password1234orgtest';
     const hashedPassword = await hashPassword(testPassword);
@@ -63,8 +71,8 @@ describe('Organization API Integration Tests', () => {
       .returningAll()
       .executeTakeFirstOrThrow() as UserDTO;
 
-    // Log in the test user
-    const loginRes = await app.request('/api/v1/auth/sign-in/email', {
+    // Log in the test user - Use testApp
+    const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, password: testPassword }),
@@ -182,7 +190,8 @@ describe('Organization API Integration Tests', () => {
         name: 'Test Integration Organization',
       };
 
-      const res = await app.request('/api/v1/organizations', {
+      // Use testApp
+      const res = await testApp.request('/api/v1/organizations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,7 +231,8 @@ describe('Organization API Integration Tests', () => {
     it('should return 401 Unauthorized if no session cookie is provided', async () => {
       const newOrgData = { name: 'Unauthorized Org Test' };
 
-      const res = await app.request('/api/v1/organizations', {
+      // Use testApp
+      const res = await testApp.request('/api/v1/organizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, // No Cookie
         body: JSON.stringify(newOrgData),
@@ -234,7 +244,8 @@ describe('Organization API Integration Tests', () => {
     it('should return 400 Bad Request if request body is invalid (e.g., missing name)', async () => {
       const invalidOrgData = {}; // Missing 'name'
 
-      const res = await app.request('/api/v1/organizations', {
+      // Use testApp
+      const res = await testApp.request('/api/v1/organizations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -272,9 +283,9 @@ describe('Organization API Integration Tests', () => {
     });
 
     it('should create a new invitation for the authenticated user', async () => {
-      // 1. Create an organization first to get an ID
+      // 1. Create an organization first to get an ID - Use testApp
       const orgName = `Test Org for Invite ${Date.now()}`;
-      const createOrgRes = await app.request('/api/v1/organizations', {
+      const createOrgRes = await testApp.request('/api/v1/organizations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -294,8 +305,8 @@ describe('Organization API Integration Tests', () => {
         email: inviteEmail,
       };
 
-      // 4. Send the request to create the invitation
-      const res = await app.request(`/api/v1/organizations/${organizationId}/invitations`, {
+      // 4. Send the request to create the invitation - Use testApp
+      const res = await testApp.request(`/api/v1/organizations/${organizationId}/invitations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -9,7 +9,11 @@ vi.mock('../../src/features/emails/email.service', () => ({
   createEmailService: vi.fn(() => ({ sendOrganizationInvitationEmail: mockSendEmail })),
 }));
 
-import app from '../../src/index';
+// Import factory and types
+// import app from '../../src/index';
+import { createAppInstance } from '../../src/app-factory';
+import { Hono } from 'hono';
+import { Bindings } from '../../src/types/hono';
 import { Kysely, Insertable } from 'kysely';
 import { DB, AuthUser } from '../../src/db/db-types';
 import { NeonDialect } from 'kysely-neon';
@@ -26,11 +30,12 @@ describe('Admin API Integration Tests', () => {
   let testOrg: OrganizationDTO;
   let adminUserSessionCookie: string;
   let normalUserSessionCookie: string;
-  // receiverSessionCookie will be obtained within tests that need it
+  let testApp: Hono<{ Bindings: Bindings }>; // Declare testApp
 
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
-      const loginRes = await app.request('/api/v1/auth/sign-in/email', {
+      // Use testApp for login
+      const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -45,6 +50,9 @@ describe('Admin API Integration Tests', () => {
     const dbUrl = envConfig.DATABASE_URL_POOLED;
     if (!dbUrl) throw new Error("DATABASE_URL_POOLED not set.");
     testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
+
+    // Create test app instance
+    testApp = createAppInstance({ db: testDb });
 
     // Create Admin User
     const adminUserHashedPassword = await hashPassword(adminUserPassword);
@@ -86,7 +94,8 @@ describe('Admin API Integration Tests', () => {
 
   describe('POST /api/v1/admin/impersonate', () => {
     it('should return 401 Unauthorized without session', async () => {
-      const res = await app.request(`/api/v1/admin/impersonate`, {
+      // Use testApp
+      const res = await testApp.request(`/api/v1/admin/impersonate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, // No cookie (no session)
         body: JSON.stringify({ email: normalUser.email }),
@@ -95,7 +104,8 @@ describe('Admin API Integration Tests', () => {
     });
 
     it('should return 400 Bad Request without targetUserId', async () => {
-      const res = await app.request(`/api/v1/admin/impersonate`, {
+      // Use testApp
+      const res = await testApp.request(`/api/v1/admin/impersonate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': adminUserSessionCookie },
         body: JSON.stringify({}), // No targetUserId
@@ -104,7 +114,8 @@ describe('Admin API Integration Tests', () => {
     });
 
     it('should start and stop impersonation of a user successfully', async () => {
-      const res = await app.request(`/api/v1/admin/impersonate`, {
+      // Use testApp
+      const res = await testApp.request(`/api/v1/admin/impersonate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': adminUserSessionCookie },
         body: JSON.stringify({ targetUserId: normalUser.id }),
@@ -115,7 +126,8 @@ describe('Admin API Integration Tests', () => {
       expect(message).toBeDefined();
       expect(message).toContain(`Admin ${adminUser.id} is now impersonating user ${normalUser.id}`);
 
-      const sessionRes = await app.request(`/api/v1/auth/session`, {
+      // Use testApp
+      const sessionRes = await testApp.request(`/api/v1/auth/session`, {
         method: 'GET',
         headers: { 'Cookie': adminUserSessionCookie },
       });
@@ -128,8 +140,8 @@ describe('Admin API Integration Tests', () => {
       expect(user?.id).toBe(normalUser.id);
       expect(user?.role).toBe('USER');
 
-      // Stop impersonation
-      const stopImpersonationRes = await app.request(`/api/v1/admin/stop-impersonation`, {
+      // Stop impersonation - Use testApp
+      const stopImpersonationRes = await testApp.request(`/api/v1/admin/stop-impersonation`, {
         method: 'POST',
         headers: { 'Cookie': adminUserSessionCookie },
       });
@@ -138,8 +150,8 @@ describe('Admin API Integration Tests', () => {
       expect(stopImpersonationMessage).toBeDefined();
       expect(stopImpersonationMessage).toContain('Impersonation stopped');
 
-      // Get session again
-      const sessionRes2 = await app.request(`/api/v1/auth/session`, {
+      // Get session again - Use testApp
+      const sessionRes2 = await testApp.request(`/api/v1/auth/session`, {
         method: 'GET',
         headers: { 'Cookie': adminUserSessionCookie },
       });

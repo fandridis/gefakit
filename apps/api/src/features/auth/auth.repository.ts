@@ -1,11 +1,9 @@
-import { Insertable, Kysely, Transaction, sql } from "kysely";
+import { Insertable, Kysely, Transaction } from "kysely";
 import { AuthSession, AuthUser, DB, AuthEmailVerification, AuthOauthAccount, AuthPasswordResetToken, AuthOtpCode } from "../../db/db-types";
-
-type DbClient = Kysely<DB> | Transaction<DB>
 
 export type AuthRepository = ReturnType<typeof createAuthRepository>;
 
-export function createAuthRepository({ db }: { db: DbClient }) {
+export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> }) {
     return {
         async findUserById(id: number) {
             return db

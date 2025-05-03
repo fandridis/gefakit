@@ -9,7 +9,11 @@ vi.mock('../../src/features/emails/email.service', () => ({
   createEmailService: vi.fn(() => ({ sendOrganizationInvitationEmail: mockSendEmail })),
 }));
 
-import app from '../../src/index';
+// Import factory and types
+// import app from '../../src/index';
+import { createAppInstance } from '../../src/app-factory';
+import { Hono } from 'hono';
+import { Bindings } from '../../src/types/hono';
 import { Kysely, Insertable, Selectable } from 'kysely';
 import { DB, AuthUser, OrganizationsInvitation } from '../../src/db/db-types';
 import { NeonDialect } from 'kysely-neon';
@@ -25,12 +29,13 @@ describe('Organization Invitation API Integration Tests', () => {
   let receiverPassword = 'receiverPassword456';
   let testOrg: OrganizationDTO;
   let senderSessionCookie: string;
-  // receiverSessionCookie will be obtained within tests that need it
+  let testApp: Hono<{ Bindings: Bindings }>; // Declare testApp
   let testInvitation: Selectable<OrganizationsInvitation> | null = null;
 
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
-      const loginRes = await app.request('/api/v1/auth/sign-in/email', {
+      // Use testApp
+      const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -43,7 +48,8 @@ describe('Organization Invitation API Integration Tests', () => {
 
   // Helper to create an organization (using sender's session)
   const createTestOrg = async (name: string): Promise<OrganizationDTO> => {
-    const res = await app.request('/api/v1/organizations', {
+    // Use testApp
+    const res = await testApp.request('/api/v1/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': senderSessionCookie },
       body: JSON.stringify({ name }),
@@ -56,7 +62,8 @@ describe('Organization Invitation API Integration Tests', () => {
   // Helper to create an invitation (using sender's session, inviting receiver)
   const createTestInvite = async (orgId: number, email: string): Promise<Selectable<OrganizationsInvitation>> => {
     mockSendEmail.mockClear();
-    const res = await app.request(`/api/v1/organizations/${orgId}/invitations`, {
+    // Use testApp
+    const res = await testApp.request(`/api/v1/organizations/${orgId}/invitations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': senderSessionCookie }, // Use sender's session
       body: JSON.stringify({ email }), // Invite receiver's email
@@ -71,6 +78,9 @@ describe('Organization Invitation API Integration Tests', () => {
     const dbUrl = envConfig.DATABASE_URL_POOLED;
     if (!dbUrl) throw new Error("DATABASE_URL_POOLED not set.");
     testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
+
+    // Create test app instance
+    testApp = createAppInstance({ db: testDb });
 
     // Create Sender User
     const senderHashedPassword = await hashPassword(senderPassword);
@@ -149,7 +159,8 @@ describe('Organization Invitation API Integration Tests', () => {
 
   describe('POST /api/v1/organizations/:organizationId/invitations', () => {
     it('should create a new invitation successfully (sender invites receiver)', async () => {
-      const res = await app.request(`/api/v1/organizations/${testOrg.id}/invitations`, {
+      // Use testApp (via helper createTestInvite implicitly)
+      const res = await testApp.request(`/api/v1/organizations/${testOrg.id}/invitations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Cookie': senderSessionCookie }, // Sender's cookie
         body: JSON.stringify({ email: receiverUser.email }), // Inviting receiver
@@ -173,7 +184,8 @@ describe('Organization Invitation API Integration Tests', () => {
     });
 
     it('should return 401 Unauthorized without session', async () => {
-      const res = await app.request(`/api/v1/organizations/${testOrg.id}/invitations`, {
+      // Use testApp
+      const res = await testApp.request(`/api/v1/organizations/${testOrg.id}/invitations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }, // No cookie
         body: JSON.stringify({ email: receiverUser.email }),
@@ -197,7 +209,7 @@ describe('Organization Invitation API Integration Tests', () => {
       const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
 
       // Receiver accepts the invitation
-      const res = await app.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
+      const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
         method: 'POST',
         headers: { 'Cookie': receiverSessionCookie }, // Use Receiver's cookie
       });
@@ -224,7 +236,7 @@ describe('Organization Invitation API Integration Tests', () => {
 
      it('should return 401 Unauthorized without session', async () => {
         expect(testInvitation).toBeDefined();
-         const res = await app.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
+         const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
              method: 'POST', // No Cookie header
          });
          expect(res.status).toBe(401);
@@ -235,7 +247,7 @@ describe('Organization Invitation API Integration Tests', () => {
     it('should return 404 Not Found for invalid token (using receiver session)', async () => {
         const invalidToken = 'invalid-token-accept-two-user';
         const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
-        const res = await app.request(`/api/v1/organization-invitations/${invalidToken}/accept`, {
+        const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/accept`, {
             method: 'POST',
             headers: { 'Cookie': receiverSessionCookie },
         });
@@ -255,7 +267,7 @@ describe('Organization Invitation API Integration Tests', () => {
         const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
 
        // Receiver declines the invitation
-      const res = await app.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
+      const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
         method: 'POST',
         headers: { 'Cookie': receiverSessionCookie }, // Use Receiver's cookie
       });
@@ -279,7 +291,7 @@ describe('Organization Invitation API Integration Tests', () => {
 
     it('should return 401 Unauthorized without session', async () => {
         expect(testInvitation).toBeDefined();
-         const res = await app.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
+         const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
              method: 'POST', // No Cookie header
          });
          expect(res.status).toBe(401);
@@ -290,7 +302,7 @@ describe('Organization Invitation API Integration Tests', () => {
      it('should return 404 Not Found for invalid token (using receiver session)', async () => {
          const invalidToken = 'invalid-token-decline-two-user';
          const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
-         const res = await app.request(`/api/v1/organization-invitations/${invalidToken}/decline`, {
+         const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/decline`, {
              method: 'POST',
              headers: { 'Cookie': receiverSessionCookie },
          });

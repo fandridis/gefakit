@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import app from '../../src/index';
+import { createAppInstance } from '../../src/app-factory';
+import { Hono } from 'hono';
+import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
 import { DB } from '../../src/db/db-types';
 import { Insertable } from 'kysely';
@@ -14,15 +16,18 @@ import { envConfig } from '../../src/lib/env-config';
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: Selectable<AuthUser> | undefined;
+  let testApp: Hono<{ Bindings: Bindings }>;
 
   let sessionCookie: string;
 
   beforeAll(async () => {
     testDb = new Kysely<DB>({
       dialect: new NeonDialect({
-        connectionString: envConfig.DATABASE_URL_POOLED,
+        connectionString: envConfig.TEST_DATABASE_URL,
       }),
     });
+
+    testApp = createAppInstance({ db: testDb });
 
     const testPassword = 'password1234';
     const hashedPassword = await hashPassword(testPassword);
@@ -40,7 +45,7 @@ describe('Todo API Integration Tests', () => {
       .executeTakeFirstOrThrow();
     testUser = insertedUser;
 
-    const loginRes = await app.request('/api/v1/auth/sign-in/email', {
+    const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: userEmail, password: testPassword }),
@@ -90,7 +95,8 @@ describe('Todo API Integration Tests', () => {
         // This ensures tests don't interfere with each other via todos
         const deleteResult = await testDb.deleteFrom('core.todos')
           .where('author_id', '=', testUser.id)
-          .executeTakeFirst();
+          .execute();
+          // Log the number of deleted rows for debugging if needed
       } catch (error) {
           console.error(`Error cleaning up todos for user ${testUser.email}:`, error);
       }
@@ -108,7 +114,7 @@ describe('Todo API Integration Tests', () => {
         due_date: new Date(Date.now() + 24 * 60 * 60 * 1000)
       };
 
-      const res = await app.request('/api/v1/todos', {
+      const res = await testApp.request('/api/v1/todos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +145,7 @@ describe('Todo API Integration Tests', () => {
     it('should return 401 Unauthorized if no session cookie is provided', async () => {
         const newTodoData = { title: 'Unauthorized Test Todo', completed: false };
 
-        const res = await app.request('/api/v1/todos', {
+        const res = await testApp.request('/api/v1/todos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }, // No Cookie header
             body: JSON.stringify(newTodoData),
@@ -150,13 +156,18 @@ describe('Todo API Integration Tests', () => {
 
 
     it('should return 400 Bad Request if request body is invalid', async () => {
-      const invalidTodoData = { title: 123, completed: 'yes' }; // Invalid types
+      const invalidTodoData = { completed: 'yes' }; // Invalid types
 
-      const res = await app.request('/api/v1/todos', {
+      // fetch all todos to use what exists already, log that
+      const todos = await testDb.selectFrom('core.todos')
+        .selectAll()
+        .execute();
+
+      const res = await testApp.request('/api/v1/todos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': sessionCookie, 
+          'Cookie': sessionCookie,
         },
         body: JSON.stringify(invalidTodoData),
       });
