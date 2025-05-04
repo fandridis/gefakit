@@ -1,14 +1,14 @@
 import { Hono } from 'hono'
 import { Bindings } from '../../types/hono'
-import { DbMiddleWareVariables } from '../../middleware/db'
 import { AuthMiddleWareVariables } from '../../middleware/auth'
 import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
 import {  OrganizationInvitationService } from './organization-invitation.service';
 import { OrganizationService } from '../organizations/organization.service';
 import { getOrganizationInvitationService } from '../../core/services';
+import { CoreAppVariables } from '../../app-factory';
 
-type OrganizationInvitationRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
+type OrganizationInvitationRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
   organizationInvitationService: OrganizationInvitationService,
   organizationService: OrganizationService,
 }

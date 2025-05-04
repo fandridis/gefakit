@@ -12,7 +12,6 @@ import {
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-utils";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
-import { DbMiddleWareVariables } from "../../middleware/db";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
 import { AuthService, OAuthUserDetails } from "./auth.service";
@@ -24,6 +23,7 @@ import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
 import { getAuthService, getOnboardingService } from "../../core/services";
 import { getEmailService } from "../../core/services";
 import { authErrors } from "./auth.errors";
+import { CoreAppVariables } from "../../app-factory";
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -61,7 +61,7 @@ interface GoogleUser {
     email_verified?: boolean;
 }
 
-type AuthRouteVariables = DbMiddleWareVariables & {
+type AuthRouteVariables = CoreAppVariables & {
     authService: AuthService;
     onboardingService: OnboardingService;
     emailService: EmailService;

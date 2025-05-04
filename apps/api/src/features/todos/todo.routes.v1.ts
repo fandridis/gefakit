@@ -1,8 +1,6 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
 import { zValidator } from "../../lib/zod-utils";
-import { TodoService } from "./todo.service";
-import { DbMiddleWareVariables } from "../../middleware/db";
 import { AuthMiddleWareVariables } from "../../middleware/auth";
 import {
   createTodoRequestBodySchema,
@@ -11,9 +9,13 @@ import {
 import { Selectable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
 import { getTodoService } from "../../core/services";
-import { AppDependencies } from "../../app-factory";
-
-type TodoRouteVars = AppDependencies & AuthMiddleWareVariables
+import { CoreAppVariables } from "../../app-factory";
+import { TodoService } from "./todo.service";
+// We set the types of the app until this point.
+// AppDendencies 
+type TodoRouteVars = CoreAppVariables & AuthMiddleWareVariables & {
+  todoService: TodoService;
+}
 
 const app = new Hono<{ Bindings: Bindings; Variables: TodoRouteVars }>();
 

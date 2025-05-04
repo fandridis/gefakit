@@ -1,21 +1,19 @@
-// apps/api/src/features/admin/admin.routes.v1.ts (Example)
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { AuthService } from '../auth/auth.service'; // Might need auth service/repo
 import { createAuthRepository } from '../auth/auth.repository';
 import { authMiddleware } from '../../middleware/auth';
-import { adminAuth } from '../../middleware/admin-auth';
-import { dbMiddleware, DbMiddleWareVariables } from '../../middleware/db';
 import { createAdminService } from './admin.service';
 import { Bindings } from '../../types/hono';
 import { getAdminService, getAuthService } from '../../core/services';
 import { adminErrors } from './admin.errors';
+import { CoreAppVariables } from '../../app-factory';
 
-type AuthRouteVariables = DbMiddleWareVariables & {
-    authService: AuthService;
-}
+type AuthRouteVariables = CoreAppVariables
 const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
+
+// Define allowed roles once
+const ADMIN_ROLES = new Set(['ADMIN', 'SUPPORT']);
 
 const impersonateSchema = z.object({
   targetUserId: z.coerce.number(),
@@ -23,9 +21,7 @@ const impersonateSchema = z.object({
 
 app.post(
   '/impersonate',
-  authMiddleware,
-  adminAuth,
-  dbMiddleware,
+  authMiddleware({ allowedRoles: ADMIN_ROLES }),
   zValidator('json', impersonateSchema),
   async (c) => {
     const { targetUserId } = c.req.valid('json');
@@ -54,8 +50,7 @@ app.post(
 
 app.post(
     '/stop-impersonation',
-    authMiddleware,
-    dbMiddleware,
+    authMiddleware(),
     async (c) => {
       const session = c.get('session');
       const db = c.get('db');

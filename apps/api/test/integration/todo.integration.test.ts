@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createAppInstance, AppConfig, AppDependencies, AppVariables } from '../../src/app-factory';
+import { createAppInstance, AppConfig, CoreAppVariables } from '../../src/app-factory';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
@@ -19,7 +19,7 @@ import { createTodoService } from '../../src/features/todos/todo.service';
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: Selectable<AuthUser> | undefined;
-  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>;
+  let testApp: Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>;
 
   let sessionCookie: string;
 
@@ -35,7 +35,7 @@ describe('Todo API Integration Tests', () => {
     const testTodoService = createTodoService({ todoRepository: testTodoRepository });
 
     // Assemble dependencies
-    const testDependencies: Partial<AppDependencies> = {
+    const testDependencies: Partial<CoreAppVariables> = {
       db: testDb, // Inject testDb
       todoService: testTodoService, // Inject real service using testDb
     };

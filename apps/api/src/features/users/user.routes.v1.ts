@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
-import { DbMiddleWareVariables } from "../../middleware/db";
 import { AuthMiddleWareVariables } from "../../middleware/auth";
 import { getUserService } from "../../core/services";
 import { UserService } from "./user.service";
 import { updateUserRequestBodySchema } from "@gefakit/shared/src/schemas/user.schema";
 import { zValidator } from "../../lib/zod-utils";
+import { CoreAppVariables } from "../../app-factory";
 
-type UserRouteVars = DbMiddleWareVariables & AuthMiddleWareVariables & {
+type UserRouteVars = CoreAppVariables & AuthMiddleWareVariables & {
     userService: UserService;
   };
 

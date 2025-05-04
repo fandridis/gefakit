@@ -23,22 +23,22 @@ import { TodoService } from './features/todos/todo.service';
 
 // Define the full set of dependencies needed by the app
 // We'll add more services/repos here as we refactor
-export interface AppDependencies {
+export interface CoreAppVariables {
   db: Kysely<DB>; // Keep DB separate if creating per-request, or include if injected
   todoService: TodoService;
 }
 
 // Define the context variable shape - combining DB and future dependencies
 // Make specific dependencies optional if they aren't available on all routes/middlewares
-export type AppVariables = {
-  db: Kysely<DB>; // db should generally always be available after middleware
-  todoService?: TodoService; // Make optional if not guaranteed on every context
-}
+// export type AppVariables = {
+//   db: Kysely<DB>; // db should generally always be available after middleware
+//   todoService?: TodoService; // Make optional if not guaranteed on every context
+// }
 
 // Configuration for creating the app instance
 export interface AppConfig {
   // Use Partial<> to allow injecting only some dependencies, e.g., during testing
-  dependencies?: Partial<AppDependencies>;
+  dependencies?: Partial<CoreAppVariables>;
 }
 
 /**
@@ -48,8 +48,8 @@ export interface AppConfig {
  * 
  * Testing will use this heavily to inject mocks.
  */
-const setDependenciesMiddleware = (dependencies: Partial<AppDependencies>) => {
-  return async (c: Context<{ Variables: AppVariables }>, next: Next) => {
+const setDependenciesMiddleware = (dependencies: Partial<CoreAppVariables>) => {
+  return async (c: Context<{ Variables: CoreAppVariables }>, next: Next) => {
     let dbToSet: Kysely<DB>;
 
     // Handle DB setup: If a DB is provided, use it. Otherwise, create a new one.
@@ -80,9 +80,9 @@ const setDependenciesMiddleware = (dependencies: Partial<AppDependencies>) => {
 };
 
 // Modify createAppInstance to accept optional AppConfig and use AppVariables
-export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings, Variables: AppVariables }> {
+export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings, Variables: CoreAppVariables }> {
   // Initialize Hono with the correct Variables type
-  const app = new Hono<{ Bindings: Bindings, Variables: AppVariables }>();
+  const app = new Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>();
 
   // Apply CORS headers
   app.use('/api/*', async (c, next) => {
@@ -140,23 +140,23 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // User routes (Require auth)
   // Ensure authMiddleware is compatible with AppVariables if it sets user/session
-  app.use("/api/v1/users/*", authMiddleware);
+  app.use("/api/v1/users/*", authMiddleware());
   app.route("/api/v1/users", userRoutesV1);
 
   // Todo routes (Require auth)
-  app.use("/api/v1/todos/*", authMiddleware);
+  app.use("/api/v1/todos/*", authMiddleware());
   app.route("/api/v1/todos", todoRoutesV1);
 
   // Organization routes (Require auth)
-  app.use("/api/v1/organizations/*", authMiddleware);
+  app.use("/api/v1/organizations/*", authMiddleware());
   app.route("/api/v1/organizations", organizationRoutesV1);
 
   // Organization membership routes (Require auth)
-  app.use("/api/v1/organization-memberships/*", authMiddleware);
+  app.use("/api/v1/organization-memberships/*", authMiddleware());
   app.route("/api/v1/organization-memberships", organizationMembershipRoutesV1);
 
   // Organization invitation routes (Require auth)
-  app.use("/api/v1/organization-invitations/*", authMiddleware);
+  app.use("/api/v1/organization-invitations/*", authMiddleware());
   app.route("/api/v1/organization-invitations", organizationInvitationRoutesV1);
 
   // --- Error Handling & Not Found ---

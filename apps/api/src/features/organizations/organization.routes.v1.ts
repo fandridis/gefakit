@@ -1,6 +1,5 @@
 import { Hono } from 'hono'
 import { Bindings } from '../../types/hono'
-import { DbMiddleWareVariables } from '../../middleware/db'
 import { AuthMiddleWareVariables } from '../../middleware/auth'
 import { zValidator } from '../../lib/zod-utils';
 import { createOrganizationInvitationRequestBodySchema, createOrganizationRequestBodySchema } from '@gefakit/shared/src/schemas/organization.schema';
@@ -14,8 +13,9 @@ import { OrganizationInvitationService } from '../organization-invitations/organ
 import { randomUUID } from 'node:crypto';
 import { getEmailService, getOrganizationInvitationService, getOrganizationMembershipService, getOrganizationService } from '../../core/services';
 import { organizationErrors } from './organization.errors';
+import { CoreAppVariables } from '../../app-factory';
 
-type OrganizationRouteVariables = DbMiddleWareVariables & AuthMiddleWareVariables & {
+type OrganizationRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
   organizationService: OrganizationService,
   organizationMembershipService: OrganizationMembershipService,
   organizationInvitationService: OrganizationInvitationService,
