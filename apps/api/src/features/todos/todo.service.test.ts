@@ -1,24 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTodoService, TodoService } from './todo.service';
-import { TodoRepository, createTodoRepository } from './todo.repository'; // Import real type and factory
-import { CoreTodo } from '../../db/db-types';
-import { Insertable, Updateable } from 'kysely';
+import { todoErrors } from './todo.errors';
 
-// --- Mock Dependencies ---
-
-// 1. Mock Repository Module (including factory)
-vi.mock('./todo.repository', () => ({
-  createTodoRepository: vi.fn(),
-  // Mock any standalone functions if necessary (likely none here)
-}));
-
-// 3. Import Mocked Functions/Modules AFTER mocks
-import { createTodoRepository as mockCreateTodoRepositoryFn } from './todo.repository';
-
-
-// --- Test Suite Setup ---
-
-// Type for the *instance* methods returned by the (real or mocked) repository factory
+// Define the structure of the mock instance based on the TodoRepository type
 type MockTodoRepositoryInstance = {
   findAllTodosByAuthorId: ReturnType<typeof vi.fn>;
   findTodoById: ReturnType<typeof vi.fn>;
@@ -30,12 +14,11 @@ type MockTodoRepositoryInstance = {
 describe('TodoService', () => {
   let todoService: TodoService;
   let mockRepoInstance: MockTodoRepositoryInstance;
-  let mockRepoFactory: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Create mock instance for repository methods
+    // Create the mock instance for the repository dependency
     mockRepoInstance = {
       findAllTodosByAuthorId: vi.fn(),
       findTodoById: vi.fn(),
@@ -44,43 +27,37 @@ describe('TodoService', () => {
       deleteTodo: vi.fn(),
     };
 
-    // Get the mocked factory function
-    mockRepoFactory = vi.mocked(mockCreateTodoRepositoryFn);
-
-    // Configure the factory mock (though service takes instance directly)
-    // This setup assumes the service constructor expects an instance,
-    // matching the original structure but using the more explicit mocking style.
-    mockRepoFactory.mockReturnValue(mockRepoInstance as unknown as TodoRepository);
-
-    // Create the service instance, directly passing the mocked instance
-    // This matches the original createTodoService signature which expects the instance.
-    todoService = createTodoService({ todoRepository: mockRepoInstance as unknown as TodoRepository });
-
+    // Create the service instance, passing the mock repository instance directly
+    todoService = createTodoService({ todoRepository: mockRepoInstance });
   });
 
   // --- Test findAllTodosByAuthorId ---
   describe('findAllTodosByAuthorId', () => {
-    it('should call repository.findAllTodosByAuthorId with the correct authorId', async () => {
+    it('should call repository.findAllTodosByAuthorId with the correct authorId and return the result', async () => {
       const authorId = 123;
-      const expectedTodos: CoreTodo[] = [
+      const expectedTodos = [
         { id: 1, title: 'Test Todo 1', completed: false, author_id: authorId, created_at: new Date(), updated_at: new Date() } as any,
         { id: 2, title: 'Test Todo 2', completed: true, author_id: authorId, created_at: new Date(), updated_at: new Date() } as any,
       ];
+      // Configure the mock repository method's return value
       mockRepoInstance.findAllTodosByAuthorId.mockResolvedValue(expectedTodos);
 
       const result = await todoService.findAllTodosByAuthorId({ authorId });
 
+      // Assert that the mock repository method was called correctly
       expect(mockRepoInstance.findAllTodosByAuthorId).toHaveBeenCalledWith({ authorId });
+      // Assert that the service returned the result from the repository
       expect(result).toEqual(expectedTodos);
     });
   });
 
   // --- Test createTodo ---
   describe('createTodo', () => {
-    it('should call repository.createTodo with the correct authorId and todo data', async () => {
+    it('should call repository.createTodo with the correct authorId and todo data and return the created todo', async () => {
       const authorId = 123;
-      const todoData: Insertable<CoreTodo> = { title: 'New Todo', completed: false, author_id: authorId };
-      const createdTodo: CoreTodo = { ...todoData, id: 1, created_at: new Date(), updated_at: new Date() } as any;
+      const todoData = { title: 'New Todo', completed: false, author_id: authorId, description: null, due_date: null };
+      const createdTodo = { ...todoData, id: 1, created_at: new Date() };
+
       mockRepoInstance.createTodo.mockResolvedValue(createdTodo);
 
       const result = await todoService.createTodo({ authorId, todo: todoData });
@@ -94,45 +71,55 @@ describe('TodoService', () => {
   describe('updateTodo', () => {
     const authorId = 123;
     const todoId = 1;
-    const existingTodo: CoreTodo = { id: todoId, title: 'Existing Todo', completed: false, author_id: authorId, created_at: new Date(), updated_at: new Date() } as any;
-    const updateData: Updateable<CoreTodo> = { title: 'Updated Todo', completed: true };
-    const updatedTodo: CoreTodo = { ...existingTodo, ...updateData, updated_at: new Date() } as any;
+    // Use CoreTodo for the existing data pulled from the repo
+    const existingTodo = { id: todoId, title: 'Existing Todo', completed: false, author_id: authorId, created_at: new Date(), updated_at: new Date(), description: '...', due_date: null };
+     // Use Updateable for the update data input
+    const updateData = { title: 'Updated Todo', completed: true };
+     // Use CoreTodo for the expected result after update
+    const updatedTodo = { ...existingTodo, ...updateData, updated_at: new Date() };
 
     it('should update the todo if found and author matches', async () => {
+      // Mock findTodoById to return the existing todo
       mockRepoInstance.findTodoById.mockResolvedValue(existingTodo);
+      // Mock updateTodo to return the expected updated todo
       mockRepoInstance.updateTodo.mockResolvedValue(updatedTodo);
 
       const result = await todoService.updateTodo({ id: todoId, todo: updateData, authorId });
 
+      // Assert findTodoById was called
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
+      // Assert updateTodo was called with the correct arguments
       expect(mockRepoInstance.updateTodo).toHaveBeenCalledWith({ id: todoId, todo: updateData });
-     // expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-     // expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
+      // Assert the service returned the result from updateTodo
       expect(result).toEqual(updatedTodo);
     });
 
-    it('should throw todoNotFound error if todo is not found', async () => {
+    it('should throw todoErrors.todoNotFound error if todo is not found', async () => {
+      // Mock findTodoById to return null, simulating not found
       mockRepoInstance.findTodoById.mockResolvedValue(null);
 
-      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Todo not found');
+      // Assert that calling updateTodo throws the specific error
+      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow(todoErrors.todoNotFound()); // Check the actual error object/message
 
+      // Assert findTodoById was called
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
+      // Assert updateTodo was NOT called because of the error
       expect(mockRepoInstance.updateTodo).not.toHaveBeenCalled();
-      //expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
-      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
     });
 
-    it('should throw actionNotAllowed error if author does not match', async () => {
+    it('should throw todoErrors.actionNotAllowed error if author does not match', async () => {
       const otherAuthorId = 456;
-      const todoFromOtherAuthor: CoreTodo = { ...existingTodo, author_id: otherAuthorId } as any;
+      // Mock findTodoById to return a todo with a different author_id
+      const todoFromOtherAuthor = { ...existingTodo, author_id: otherAuthorId } ;
       mockRepoInstance.findTodoById.mockResolvedValue(todoFromOtherAuthor);
 
-      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow('Action not allowed');
+      // Assert that calling updateTodo throws the specific error
+      await expect(todoService.updateTodo({ id: todoId, todo: updateData, authorId })).rejects.toThrow(todoErrors.actionNotAllowed()); // Check the actual error object/message
 
+      // Assert findTodoById was called
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
+      // Assert updateTodo was NOT called because of the error
       expect(mockRepoInstance.updateTodo).not.toHaveBeenCalled();
-      //expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      //expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -140,8 +127,8 @@ describe('TodoService', () => {
   describe('deleteTodo', () => {
     const authorId = 123;
     const todoId = 1;
-    const existingTodo: CoreTodo = { id: todoId, title: 'Existing Todo', completed: false, author_id: authorId, created_at: new Date(), updated_at: new Date() } as any;
-    const deletedResult = { count: 1n }; // Example result from Kysely delete
+    const existingTodo = { id: todoId, title: 'Existing Todo', completed: false, author_id: authorId, created_at: new Date(), updated_at: new Date(), description: '...', due_date: null };
+    const deletedResult = { count: 1n };
 
     it('should delete the todo if found and author matches', async () => {
       mockRepoInstance.findTodoById.mockResolvedValue(existingTodo);
@@ -151,33 +138,27 @@ describe('TodoService', () => {
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).toHaveBeenCalledWith({ id: todoId });
-      //expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
       expect(result).toEqual(deletedResult);
     });
 
-    it('should throw todoNotFound error if todo is not found', async () => {
+    it('should throw todoErrors.todoNotFound error if todo is not found', async () => {
       mockRepoInstance.findTodoById.mockResolvedValue(null);
 
-      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Todo not found');
+      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow(todoErrors.todoNotFound());
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).not.toHaveBeenCalled();
-      //expect(mockErrors.todos.todoNotFound).toHaveBeenCalledTimes(1);
-      //expect(mockErrors.todos.actionNotAllowed).not.toHaveBeenCalled();
     });
 
-    it('should throw actionNotAllowed error if author does not match', async () => {
+    it('should throw todoErrors.actionNotAllowed error if author does not match', async () => {
       const otherAuthorId = 456;
-      const todoFromOtherAuthor: CoreTodo = { ...existingTodo, author_id: otherAuthorId } as any;
+      const todoFromOtherAuthor = { ...existingTodo, author_id: otherAuthorId };
       mockRepoInstance.findTodoById.mockResolvedValue(todoFromOtherAuthor);
 
-      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow('Action not allowed');
+      await expect(todoService.deleteTodo({ id: todoId, authorId })).rejects.toThrow(todoErrors.actionNotAllowed());
 
       expect(mockRepoInstance.findTodoById).toHaveBeenCalledWith({ id: todoId });
       expect(mockRepoInstance.deleteTodo).not.toHaveBeenCalled();
-     // expect(mockErrors.todos.todoNotFound).not.toHaveBeenCalled();
-      // expect(mockErrors.todos.actionNotAllowed).toHaveBeenCalledTimes(1);
     });
   });
 });

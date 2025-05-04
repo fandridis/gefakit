@@ -36,7 +36,7 @@ export function createTodoService({ todoRepository }: { todoRepository: TodoRepo
         }
 
         if (todoFound.author_id !== authorId) {
-            throw todoErrors.actionNotAllowed('This is not your todo to delete!');
+            throw todoErrors.actionNotAllowed();
         }
 
         return todoRepository.deleteTodo({id});

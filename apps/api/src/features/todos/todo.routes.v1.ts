@@ -11,20 +11,25 @@ import {
 import { Selectable } from "kysely";
 import { CoreTodo } from "../../db/db-types";
 import { getTodoService } from "../../core/services";
+import { AppDependencies } from "../../app-factory";
 
-type TodoRouteVars = DbMiddleWareVariables & AuthMiddleWareVariables & {
-    todoService: TodoService;
-  };
+type TodoRouteVars = AppDependencies & AuthMiddleWareVariables
 
 const app = new Hono<{ Bindings: Bindings; Variables: TodoRouteVars }>();
 
-// Initialize service per-request
+// Initialize service per-request ONLY IF it hasn't been set by global middleware
 app.use("/*", async (c, next) => {
-  const db = c.get("db");
-  const todoService = getTodoService(db);
-  
-  c.set("todoService", todoService);
-  await next();
+  if (!c.get("todoService")) {
+    console.log("TodoService not found in context, creating fallback instance.");
+    const db = c.get("db"); 
+    if (!db) { // This should never happen as db is always set by global middleware.
+         console.error("DB not found in context in todo middleware!");
+         return c.json({ ok: false, error: "Internal configuration error: DB missing." }, 500);
+    }
+    const todoService = getTodoService(db);
+    c.set("todoService", todoService); 
+  } 
+  await next(); // Proceed to the route handlers or next middleware
 });
 
 // GET /api/v1/todos - Get all todos for the current user
@@ -46,7 +51,7 @@ app.post(
   async (c) => {
     const user = c.get("user");
     const data = c.req.valid("json");
-    const todoService = c.get("todoService");
+    const todoService = c.get('todoService');
     const created = await todoService.createTodo({authorId: user.id, todo: {
        ...data, 
        author_id: user.id,

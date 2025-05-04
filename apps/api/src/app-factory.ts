@@ -41,14 +41,20 @@ export interface AppConfig {
   dependencies?: Partial<AppDependencies>;
 }
 
-// Middleware to set dependencies onto the context
+/**
+ * Middleware to set dependencies onto the context
+ * For now db is the only real dependency set here.
+ * But some "always needed" services could be set here too.
+ * 
+ * Testing will use this heavily to inject mocks.
+ */
 const setDependenciesMiddleware = (dependencies: Partial<AppDependencies>) => {
   return async (c: Context<{ Variables: AppVariables }>, next: Next) => {
     let dbToSet: Kysely<DB>;
 
-    // Handle DB setup: Use injected or create per-request
-    if (dependencies?.db) { // Check if dependencies and dependencies.db exist
-      dbToSet = dependencies.db; // Use injected DB (testing)
+    // Handle DB setup: If a DB is provided, use it. Otherwise, create a new one.
+    if (dependencies?.db) {
+      dbToSet = dependencies.db;
     } else {
       // Create per-request DB (production) - Ensure env var is checked safely
       if (!envConfig.DATABASE_URL_POOLED) {
@@ -60,15 +66,16 @@ const setDependenciesMiddleware = (dependencies: Partial<AppDependencies>) => {
       const dialect = new NeonDialect({ connectionString: envConfig.DATABASE_URL_POOLED });
       dbToSet = new Kysely<DB>({ dialect });
     }
-    c.set('db', dbToSet); // Set the resolved DB instance
+    c.set('db', dbToSet); 
 
     // Set other provided dependencies if they exist in the config
+    // We are setting the todoService here as an example.
     if (dependencies?.todoService) {
       c.set('todoService', dependencies.todoService);
     }
     // ... set other dependencies as they are added ...
 
-    await next(); // Call next middleware/handler
+    await next();
   };
 };
 
@@ -104,7 +111,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Apply dependency injection middleware globally or scoped as needed
   // Pass only the dependencies object if it exists, otherwise an empty object
-  app.use('*', setDependenciesMiddleware(config?.dependencies ?? {}));
+  app.use('/api/*', setDependenciesMiddleware(config?.dependencies ?? {}));
 
   // Apply rate limiting AFTER dependencies might be needed (e.g., for key generation)
   // Requires GEFAKIT_RATE_LIMITER_KV binding
@@ -138,10 +145,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Todo routes (Require auth)
   app.use("/api/v1/todos/*", authMiddleware);
-  // Pass the app instance itself to the route setup function if needed by the route definition
-  // If todoRoutesV1 is just a Hono instance, app.route is correct.
-  // If it's a function like `(app: Hono<...>) => void`, you'd call it: `todoRoutesV1(app)`
-  app.route("/api/v1/todos", todoRoutesV1); // Assumes todoRoutesV1 is a Hono instance/router
+  app.route("/api/v1/todos", todoRoutesV1);
 
   // Organization routes (Require auth)
   app.use("/api/v1/organizations/*", authMiddleware);
