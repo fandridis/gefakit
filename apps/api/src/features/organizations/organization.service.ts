@@ -43,7 +43,7 @@ export function createOrganizationService({
     deleteOrganization: async ({organizationId, userId}: {organizationId: number, userId: number}) => {
       const memberships = await organizationRepository.findAllOrganizationMembershipsByUserId({userId});
       if (memberships.length === 1 && memberships[0].organization_id === organizationId) {
-        throw organizationErrors.actionNotAllowed('Cannot delete your only organization...');
+        throw organizationErrors.actionNotAllowed();
       }
 
       return await db.transaction().execute(async (trx: Transaction<DB>) => {
@@ -57,7 +57,7 @@ export function createOrganizationService({
         const isOwner = organization.ownerMembership?.user_id === userId;
   
         if (!isOwner) {
-          throw organizationErrors.actionNotAllowed('Only the owner can delete the organization');
+          throw organizationErrors.actionNotAllowed();
         }
   
         return await repoTx.deleteOrganization({organizationId}); 
@@ -72,7 +72,7 @@ export function createOrganizationService({
       }
 
       if (organization.ownerMembership?.user_id === userId) {
-        throw organizationErrors.actionNotAllowed('Cannot leave the organization as the owner');
+        throw organizationErrors.actionNotAllowed();
       }
 
       return await organizationRepository.deleteOrganizationMembership({organizationId, userId});

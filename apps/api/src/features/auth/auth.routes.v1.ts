@@ -10,7 +10,7 @@ import {
     verifyOtpBodySchema,
     resendVerificationEmailRequestBodySchema
 } from "@gefakit/shared/src/schemas/auth.schema";
-import { zValidator } from "../../lib/zod-utils";
+import { zValidator } from "../../lib/zod-validator";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
 import { Kysely } from "kysely";
 import { DB } from "../../db/db-types";
@@ -20,10 +20,11 @@ import { EmailService } from "../emails/email.service";
 import { generateState, OAuth2RequestError } from "arctic";
 import { createOAuthClients, OAuthClients } from "../../lib/oauth";
 import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
-import { getAuthService, getOnboardingService } from "../../core/services";
-import { getEmailService } from "../../core/services";
+import { getAuthService, getOnboardingService } from "../../utils/get-service";
+import { getEmailService, GetServiceProps } from "../../utils/get-service";
 import { authErrors } from "./auth.errors";
-import { CoreAppVariables } from "../../create-app";
+import { AppVariables } from "../../create-app";
+import { Context } from 'hono';
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -61,13 +62,6 @@ interface GoogleUser {
     email_verified?: boolean;
 }
 
-type AuthRouteVariables = CoreAppVariables & {
-    authService: AuthService;
-    onboardingService: OnboardingService;
-    emailService: EmailService;
-    oauthClients: OAuthClients;
-}
-
 const setStateCookie = (c: any, name: string, value: string) => {
     setCookie(c, name, value, {
         path: "/",
@@ -88,25 +82,11 @@ const setSessionCookie = (c: any, sessionToken: string) => {
     });
 };
 
-const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
+const app = new Hono<{ Bindings: Bindings, Variables: AppVariables }>();
 
 
 app.use('/*', authRateLimiter);
 
-app.use('/*', async (c, next) => {
-    const db = c.get("db") as Kysely<DB>;
-
-    const emailService = getEmailService(); 
-    const authService = getAuthService(db);
-    const onboardingService = getOnboardingService(db);
-    const oauthClients = createOAuthClients();
-    
-    c.set('authService', authService);
-    c.set('onboardingService', onboardingService);
-    c.set('emailService', emailService);
-    c.set('oauthClients', oauthClients);
-    await next();
-});
 
 app.get('/session', async (c) => {
     const sessionToken = getCookie(c, 'gefakit-session');
@@ -115,8 +95,8 @@ app.get('/session', async (c) => {
         throw authErrors.unauthorized();
     }
 
-    const service = c.get('authService');
-    const result = await service.getCurrentSession({ token: sessionToken });
+    const authService = getAuthService(c);
+    const result = await authService.getCurrentSession({ token: sessionToken });
 
     // If the session was extended, a new token is issued. Set the new cookie.
     if (result.newToken) {
@@ -139,8 +119,8 @@ app.get('/session', async (c) => {
 app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
 
-    const service = c.get('authService');
-    const result = await service.signInWithEmail(body);
+    const authService = getAuthService(c);
+    const result = await authService.signInWithEmail(body);
     
     setSessionCookie(c, result.sessionToken);
 
@@ -151,10 +131,10 @@ app.post('/sign-in/email', zValidator('json', signInEmailRequestBodySchema), asy
 app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
 
-    const onboardingService = c.get('onboardingService');
+    const onboardingService = getOnboardingService(c);
     const { user, verificationToken } = await onboardingService.signUpAndCreateOrganization(body);
 
-    const emailService = c.get('emailService');
+    const emailService = getEmailService(c);
     await emailService.sendVerificationEmail({ 
         email: user.email, 
         token: verificationToken 
@@ -166,10 +146,10 @@ app.post('/sign-up/email', zValidator('json', signUpEmailRequestBodySchema), asy
 
 app.post('/sign-out', async (c) => {
     const sessionToken = getCookie(c, 'gefakit-session');
-    const service = c.get('authService');
+    const authService = getAuthService(c);
 
     if (sessionToken) {
-        await service.invalidateSession({ token: sessionToken });
+        await authService.invalidateSession({ token: sessionToken });
         deleteCookie(c, 'gefakit-session');
     }
 
@@ -183,8 +163,8 @@ app.get('/verify-email', async (c) => {
         throw authErrors.emailVerificationTokenNotFound();
     }
 
-    const service = c.get('authService');
-    await service.verifyEmail({ token });
+    const authService = getAuthService(c);
+    await authService.verifyEmail({ token });
 
     const response = { message: 'Email verified successfully' };
     return c.json(response);
@@ -192,7 +172,7 @@ app.get('/verify-email', async (c) => {
 
 app.get('/sign-in/github', async (c) => {
     const state = generateState();
-    const oauthClients = c.get('oauthClients');
+    const oauthClients = createOAuthClients();
     const url = await oauthClients.github.createAuthorizationURL(state, []);
     
     setStateCookie(c, 'github_oauth_state', state);
@@ -201,8 +181,8 @@ app.get('/sign-in/github', async (c) => {
 });
 
 app.get('/login/github/callback', async (c) => {
-    const oauthClients = c.get('oauthClients');
-    const service = c.get('authService');
+    const oauthClients = createOAuthClients();
+    const authService = getAuthService(c);
     
     const code = c.req.query('code');
     const state = c.req.query('state');
@@ -263,7 +243,7 @@ app.get('/login/github/callback', async (c) => {
             username: githubUser.login
         };
 
-        const { sessionToken } = await service.handleOAuthCallback(oauthDetails);
+        const { sessionToken } = await authService.handleOAuthCallback(oauthDetails);
 
         setSessionCookie(c, sessionToken);
 
@@ -361,8 +341,8 @@ app.get('/login/github/callback', async (c) => {
 
 app.post('/request-password-reset', emailRateLimiter, zValidator('json', requestPasswordResetRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
-    const authService = c.get('authService');
-    const emailService = c.get('emailService');
+    const authService = getAuthService(c);
+    const emailService = getEmailService(c);
 
     const plainToken = await authService.requestPasswordReset({ email: body.email });
 
@@ -380,7 +360,7 @@ app.post('/request-password-reset', emailRateLimiter, zValidator('json', request
 
 app.post('/reset-password', zValidator('json', resetPasswordRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
-    const authService = c.get('authService');
+    const authService = getAuthService(c);
 
     await authService.resetPassword({ 
         token: body.token, 
@@ -398,8 +378,8 @@ app.post('/reset-password', zValidator('json', resetPasswordRequestBodySchema), 
 
 app.post('/resend-verification-email', emailRateLimiter, zValidator('json', resendVerificationEmailRequestBodySchema), async (c) => {
     const body = c.req.valid('json');
-    const authService = c.get('authService');
-    const emailService = c.get('emailService');
+    const authService = getAuthService(c);
+    const emailService = getEmailService(c);
 
     // Call a new service method to handle resending the verification email
     // This method should find the user, check if already verified, 
@@ -427,8 +407,8 @@ app.post('/resend-verification-email', emailRateLimiter, zValidator('json', rese
 
 app.post('/sign-in/request-otp', emailRateLimiter, zValidator('json', requestOtpBodySchema), async (c) => {
     const body = c.req.valid('json');
-    const authService = c.get('authService');
-    const emailService = c.get('emailService');
+    const authService = getAuthService(c);
+    const emailService = getEmailService(c);
 
     const plainOtp = await authService.requestOtpSignIn({ email: body.email });
 
@@ -446,7 +426,7 @@ app.post('/sign-in/request-otp', emailRateLimiter, zValidator('json', requestOtp
 
 app.post('/sign-in/verify-otp', zValidator('json', verifyOtpBodySchema), async (c) => {
     const body = c.req.valid('json');
-    const authService = c.get('authService');
+    const authService = getAuthService(c);
 
     const result = await authService.verifyOtpAndSignIn(body);
     

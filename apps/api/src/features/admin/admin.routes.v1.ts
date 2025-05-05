@@ -5,9 +5,10 @@ import { createAuthRepository } from '../auth/auth.repository';
 import { authMiddleware } from '../../middleware/auth';
 import { createAdminService } from './admin.service';
 import { Bindings } from '../../types/hono';
-import { getAdminService, getAuthService } from '../../core/services';
+import { getAdminService, getAuthService } from '../../utils/get-service';
 import { adminErrors } from './admin.errors';
-import { CoreAppVariables } from '../../create-app';
+import { AppVariables } from '../../create-app';
+import { getAuthOrThrow } from '../../utils/get-auth-or-throw';
 
 const ADMIN_ROLES = new Set(['ADMIN', 'SUPPORT']);
 
@@ -15,11 +16,10 @@ const impersonateSchema = z.object({
   targetUserId: z.coerce.number(),
 });
 
-type AuthRouteVariables = CoreAppVariables
 
 // Export a factory function that creates and configures the Hono app
 export function createAdminRoutesV1() { 
-  const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
+  const app = new Hono<{ Bindings: Bindings, Variables: AppVariables }>();
 
   app.post(
     '/impersonate',
@@ -27,9 +27,7 @@ export function createAdminRoutesV1() {
     zValidator('json', impersonateSchema),
     async (c) => {
       const { targetUserId } = c.req.valid('json');
-      const adminUser = c.get('user'); 
-      const session = c.get('session');
-      const db = c.get('db');
+      const { user: adminUser, session } = getAuthOrThrow(c);
 
       if (!adminUser || !session) {
         throw adminErrors.authenticationRequired();
@@ -38,8 +36,8 @@ export function createAdminRoutesV1() {
          throw adminErrors.cannotImpersonateSelf();
       }
 
-      const authRepository = createAuthRepository({db});
-      const adminService = createAdminService({db, authRepository});
+      const adminService = getAdminService(c);
+
 
       await adminService.startImpersonation(session.id, adminUser.id, targetUserId);
 
@@ -54,15 +52,14 @@ export function createAdminRoutesV1() {
     '/stop-impersonation',
     authMiddleware(),
     async (c) => {
-      const session = c.get('session');
-      const db = c.get('db');
+      const { session } = getAuthOrThrow(c);
 
       if (!session) {
         throw adminErrors.impersonationSessionNotFound();
       }
       
-      const authService = getAuthService(db);
-      const adminService = getAdminService(db);
+      const authService = getAuthService(c);
+      const adminService = getAdminService(c);
       
       const sessionDetails = await authService.findSessionById({ id: session.id });
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {

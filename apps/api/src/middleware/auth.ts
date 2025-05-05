@@ -1,20 +1,14 @@
 import { getCookie } from 'hono/cookie';
 import { Bindings } from '../types/hono';
 import { createMiddleware } from 'hono/factory'
-import { SessionDTO, UserDTO } from '@gefakit/shared/src/types/auth';
-import { DbMiddleWareVariables } from './db';
 import { createAuthRepository } from '../features/auth/auth.repository';
 import { createAuthService } from '../features/auth/auth.service';
 import { createOrganizationRepository } from '../features/organizations/organization.repository';
 import { authErrors } from '../features/auth/auth.errors';
 import { adminErrors } from '../features/admin/admin.errors';
 import { ApiError } from '@gefakit/shared';
+import { AppVariables } from '../create-app';
 
-export interface AuthMiddleWareVariables extends DbMiddleWareVariables {
-    user: UserDTO
-    session: SessionDTO
-    impersonatorUserId: number | null | undefined
-}
 
 // Define configuration interface
 interface AuthMiddlewareConfig {
@@ -23,7 +17,7 @@ interface AuthMiddlewareConfig {
 
 // Return a function that accepts config and returns the middleware
 export const authMiddleware = (config?: AuthMiddlewareConfig) => {
-    return createMiddleware<{ Bindings: Bindings, Variables: AuthMiddleWareVariables }>(async (c, next) => {
+    return createMiddleware<{ Bindings: Bindings, Variables: AppVariables }>(async (c, next) => {
         const db = c.get("db");
         const sessionToken = getCookie(c, 'gefakit-session');
 

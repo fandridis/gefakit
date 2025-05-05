@@ -20,7 +20,7 @@ vi.mock('../../src/features/emails/email.service', () => {
 
 // Import factory and types
 // import app from '../../src/index';
-import { createAppInstance, CoreAppVariables } from '../../src/create-app';
+import { createAppInstance, AppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely } from 'kysely';
@@ -38,12 +38,12 @@ describe('Organization API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: UserDTO | undefined;
   let sessionCookie: string;
-  let testApp: Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>; // Declare testApp
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
   beforeAll(async () => {
-    const dbUrl = envConfig.DATABASE_URL_POOLED;
+    const dbUrl = envConfig.TEST_DATABASE_URL;
     if (!dbUrl) {
-      throw new Error("DATABASE_URL_POOLED environment variable not set.");
+      throw new Error("TEST_DATABASE_URL environment variable not set.");
     }
 
     testDb = new Kysely<DB>({
@@ -53,7 +53,7 @@ describe('Organization API Integration Tests', () => {
     });
 
     // Create test app instance
-    const testDependencies: Partial<CoreAppVariables> = {
+    const testDependencies: Partial<AppVariables> = {
       db: testDb
     };
     testApp = createAppInstance({ dependencies: testDependencies });

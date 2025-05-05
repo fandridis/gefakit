@@ -1,10 +1,9 @@
-import { Hono, Next } from 'hono';
-import { Context } from 'hono';
+import { Hono } from 'hono';
 import { Bindings } from './types/hono';
 import { ZodError } from 'zod';
-import { ApiError } from '@gefakit/shared';
+import { ApiError, SessionDTO, UserDTO } from '@gefakit/shared';
 import { authMiddleware } from './middleware/auth';
-import { organizationRoutesV1 } from './features/organizations/organization.routes.v1';
+import { createOrganizationRoutesV1 } from './features/organizations/organization.routes.v1';
 import { organizationMembershipRoutesV1 } from './features/organization-memberships/organization-membership.routes.v1';
 import { organizationInvitationRoutesV1 } from './features/organization-invitations/organization-invitation.routes.v1';
 import { impersonationLogMiddleware } from './middleware/impersonation-log';
@@ -13,13 +12,26 @@ import { envConfig } from './lib/env-config';
 import { securityHeaders } from './middleware/security-headers';
 import { logger } from 'hono/logger';
 import { userRoutesV1 } from './features/users/user.routes.v1';
-import { Kysely, ParseJSONResultsPlugin } from 'kysely';
-import { DB } from './db/db-types';
+import { Kysely } from 'kysely';
+import { AuthUser, DB } from './db/db-types';
 import { authRoutesV1 } from './features/auth/auth.routes.v1';
-import { NeonDialect } from 'kysely-neon';
 import { TodoService } from './features/todos/todo.service';
 import { createAdminRoutesV1 } from './features/admin/admin.routes.v1';
 import { createTodoRoutesV1 } from './features/todos/todo.routes.v1';
+import { dbMiddleware } from './middleware/db';
+import { servicesMiddleware } from './middleware/services';
+import { OrganizationService } from './features/organizations/organization.service';
+import { OrganizationInvitationService } from './features/organization-invitations/organization-invitation.service';
+import { OrganizationMembershipService } from './features/organization-memberships/organization-membership.service';
+import { AuthService } from './features/auth/auth.service';
+import { EmailService } from './features/emails/email.service';
+import { OrganizationMembershipRepository } from './features/organization-memberships/organization-membership.repository';
+import { UserRepository } from './features/users/user.repository';
+import { OrganizationInvitationRepository } from './features/organization-invitations/organization-invitation.repository';
+import { AuthRepository } from './features/auth/auth.repository';
+import { AdminService } from './features/admin/admin.service';
+import { UserService } from './features/users/user.service';
+import { OnboardingService } from './features/onboarding/onboarding.service';
 
 /**
  * Single kysely instance created once on cold start of the worker.
@@ -37,75 +49,38 @@ import { createTodoRoutesV1 } from './features/todos/todo.routes.v1';
 //   plugins: [new ParseJSONResultsPlugin()],
 // })
 
-// Define the full set of dependencies needed by the app
-// We'll add more services/repos here as we refactor
-export interface CoreAppVariables {
-  db: Kysely<DB>; // Keep DB separate if creating per-request, or include if injected
-  todoService?: TodoService;
-}
-
-// Define the context variable shape - combining DB and future dependencies
-// Make specific dependencies optional if they aren't available on all routes/middlewares
-// export type AppVariables = {
-//   db: Kysely<DB>; // db should generally always be available after middleware
-//   todoService?: TodoService; // Make optional if not guaranteed on every context
-// }
-
 // Configuration for creating the app instance
 export interface AppConfig {
   // Use Partial<> to allow injecting only some dependencies, e.g., during testing
-  dependencies?: Partial<CoreAppVariables>;
+  dependencies?: Partial<AppVariables>;
 }
 
-/**
- * Middleware to set dependencies onto the context
- * For now db is the only real dependency set here.
- * But some "always needed" services could be set here too.
- * 
- * Testing will use this heavily to inject mocks.
- */
-const setDependenciesMiddleware = (dependencies: Partial<CoreAppVariables>) => {
-  return async (c: Context<{ Variables: CoreAppVariables }>, next: Next) => {
-    let dbToSet: Kysely<DB>;
-
-    // Handle DB setup: If a DB is provided, use it. Otherwise, create a new one.
-    if (dependencies?.db) {
-      dbToSet = dependencies.db;
-    } else {
-      // Create per-request DB (production) - Ensure env var is checked safely
-      if (!envConfig.DATABASE_URL_POOLED) {
-        console.error('DATABASE_URL_POOLED is not defined in the environment');
-        // Consider returning a 500 error response instead of throwing immediately
-        // throw new Error('Database configuration error.');
-         return c.json({ ok: false, error: "Internal configuration error" }, 500);
-      }
-
-      const db = new Kysely<DB>({
-      dialect: new NeonDialect({
-        connectionString: envConfig.DATABASE_URL_POOLED,
-      }),
-      plugins: [new ParseJSONResultsPlugin()],
-    })
-
-      dbToSet = db;
-    }
-    c.set('db', dbToSet); 
-
-    // Set other provided dependencies if they exist in the config
-    // We are setting the todoService here as an example.
-    if (dependencies?.todoService) {
-      c.set('todoService', dependencies.todoService);
-    }
-    // ... set other dependencies as they are added ...
-
-    await next();
-  };
-};
+// Define the full set of dependencies needed by the app
+// We'll add more services/repos here as we refactor
+export interface AppVariables {
+  /** DB  */
+  db: Kysely<DB>;
+  /** Auth */
+  user?: UserDTO;
+  session?: SessionDTO;
+  /** Services */
+  todoService?: TodoService;
+  organizationService?: OrganizationService;
+  organizationInvitationService?: OrganizationInvitationService;
+  organizationMembershipService?: OrganizationMembershipService;
+  authService?: AuthService;
+  emailService?: EmailService;
+  userService?: UserService;
+  adminService?: AdminService;
+  onboardingService?: OnboardingService;
+  /** Misc */
+  impersonatorUserId?: number;
+}
 
 // Modify createAppInstance to accept optional AppConfig and use AppVariables
-export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings, Variables: CoreAppVariables }> {
+export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings, Variables: AppVariables }> {
   // Initialize Hono with the correct Variables type
-  const app = new Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>();
+  const app = new Hono<{ Bindings: Bindings, Variables: AppVariables }>();
 
   // Apply CORS headers
   app.use('/api/*', async (c, next) => {
@@ -132,11 +107,15 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   // Log all requests
   app.use(logger());
 
-  // Apply dependency injection middleware globally or scoped as needed
-  // Pass only the dependencies object if it exists, otherwise an empty object
-  app.use('/api/*', setDependenciesMiddleware(config?.dependencies ?? {}));
+  // Apply db middleware
+  app.use('/api/*', dbMiddleware(config?.dependencies?.db));
+
+  // Apply services middleware - has to be after db middleware
+  const { db, ...otherServices } = config?.dependencies ?? {};
+  app.use('/api/*', servicesMiddleware(otherServices));
 
   // Apply rate limiting AFTER dependencies might be needed (e.g., for key generation)
+  // As we could have in dependancies a "crypto utils" that needs to be initialized
   // Requires GEFAKIT_RATE_LIMITER_KV binding
   app.use('/api/*', kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -172,7 +151,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Organization routes (Require auth)
   app.use("/api/v1/organizations/*", authMiddleware());
-  app.route("/api/v1/organizations", organizationRoutesV1);
+  app.route("/api/v1/organizations", createOrganizationRoutesV1());
 
   // Organization membership routes (Require auth)
   app.use("/api/v1/organization-memberships/*", authMiddleware());

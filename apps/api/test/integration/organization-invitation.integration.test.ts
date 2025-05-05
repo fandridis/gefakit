@@ -11,7 +11,7 @@ vi.mock('../../src/features/emails/email.service', () => ({
 
 // Import factory and types
 // import app from '../../src/index';
-import { createAppInstance, CoreAppVariables } from '../../src/create-app';
+import { createAppInstance, AppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Insertable, Selectable } from 'kysely';
@@ -29,7 +29,7 @@ describe('Organization Invitation API Integration Tests', () => {
   let receiverPassword = 'receiverPassword456';
   let testOrg: OrganizationDTO;
   let senderSessionCookie: string;
-  let testApp: Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>; // Declare testApp
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
   let testInvitation: Selectable<OrganizationsInvitation> | null = null;
 
   // Helper to log in a user and return their session cookie
@@ -75,12 +75,12 @@ describe('Organization Invitation API Integration Tests', () => {
   };
 
   beforeAll(async () => {
-    const dbUrl = envConfig.DATABASE_URL_POOLED;
-    if (!dbUrl) throw new Error("DATABASE_URL_POOLED not set.");
+    const dbUrl = envConfig.TEST_DATABASE_URL;
+    if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
     testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
 
     // Create test app instance
-    const testDependencies: Partial<CoreAppVariables> = {
+    const testDependencies: Partial<AppVariables> = {
       db: testDb,
     };
     testApp = createAppInstance({ dependencies: testDependencies });

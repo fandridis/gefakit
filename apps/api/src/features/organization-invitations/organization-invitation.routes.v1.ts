@@ -1,35 +1,17 @@
 import { Hono } from 'hono'
 import { Bindings } from '../../types/hono'
-import { AuthMiddleWareVariables } from '../../middleware/auth'
-import { Kysely } from 'kysely';
-import { DB } from '../../db/db-types';
-import {  OrganizationInvitationService } from './organization-invitation.service';
-import { OrganizationService } from '../organizations/organization.service';
-import { getOrganizationInvitationService } from '../../core/services';
-import { CoreAppVariables } from '../../create-app';
+import { getOrganizationInvitationService } from '../../utils/get-service';
+import { AppVariables } from '../../create-app';
+import { getAuthOrThrow } from '../../utils/get-auth-or-throw';
 
-type OrganizationInvitationRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
-  organizationInvitationService: OrganizationInvitationService,
-  organizationService: OrganizationService,
-}
-const app = new Hono<{ Bindings: Bindings; Variables: OrganizationInvitationRouteVariables }>()
-
-// Initialize services per-request using factories
-app.use('/*', async (c, next) => {
-  const db = c.get("db") as Kysely<DB>;
-
-  const organizationInvitationService = getOrganizationInvitationService(db);
-
-  c.set('organizationInvitationService', organizationInvitationService);
-  await next();
-});
+const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>()
 
 // GET - all organization invitations for the current user
 app.get('/', async (c) => {
-  const user = c.get('user');
-  const service = c.get('organizationInvitationService');
+  const { user } = getAuthOrThrow(c);
+  const invitationService = getOrganizationInvitationService(c);
 
-  const invitations = await service.findAllInvitationsByUserId({userId: user.id});
+  const invitations = await invitationService.findAllInvitationsByUserId({userId: user.id});
 
   const response = { invitations };
   return c.json(response, 201);
@@ -38,10 +20,10 @@ app.get('/', async (c) => {
 // POST - accept an organization invitation
 app.post('/:token/accept', async (c) => {
   const token = c.req.param('token');
-  const user = c.get('user');
-  const service = c.get('organizationInvitationService');
+  const { user } = getAuthOrThrow(c);
+  const invitationService = getOrganizationInvitationService(c);
 
-  const invitation = await service.acceptInvitation({token, acceptingUserId: user.id});
+  const invitation = await invitationService.acceptInvitation({token, acceptingUserId: user.id});
 
   const response = { invitation };
   return c.json(response, 201);
@@ -50,9 +32,9 @@ app.post('/:token/accept', async (c) => {
 // POST - decline an organization invitation
 app.post('/:token/decline', async (c) => {
   const token = c.req.param('token');
-  const service = c.get('organizationInvitationService');
+  const invitationService = getOrganizationInvitationService(c);
 
-  const invitation = await service.declineInvitation({token});
+  const invitation = await invitationService.declineInvitation({token});
 
   const response = { invitation };
   return c.json(response, 201);

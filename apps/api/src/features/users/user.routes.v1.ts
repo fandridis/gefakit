@@ -1,34 +1,20 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
-import { AuthMiddleWareVariables } from "../../middleware/auth";
-import { getUserService } from "../../core/services";
+import { getUserService } from "../../utils/get-service";
 import { UserService } from "./user.service";
 import { updateUserRequestBodySchema } from "@gefakit/shared/src/schemas/user.schema";
-import { zValidator } from "../../lib/zod-utils";
-import { CoreAppVariables } from "../../create-app";
+import { zValidator } from "../../lib/zod-validator";
+import { AppVariables } from "../../create-app";
+import { getAuthOrThrow } from "../../utils/get-auth-or-throw";
 
-type UserRouteVars = CoreAppVariables & AuthMiddleWareVariables & {
-    userService: UserService;
-  };
-
-const app = new Hono<{ Bindings: Bindings; Variables: UserRouteVars }>();
-
-// Initialize service per-request
-app.use("/*", async (c, next) => {
-  const db = c.get("db");
-  const userService = getUserService(db);
-  
-  c.set("userService", userService);
-  await next();
-});
+const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
 
 // Update user
 app.patch("/me",
-    zValidator("json", updateUserRequestBodySchema),
-    async (c) => {
-    const user = c.get("user");
+  zValidator("json", updateUserRequestBodySchema), async (c) => {
     const data = c.req.valid("json");
-    const userService = c.get("userService");
+    const { user } = getAuthOrThrow(c);
+    const userService = getUserService(c);
     const name = data.username;
 
     const updated = await userService.updateUser({userId: user.id, updates: {

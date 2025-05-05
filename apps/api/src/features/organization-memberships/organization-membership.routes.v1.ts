@@ -1,30 +1,15 @@
 import { Hono } from 'hono'
 import { Bindings } from '../../types/hono'
-import { AuthMiddleWareVariables } from '../../middleware/auth'
-import { Kysely } from 'kysely';
-import { DB } from '../../db/db-types';
-import {  OrganizationMembershipService } from './organization-membership.service';
-import { getOrganizationMembershipService } from '../../core/services';
-import { CoreAppVariables } from '../../create-app';
+import { getOrganizationMembershipService } from '../../utils/get-service';
+import { AppVariables } from '../../create-app';
+import { getAuthOrThrow } from '../../utils/get-auth-or-throw';
 
-type OrganizationMembershipRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
-  organizationMembershipService: OrganizationMembershipService,
-}
-const app = new Hono<{ Bindings: Bindings; Variables: OrganizationMembershipRouteVariables }>()
-
-// Initialize services per-request
-app.use('/*', async (c, next) => {
-  const db = c.get("db") as Kysely<DB>;
-  const organizationMembershipService = getOrganizationMembershipService(db);
-
-  c.set('organizationMembershipService', organizationMembershipService);
-  await next();
-});
+const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>()
 
 // GET /api/v1/organization-memberships - Get all organization memberships for the current user
 app.get('/', async (c) => {
-  const user = c.get('user');
-  const service = c.get('organizationMembershipService');
+  const { user } = getAuthOrThrow(c);
+  const service = getOrganizationMembershipService(c);
 
   const memberships = await service.findAllOrganizationMembershipsByUserId({userId: user.id});
 

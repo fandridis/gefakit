@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createAppInstance, AppConfig, CoreAppVariables } from '../../src/create-app';
+import { createAppInstance, AppConfig, AppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
@@ -14,19 +14,24 @@ import { envConfig } from '../../src/lib/env-config';
 // Import service/repo factories
 import { createTodoRepository } from '../../src/features/todos/todo.repository';
 import { createTodoService } from '../../src/features/todos/todo.service';
-
+import { getTodoService } from '../../src/utils/get-service';
 // --- Test Suite Setup ---
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
   let testUser: Selectable<AuthUser> | undefined;
-  let testApp: Hono<{ Bindings: Bindings, Variables: CoreAppVariables }>;
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>;
 
   let sessionCookie: string;
 
   beforeAll(async () => {
+    const dbUrl = envConfig.TEST_DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error("TEST_DATABASE_URL environment variable not set.");
+    }
+
     testDb = new Kysely<DB>({
       dialect: new NeonDialect({
-        connectionString: envConfig.TEST_DATABASE_URL,
+        connectionString: dbUrl,
       }),
     });
 
@@ -35,7 +40,7 @@ describe('Todo API Integration Tests', () => {
     const testTodoService = createTodoService({ todoRepository: testTodoRepository });
 
     // Assemble dependencies
-    const testDependencies: Partial<CoreAppVariables> = {
+    const testDependencies: Partial<AppVariables> = {
       db: testDb, // Inject testDb
       todoService: testTodoService, // Inject real service using testDb
     };
