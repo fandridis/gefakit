@@ -10,8 +10,6 @@ import { Search } from "lucide-react"
 
 export const Route = createFileRoute('/_protected')({
   beforeLoad: ({ context, location }) => {
-    console.log('==== settings beforeLoad ====')
-    console.log('context', context)
     // If the user is not authenticated, redirect them to the login page
     if (!context.authState.session) {
       console.log('redirecting to login...')

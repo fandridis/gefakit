@@ -12,19 +12,14 @@ import {
 } from "@gefakit/shared/src/schemas/auth.schema";
 import { zValidator } from "../../lib/zod-validator";
 import { GetSessionResponseDTO, SignInEmailResponseDTO, SignInOtpResponseDTO, SignOutResponseDTO, SignUpEmailResponseDTO, UserDTO } from "@gefakit/shared/src/types/auth";
-import { Kysely } from "kysely";
-import { DB } from "../../db/db-types";
-import { AuthService, OAuthUserDetails } from "./auth.service";
-import { OnboardingService } from "../onboarding/onboarding.service";
-import { EmailService } from "../emails/email.service";
+import { OAuthUserDetails } from "./auth.service";
 import { generateState, OAuth2RequestError } from "arctic";
-import { createOAuthClients, OAuthClients } from "../../lib/oauth";
+import { createOAuthClients } from "../../lib/oauth";
 import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
 import { getAuthService, getOnboardingService } from "../../utils/get-service";
-import { getEmailService, GetServiceProps } from "../../utils/get-service";
+import { getEmailService } from "../../utils/get-service";
 import { authErrors } from "./auth.errors";
 import { AppVariables } from "../../create-app";
-import { Context } from 'hono';
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',

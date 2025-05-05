@@ -29,6 +29,9 @@ export function createAdminRoutesV1() {
       const { targetUserId } = c.req.valid('json');
       const { user: adminUser, session } = getAuthOrThrow(c);
 
+      console.log('===========At impersonate route ===============')
+      console.log('data: ', { adminUser, session })
+
       if (!adminUser || !session) {
         throw adminErrors.authenticationRequired();
       }

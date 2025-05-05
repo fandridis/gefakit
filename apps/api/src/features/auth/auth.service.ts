@@ -380,10 +380,12 @@ export function createAuthService(
      */
     async function verifyEmail({ token }: { token: string }) {
         // Hash the incoming token before searching
+        console.log('Trying to verify email with token:', token);
         const hashedToken = hashEmailVerificationToken({ token });
         // Use the service-level authRepository for the initial find (outside transaction)
-        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: hashedToken }); // Search by hash
+        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
 
+        console.log('verificationRecord:', verificationRecord);
         if (!verificationRecord) {
             throw authErrors.invalidVerificationToken();
         }

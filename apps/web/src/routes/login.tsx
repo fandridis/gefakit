@@ -32,12 +32,12 @@ function LoginComponent() {
          * Because if we end up on this route while authenticated, the "beforeLoad" hook would have caught it.
          * So we can safely set the session and user in the external auth store and navigate to the redirect/home.
          */
-        if (auth.session) {
+        if (auth.isSessionSuccess && auth.session) {
             externalAuthStore.setSession(auth.session.session)
             externalAuthStore.setUser(auth.session.user)
             navigate({ to: search.redirect || fallback })
         }
-    }, [auth.session, routerContext])
+    }, [auth.session, auth.isSessionSuccess, routerContext, search.redirect, navigate])
 
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">

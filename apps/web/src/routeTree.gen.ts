@@ -17,8 +17,10 @@ import { Route as RequestPasswordResetImport } from './routes/request-password-r
 import { Route as RegisterImport } from './routes/register'
 import { Route as LoginImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected/route'
+import { Route as GodModeRouteImport } from './routes/_god-mode/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as ProtectedDashboardImport } from './routes/_protected/dashboard'
+import { Route as GodModeGodModeImport } from './routes/_god-mode/god-mode'
 import { Route as ProtectedSettingsProfileImport } from './routes/_protected/settings/profile'
 
 // Create/Update Routes
@@ -58,6 +60,11 @@ const ProtectedRouteRoute = ProtectedRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const GodModeRouteRoute = GodModeRouteImport.update({
+  id: '/_god-mode',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
@@ -68,6 +75,12 @@ const ProtectedDashboardRoute = ProtectedDashboardImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => ProtectedRouteRoute,
+} as any)
+
+const GodModeGodModeRoute = GodModeGodModeImport.update({
+  id: '/god-mode',
+  path: '/god-mode',
+  getParentRoute: () => GodModeRouteRoute,
 } as any)
 
 const ProtectedSettingsProfileRoute = ProtectedSettingsProfileImport.update({
@@ -85,6 +98,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/_god-mode': {
+      id: '/_god-mode'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof GodModeRouteImport
       parentRoute: typeof rootRoute
     }
     '/_protected': {
@@ -129,6 +149,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailImport
       parentRoute: typeof rootRoute
     }
+    '/_god-mode/god-mode': {
+      id: '/_god-mode/god-mode'
+      path: '/god-mode'
+      fullPath: '/god-mode'
+      preLoaderRoute: typeof GodModeGodModeImport
+      parentRoute: typeof GodModeRouteImport
+    }
     '/_protected/dashboard': {
       id: '/_protected/dashboard'
       path: '/dashboard'
@@ -147,6 +174,18 @@ declare module '@tanstack/react-router' {
 }
 
 // Create and export the route tree
+
+interface GodModeRouteRouteChildren {
+  GodModeGodModeRoute: typeof GodModeGodModeRoute
+}
+
+const GodModeRouteRouteChildren: GodModeRouteRouteChildren = {
+  GodModeGodModeRoute: GodModeGodModeRoute,
+}
+
+const GodModeRouteRouteWithChildren = GodModeRouteRoute._addFileChildren(
+  GodModeRouteRouteChildren,
+)
 
 interface ProtectedRouteRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRoute
@@ -170,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/request-password-reset': typeof RequestPasswordResetRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/god-mode': typeof GodModeGodModeRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -182,6 +222,7 @@ export interface FileRoutesByTo {
   '/request-password-reset': typeof RequestPasswordResetRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/god-mode': typeof GodModeGodModeRoute
   '/dashboard': typeof ProtectedDashboardRoute
   '/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -189,12 +230,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/_god-mode': typeof GodModeRouteRouteWithChildren
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/request-password-reset': typeof RequestPasswordResetRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/_god-mode/god-mode': typeof GodModeGodModeRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/_protected/settings/profile': typeof ProtectedSettingsProfileRoute
 }
@@ -209,6 +252,7 @@ export interface FileRouteTypes {
     | '/request-password-reset'
     | '/reset-password'
     | '/verify-email'
+    | '/god-mode'
     | '/dashboard'
     | '/settings/profile'
   fileRoutesByTo: FileRoutesByTo
@@ -220,17 +264,20 @@ export interface FileRouteTypes {
     | '/request-password-reset'
     | '/reset-password'
     | '/verify-email'
+    | '/god-mode'
     | '/dashboard'
     | '/settings/profile'
   id:
     | '__root__'
     | '/'
+    | '/_god-mode'
     | '/_protected'
     | '/login'
     | '/register'
     | '/request-password-reset'
     | '/reset-password'
     | '/verify-email'
+    | '/_god-mode/god-mode'
     | '/_protected/dashboard'
     | '/_protected/settings/profile'
   fileRoutesById: FileRoutesById
@@ -238,6 +285,7 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GodModeRouteRoute: typeof GodModeRouteRouteWithChildren
   ProtectedRouteRoute: typeof ProtectedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
@@ -248,6 +296,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GodModeRouteRoute: GodModeRouteRouteWithChildren,
   ProtectedRouteRoute: ProtectedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
@@ -267,6 +316,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/_god-mode",
         "/_protected",
         "/login",
         "/register",
@@ -277,6 +327,12 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/_god-mode": {
+      "filePath": "_god-mode/route.tsx",
+      "children": [
+        "/_god-mode/god-mode"
+      ]
     },
     "/_protected": {
       "filePath": "_protected/route.tsx",
@@ -299,6 +355,10 @@ export const routeTree = rootRoute
     },
     "/verify-email": {
       "filePath": "verify-email.tsx"
+    },
+    "/_god-mode/god-mode": {
+      "filePath": "_god-mode/god-mode.tsx",
+      "parent": "/_god-mode"
     },
     "/_protected/dashboard": {
       "filePath": "_protected/dashboard.tsx",

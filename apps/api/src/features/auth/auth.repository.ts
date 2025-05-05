@@ -104,6 +104,7 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
         },
 
         async findEmailVerificationTokenByValue({ tokenValue }: { tokenValue: string }) {
+            console.log('looking for token:', tokenValue);
             return db
                 .selectFrom('auth.email_verifications')
                 .selectAll()

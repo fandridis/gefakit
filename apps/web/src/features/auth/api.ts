@@ -29,6 +29,7 @@ export const apiGetSession = async (): Promise<GetSessionResponseDTO | null> => 
       return null;
     }
   } catch (error: any) {
+    console.log('here i am....')
      // Handle explicit "No Session Cookie" case (401 Unauthorized)
     if (error.response && error.response.status === 401) {
       // console.log('Session check: No valid session found (401).'); // Keep for debugging if needed
