@@ -5,7 +5,7 @@ import { getUserService } from "../../core/services";
 import { UserService } from "./user.service";
 import { updateUserRequestBodySchema } from "@gefakit/shared/src/schemas/user.schema";
 import { zValidator } from "../../lib/zod-utils";
-import { CoreAppVariables } from "../../app-factory";
+import { CoreAppVariables } from "../../create-app";
 
 type UserRouteVars = CoreAppVariables & AuthMiddleWareVariables & {
     userService: UserService;

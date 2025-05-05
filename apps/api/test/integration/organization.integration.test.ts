@@ -20,7 +20,7 @@ vi.mock('../../src/features/emails/email.service', () => {
 
 // Import factory and types
 // import app from '../../src/index';
-import { createAppInstance, CoreAppVariables } from '../../src/app-factory';
+import { createAppInstance, CoreAppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely } from 'kysely';

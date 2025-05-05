@@ -7,25 +7,41 @@ import { authMiddleware } from './middleware/auth';
 import { organizationRoutesV1 } from './features/organizations/organization.routes.v1';
 import { organizationMembershipRoutesV1 } from './features/organization-memberships/organization-membership.routes.v1';
 import { organizationInvitationRoutesV1 } from './features/organization-invitations/organization-invitation.routes.v1';
-import { adminRoutesV1 } from './features/admin/admin.routes.v1';
 import { impersonationLogMiddleware } from './middleware/impersonation-log';
 import { kvTokenBucketRateLimiter } from './middleware/rate-limiter';
 import { envConfig } from './lib/env-config';
 import { securityHeaders } from './middleware/security-headers';
 import { logger } from 'hono/logger';
 import { userRoutesV1 } from './features/users/user.routes.v1';
-import { Kysely } from 'kysely';
+import { Kysely, ParseJSONResultsPlugin } from 'kysely';
 import { DB } from './db/db-types';
 import { authRoutesV1 } from './features/auth/auth.routes.v1';
-import { todoRoutesV1 } from './features/todos/todo.routes.v1';
 import { NeonDialect } from 'kysely-neon';
 import { TodoService } from './features/todos/todo.service';
+import { createAdminRoutesV1 } from './features/admin/admin.routes.v1';
+import { createTodoRoutesV1 } from './features/todos/todo.routes.v1';
+
+/**
+ * Single kysely instance created once on cold start of the worker.
+ * 
+ * TODO: This doesn't work. We either need to use 
+ * 
+ * 
+ */
+
+// console.log('======== SETTING UP DB SINGLETON ========')
+// const dbSingleton = new Kysely<DB>({
+//   dialect: new NeonDialect({
+//     connectionString: envConfig.DATABASE_URL_POOLED,
+//   }),
+//   plugins: [new ParseJSONResultsPlugin()],
+// })
 
 // Define the full set of dependencies needed by the app
 // We'll add more services/repos here as we refactor
 export interface CoreAppVariables {
   db: Kysely<DB>; // Keep DB separate if creating per-request, or include if injected
-  todoService: TodoService;
+  todoService?: TodoService;
 }
 
 // Define the context variable shape - combining DB and future dependencies
@@ -63,8 +79,15 @@ const setDependenciesMiddleware = (dependencies: Partial<CoreAppVariables>) => {
         // throw new Error('Database configuration error.');
          return c.json({ ok: false, error: "Internal configuration error" }, 500);
       }
-      const dialect = new NeonDialect({ connectionString: envConfig.DATABASE_URL_POOLED });
-      dbToSet = new Kysely<DB>({ dialect });
+
+      const db = new Kysely<DB>({
+      dialect: new NeonDialect({
+        connectionString: envConfig.DATABASE_URL_POOLED,
+      }),
+      plugins: [new ParseJSONResultsPlugin()],
+    })
+
+      dbToSet = db;
     }
     c.set('db', dbToSet); 
 
@@ -133,7 +156,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   // --- Mount Routes ---
 
   // Admin routes
-  app.route('/api/v1/admin', adminRoutesV1);
+  app.route('/api/v1/admin', createAdminRoutesV1());
 
   // Auth routes
   app.route("/api/v1/auth", authRoutesV1);
@@ -145,7 +168,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Todo routes (Require auth)
   app.use("/api/v1/todos/*", authMiddleware());
-  app.route("/api/v1/todos", todoRoutesV1);
+  app.route("/api/v1/todos", createTodoRoutesV1());
 
   // Organization routes (Require auth)
   app.use("/api/v1/organizations/*", authMiddleware());

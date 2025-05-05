@@ -6,7 +6,7 @@ import { DB } from '../../db/db-types';
 import {  OrganizationInvitationService } from './organization-invitation.service';
 import { OrganizationService } from '../organizations/organization.service';
 import { getOrganizationInvitationService } from '../../core/services';
-import { CoreAppVariables } from '../../app-factory';
+import { CoreAppVariables } from '../../create-app';
 
 type OrganizationInvitationRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
   organizationInvitationService: OrganizationInvitationService,

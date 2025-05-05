@@ -5,7 +5,7 @@ import { Kysely } from 'kysely';
 import { DB } from '../../db/db-types';
 import {  OrganizationMembershipService } from './organization-membership.service';
 import { getOrganizationMembershipService } from '../../core/services';
-import { CoreAppVariables } from '../../app-factory';
+import { CoreAppVariables } from '../../create-app';
 
 type OrganizationMembershipRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
   organizationMembershipService: OrganizationMembershipService,

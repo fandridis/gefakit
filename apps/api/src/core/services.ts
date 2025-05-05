@@ -57,11 +57,12 @@ export function getOnboardingService(db: Kysely<DB>) {
         authRepository,
         createAuthRepository,
         createOrganizationRepository,
-        generateEmailVerificationToken: authService.generateEmailVerificationToken
+       // generateEmailVerificationToken: authService.generateEmailVerificationToken
     });
 }
 
 export function getTodoService(db: Kysely<DB>) {
+    console.log('======= INITIALIZING SERVICE =======')
     const todoRepository = createTodoRepository({ db });
     return createTodoService({ todoRepository });
 }

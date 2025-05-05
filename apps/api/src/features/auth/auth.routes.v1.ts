@@ -23,7 +23,7 @@ import { kvTokenBucketRateLimiter } from "../../middleware/rate-limiter";
 import { getAuthService, getOnboardingService } from "../../core/services";
 import { getEmailService } from "../../core/services";
 import { authErrors } from "./auth.errors";
-import { CoreAppVariables } from "../../app-factory";
+import { CoreAppVariables } from "../../create-app";
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',

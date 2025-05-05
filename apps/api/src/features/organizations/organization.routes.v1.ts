@@ -13,7 +13,7 @@ import { OrganizationInvitationService } from '../organization-invitations/organ
 import { randomUUID } from 'node:crypto';
 import { getEmailService, getOrganizationInvitationService, getOrganizationMembershipService, getOrganizationService } from '../../core/services';
 import { organizationErrors } from './organization.errors';
-import { CoreAppVariables } from '../../app-factory';
+import { CoreAppVariables } from '../../create-app';
 
 type OrganizationRouteVariables = CoreAppVariables & AuthMiddleWareVariables & {
   organizationService: OrganizationService,

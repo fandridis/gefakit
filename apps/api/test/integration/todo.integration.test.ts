@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createAppInstance, AppConfig, CoreAppVariables } from '../../src/app-factory';
+import { createAppInstance, AppConfig, CoreAppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';

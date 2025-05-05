@@ -1,8 +1,5 @@
-import { Insertable, Kysely, Transaction, Selectable } from "kysely";
-import { AuthSession, AuthUser as DbAuthUser, DB, AuthEmailVerification, AuthOauthAccount, AuthPasswordResetToken, AuthOtpCode } from "../../db/db-types";
-
-// Define the User type based on the DB schema selection
-export type AuthUser = Selectable<DbAuthUser>;
+import { Insertable, Kysely, Transaction } from "kysely";
+import { AuthSession, AuthUser, DB, AuthEmailVerification, AuthOauthAccount, AuthPasswordResetToken, AuthOtpCode } from "../../db/db-types";
 
 export type AuthRepository = ReturnType<typeof createAuthRepository>;
 

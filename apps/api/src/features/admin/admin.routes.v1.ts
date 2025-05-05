@@ -7,56 +7,58 @@ import { createAdminService } from './admin.service';
 import { Bindings } from '../../types/hono';
 import { getAdminService, getAuthService } from '../../core/services';
 import { adminErrors } from './admin.errors';
-import { CoreAppVariables } from '../../app-factory';
+import { CoreAppVariables } from '../../create-app';
 
-type AuthRouteVariables = CoreAppVariables
-const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
-
-// Define allowed roles once
 const ADMIN_ROLES = new Set(['ADMIN', 'SUPPORT']);
 
 const impersonateSchema = z.object({
   targetUserId: z.coerce.number(),
 });
 
-app.post(
-  '/impersonate',
-  authMiddleware({ allowedRoles: ADMIN_ROLES }),
-  zValidator('json', impersonateSchema),
-  async (c) => {
-    const { targetUserId } = c.req.valid('json');
-    const adminUser = c.get('user'); 
-    const session = c.get('session');
-    const db = c.get('db');
+type AuthRouteVariables = CoreAppVariables
 
-    if (!adminUser || !session) {
-      throw adminErrors.authenticationRequired();
+// Export a factory function that creates and configures the Hono app
+export function createAdminRoutesV1() { 
+  const app = new Hono<{ Bindings: Bindings, Variables: AuthRouteVariables }>();
+
+  app.post(
+    '/impersonate',
+    authMiddleware({ allowedRoles: ADMIN_ROLES }),
+    zValidator('json', impersonateSchema),
+    async (c) => {
+      const { targetUserId } = c.req.valid('json');
+      const adminUser = c.get('user'); 
+      const session = c.get('session');
+      const db = c.get('db');
+
+      if (!adminUser || !session) {
+        throw adminErrors.authenticationRequired();
+      }
+      if (adminUser.id === targetUserId) {
+         throw adminErrors.cannotImpersonateSelf();
+      }
+
+      const authRepository = createAuthRepository({db});
+      const adminService = createAdminService({db, authRepository});
+
+      await adminService.startImpersonation(session.id, adminUser.id, targetUserId);
+
+      // Log the action
+      console.log(`AUDIT: User ${adminUser.id} started impersonating user ${targetUserId}`);
+
+      return c.json({ ok: true, message: `Admin ${adminUser.id} is now impersonating user ${targetUserId}` });
     }
-    if (adminUser.id === targetUserId) {
-       throw adminErrors.cannotImpersonateSelf();
-    }
+  );
 
-    const authRepository = createAuthRepository({db});
-    const adminService = createAdminService({db, authRepository});
-
-    await adminService.startImpersonation(session.id, adminUser.id, targetUserId);
-
-    // Log the action
-    console.log(`AUDIT: User ${adminUser.id} started impersonating user ${targetUserId}`);
-
-    return c.json({ ok: true, message: `Admin ${adminUser.id} is now impersonating user ${targetUserId}` });
-  }
-);
-
-app.post(
+  app.post(
     '/stop-impersonation',
     authMiddleware(),
     async (c) => {
       const session = c.get('session');
       const db = c.get('db');
-  
+
       if (!session) {
-           throw adminErrors.impersonationSessionNotFound();
+        throw adminErrors.impersonationSessionNotFound();
       }
       
       const authService = getAuthService(db);
@@ -64,18 +66,20 @@ app.post(
       
       const sessionDetails = await authService.findSessionById({ id: session.id });
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {
-          throw adminErrors.notImpersonating();
+        throw adminErrors.notImpersonating();
       }
-  
+
       const adminUserId = sessionDetails.impersonator_user_id;
-  
+
       await adminService.stopImpersonation(session.id, adminUserId);
-  
+
       // Log the action
       console.log(`AUDIT: User ${adminUserId} stopped impersonating`);
-  
+
       return c.json({ ok: true, message: 'Impersonation stopped' });
     }
   );
 
-  export const adminRoutesV1 = app;
+  // Return the configured app instance
+  return app;
+}

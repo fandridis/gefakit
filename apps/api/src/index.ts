@@ -1,5 +1,5 @@
 
-import { createAppInstance, CoreAppVariables } from "./app-factory";
+import { createAppInstance, CoreAppVariables } from "./create-app";
 
 // --- Dependency Instantiation ---
 // Services/Repos relying on per-request DB will be instantiated in middleware or routes.

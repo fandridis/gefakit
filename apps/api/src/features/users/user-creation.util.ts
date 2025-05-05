@@ -46,12 +46,12 @@ export async function createUserWithOrganizationAndMembership(
     const orgRepoTx = createOrganizationRepository({ db: trx });
 
     // 1. Create the User
-    const newUserInsert: Insertable<AuthUser> = {
+    const newUserInsert = {
         email: data.email,
         username: data.username,
         password_hash: data.password_hash,
         email_verified: data.email_verified ?? false, // Default email_verified
-        role: data.role ?? 'USER' // Default role
+        role: data.role ?? 'USER' // Default role,
     };
     const createdUser = await authRepoTx.createUser({ user: newUserInsert });
     if (!createdUser) {

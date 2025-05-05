@@ -41,19 +41,19 @@ export function createOnboardingService({
     const existingUser = await authRepository.findUserWithPasswordByEmail({email});
 
     if (password.length < 8 || password.length > 255) {
-        throw authErrors.weakPassword('Password must be between 8 and 255 characters long.');
+        throw authErrors.weakPassword();
     }
 
     const isPwned = await isMyPasswordPwned(password);
 
     if (existingUser) {
-        throw authErrors.userCreationFailed('Email already exists')
+        throw authErrors.userCreationFailed();
     }
 
     const passwordHash = await hashPassword(password);
 
     if (isPwned) {
-        throw authErrors.weakPassword('Password was found in a data breach. Please choose a different password and update it on all your accounts.');
+        throw authErrors.weakPassword();
     }
 
     return db.transaction().execute(async (trx: Transaction<DB>) => {
