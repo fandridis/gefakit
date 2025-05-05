@@ -383,7 +383,7 @@ export function createAuthService(
         console.log('Trying to verify email with token:', token);
         const hashedToken = hashEmailVerificationToken({ token });
         // Use the service-level authRepository for the initial find (outside transaction)
-        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: token });
+        const verificationRecord = await authRepository.findEmailVerificationTokenByValue({ tokenValue: hashedToken });
 
         console.log('verificationRecord:', verificationRecord);
         if (!verificationRecord) {

@@ -13,6 +13,8 @@ import { AuthRepository } from "../auth/auth.repository";
 import { OrganizationRepository } from "../organizations/organization.repository";
 import { createUserWithOrganizationAndMembership } from "../users/user-creation.util";
 import { authErrors } from "../auth/auth.errors";
+import { sha256 } from '@oslojs/crypto/sha2';
+import { encodeHexLowerCase } from '@oslojs/encoding';
 
 export type OnboardingService = ReturnType<typeof createOnboardingService>;
 
@@ -71,11 +73,15 @@ export function createOnboardingService({
 
       const verificationToken = randomUUID();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+      
+      const verificationTokenBytes = new TextEncoder().encode(verificationToken);
+      const hashedTokenBytes = await sha256(verificationTokenBytes);
+      const hashedTokenHex = encodeHexLowerCase(hashedTokenBytes);
 
       const authRepoTx = createAuthRepository({ db: trx });
       await authRepoTx.createEmailVerificationToken({
         user_id: user.id,
-        value: verificationToken,
+        value: hashedTokenHex,
         expires_at: expiresAt,
         identifier: user.email
       });

@@ -7,6 +7,8 @@ import { DB } from '../../db/db-types';
 import { hashPassword, isMyPasswordPwned } from '../../lib/crypto';
 import { randomUUID } from 'node:crypto';
 import { ApiError } from '@gefakit/shared';
+import { sha256 } from '@oslojs/crypto/sha2';
+import { encodeHexLowerCase } from '@oslojs/encoding';
 
 // --- Mock Dependencies ---
 
@@ -45,6 +47,10 @@ const mockTopLevelAuthRepo = {
 const mockCreateAuthRepository = vi.fn(() => mockTxAuthRepo as unknown as AuthRepository);
 const mockCreateOrganizationRepository = vi.fn(() => mockTxOrgRepo as unknown as OrganizationRepository);
 
+// --- Constants needed by top-level mocks ---
+const mockVerificationToken = '123e4567-e89b-12d3-a456-426614174000';
+const mockVerificationTokenHashed = 'hashed-verification-token-onboarding';
+
 // 4. Mock Utility Functions (using the import-after-mock pattern)
 vi.mock('../../lib/crypto', () => ({
   hashPassword: vi.fn(),
@@ -58,6 +64,27 @@ const mockCrypto = {
 vi.mock('node:crypto', () => ({
   randomUUID: vi.fn(),
 }));
+
+// Mock crypto functions for hashing the token *after* constants are defined
+vi.mock('@oslojs/crypto/sha2', () => ({
+    sha256: vi.fn().mockImplementation(async (input: Uint8Array) => {
+        const text = new TextDecoder().decode(input);
+        if (text === mockVerificationToken) { // Now mockVerificationToken is defined
+            return new TextEncoder().encode('bytes-for-hashed-verification-token');
+        }
+        return new TextEncoder().encode('generic-hash-bytes');
+    }),
+}));
+vi.mock('@oslojs/encoding', () => ({
+    encodeHexLowerCase: vi.fn((input: Uint8Array) => {
+        const text = new TextDecoder().decode(input);
+        if (text === 'bytes-for-hashed-verification-token') {
+            return mockVerificationTokenHashed; // Now mockVerificationTokenHashed is defined
+        }
+        return 'generic-hex-hash';
+    }),
+}));
+
 import { randomUUID as mockRandomUUID } from 'node:crypto';
 
 
@@ -73,8 +100,6 @@ describe('OnboardingService', () => {
   const passwordHash = 'hashed_password_abc';
   const mockUserId = 1;
   const mockOrgId = 10;
-  const mockVerificationToken = '123e4567-e89b-12d3-a456-426614174000';
-
   const mockCreatedUser: Selectable<DB['auth.users']> = { id: mockUserId, email, username, password_hash: passwordHash, created_at: new Date(), email_verified: false, role: 'USER' };
   const mockCreatedOrg: Selectable<DB['organizations.organizations']> = { id: mockOrgId, name: orgName, created_at: new Date(), updated_at: new Date() };
   const mockCreatedMembership: Selectable<DB['organizations.memberships']> = { organization_id: mockOrgId, user_id: mockUserId, role: 'owner', is_default: true, created_at: new Date(), updated_at: new Date() };
@@ -91,6 +116,27 @@ describe('OnboardingService', () => {
     mockCrypto.isMyPasswordPwned.mockResolvedValue(false);
     vi.mocked(mockRandomUUID).mockReturnValue(mockVerificationToken);
     mockFindUserWithPasswordByEmail.mockResolvedValue(null);
+
+    // Mock crypto functions for hashing the token
+    // Define the mocks *inside* beforeEach to access constants
+    // vi.mocked(sha256).mockImplementation(async (input: Uint8Array) => {
+    //     // Basic check to ensure it's our token being hashed
+    //     const text = new TextDecoder().decode(input);
+    //     if (text === mockVerificationToken) {
+    //         return new TextEncoder().encode('bytes-for-hashed-verification-token');
+    //     }
+    //     return new TextEncoder().encode('generic-hash-bytes');
+    // });
+    // vi.mocked(encodeHexLowerCase).mockImplementation((input: Uint8Array) => {
+    //     const text = new TextDecoder().decode(input);
+    //     if (text === 'bytes-for-hashed-verification-token') {
+    //         return mockVerificationTokenHashed;
+    //     }
+    //     return 'generic-hex-hash';
+    // });
+
+    // Crypto mocks are now handled by top-level vi.mock
+
     mockTxAuthRepo.createUser.mockResolvedValue(mockCreatedUser);
     mockTxAuthRepo.createEmailVerificationToken.mockResolvedValue(mockCreatedToken); 
     mockTxOrgRepo.createOrganization.mockResolvedValue(mockCreatedOrg);
@@ -131,7 +177,7 @@ describe('OnboardingService', () => {
     expect(mockTxAuthRepo.createUser).toHaveBeenCalledWith({ user: { email, username, password_hash: passwordHash, email_verified: false, role: 'USER' } });
     expect(mockTxAuthRepo.createEmailVerificationToken).toHaveBeenCalledWith(expect.objectContaining({ 
         user_id: mockUserId, 
-        value: mockVerificationToken,
+        value: mockVerificationTokenHashed,
         identifier: email 
     }));
     expect(mockTxOrgRepo.createOrganization).toHaveBeenCalledWith({ name: orgName });
