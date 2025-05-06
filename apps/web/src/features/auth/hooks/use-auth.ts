@@ -57,7 +57,7 @@ export function useAuth() {
     const signInSocial = async (provider: 'github' /* | other providers */) => {
         console.log(`Initiating social sign in with ${provider}`);
         // Adjust the URL to your backend endpoint
-        window.location.href = `http://localhost:8787/api/v1/auth/social/${provider}/redirect`;
+        window.location.href = `${import.meta.env.VITE_API_URL}/api/v1/auth/social/${provider}/redirect`;
     };
 
     // --- Combined Return Object ---

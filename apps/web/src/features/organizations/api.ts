@@ -1,7 +1,7 @@
 import { CreateOrganizationRequestBodyDTO, GetOrganizationMembershipsResponseDTO, CreateOrganizationResponseDTO } from "@gefakit/shared/src/types/organization";
 
-const API_ORG_BASE_URL = 'http://localhost:8787/api/v1/organizations';
-const API_ORG_MEMBERSHIP_BASE_URL = 'http://localhost:8787/api/v1/organization-memberships';
+const API_ORG_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/organizations';
+const API_ORG_MEMBERSHIP_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/organization-memberships';
 
 export const apiGetOrganizationMemberships = async (): Promise<GetOrganizationMembershipsResponseDTO> => {
   try {
@@ -19,7 +19,7 @@ export const apiGetOrganizationMemberships = async (): Promise<GetOrganizationMe
 
     const data = await response.json();
     // Ensure the return type matches the promise
-    return data as GetOrganizationMembershipsResponseDTO; 
+    return data as GetOrganizationMembershipsResponseDTO;
   } catch (error) {
     console.error("Error during apiGetOrganizationMemberships fetch:", error);
     throw error;
@@ -60,7 +60,7 @@ export const apiDeleteOrganization = async ({ organizationId }: { organizationId
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `Failed to delete membership: Server responded with ${response.status}`);
     }
-    
+
     // No content expected on successful delete
   } catch (error) {
     console.error("Error during apiDeleteOrganization fetch:", error);

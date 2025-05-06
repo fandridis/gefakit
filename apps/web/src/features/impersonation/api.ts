@@ -4,7 +4,7 @@ interface ImpersonationResponse {
   message: string;
 }
 
-const API_BASE_URL = 'http://localhost:8787/api/v1/admin';
+const API_ADMIN_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/admin';
 
 /**
  * Starts impersonating a target user.
@@ -13,7 +13,7 @@ const API_BASE_URL = 'http://localhost:8787/api/v1/admin';
  */
 export const apiStartImpersonation = async (targetUserId: number): Promise<ImpersonationResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/impersonate`, {
+    const response = await fetch(`${API_ADMIN_BASE_URL}/impersonate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targetUserId }),
@@ -40,23 +40,23 @@ export const apiStartImpersonation = async (targetUserId: number): Promise<Imper
  */
 export const apiStopImpersonation = async (): Promise<ImpersonationResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/stop-impersonation`, {
+    const response = await fetch(`${API_ADMIN_BASE_URL}/stop-impersonation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }, // Even if no body, specify content type for consistency
       credentials: 'include', // Send cookies along with the request
     });
 
-     const data: ImpersonationResponse = await response.json();
+    const data: ImpersonationResponse = await response.json();
 
     if (!response.ok) {
-       // Use the message from the server response if available, otherwise provide a default
+      // Use the message from the server response if available, otherwise provide a default
       throw new Error(data.message || `Failed to stop impersonation: Server responded with ${response.status}`);
     }
 
     return data;
   } catch (error) {
     console.error("Error during apiStopImpersonation fetch:", error);
-     // Rethrow the error after logging, ensuring it's an Error object
+    // Rethrow the error after logging, ensuring it's an Error object
     throw error instanceof Error ? error : new Error(String(error));
   }
 }; 

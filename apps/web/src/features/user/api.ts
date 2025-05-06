@@ -5,7 +5,7 @@ import { UpdateUserResponseDTO } from '@gefakit/shared/src/types/user';
 import { handleSimpleError } from '@/utils/api-error';
 
 // Adjust the base URL to point to the user-related endpoints
-const API_BASE_URL = 'http://localhost:8787/api/v1/users'; // Changed from /auth
+const API_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/users'; // Changed from /auth
 
 // Define the type for the request body based on the schema
 type UpdateUserRequestBody = z.infer<typeof updateUserRequestBodySchema>;

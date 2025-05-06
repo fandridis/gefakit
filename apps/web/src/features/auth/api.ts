@@ -2,7 +2,7 @@ import axios from 'redaxios';
 import { SignUpEmailRequestBodyDTO, GetSessionResponseDTO } from "@gefakit/shared";
 import { handleSimpleError } from '@/utils/api-error';
 
-const API_BASE_URL = 'http://localhost:8787/api/v1/auth';
+const API_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/auth';
 
 // Type guard to check if an object conforms to the AppErrorResponse interface
 // isAppError has been moved to utils/api.ts
@@ -30,7 +30,7 @@ export const apiGetSession = async (): Promise<GetSessionResponseDTO | null> => 
     }
   } catch (error: any) {
     console.log('here i am....')
-     // Handle explicit "No Session Cookie" case (401 Unauthorized)
+    // Handle explicit "No Session Cookie" case (401 Unauthorized)
     if (error.response && error.response.status === 401) {
       // console.log('Session check: No valid session found (401).'); // Keep for debugging if needed
       return null; // Treat as not authenticated
@@ -55,9 +55,9 @@ export const apiSignInEmail = async ({ email, password }: { email: string, passw
 
 // Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiSignUpEmail = async ({ username, email, password }: SignUpEmailRequestBodyDTO) => {
-    return axios.post(`${API_BASE_URL}/sign-up/email`,
-      { username, email, password }
-    ).catch(handleSimpleError);
+  return axios.post(`${API_BASE_URL}/sign-up/email`,
+    { username, email, password }
+  ).catch(handleSimpleError);
 };
 
 // Returns the Axios promise directly. Error handling delegated to the caller.

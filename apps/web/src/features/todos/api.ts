@@ -1,6 +1,6 @@
 import { CreateTodoRequestBodyDTO, CreateTodoResponseDTO, DeleteTodoResponseDTO, TodoDTO, UpdateTodoRequestBodyDTO, UpdateTodoResponseDTO } from "@gefakit/shared/src/types/todo";
 
-const API_BASE_URL = 'http://localhost:8787/api/v1/todos';
+const API_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/todos';
 
 export const apiGetTodos = async () => {
   try {
@@ -68,17 +68,17 @@ export const apiUpdateTodo = async (id: number, todoData: UpdateTodoRequestBodyD
 
 // Note: The backend route for deleting todos (DELETE /:id) might not be implemented yet.
 export const apiDeleteTodo = async (id: number) => {
- try {
+  try {
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
 
-     if (!response.ok) {
-        // Handle potential errors, e.g., todo not found (404) or server error (500)
-        const errorData = await response.json().catch(() => ({ message: 'Failed to delete todo' }));
-        // Check for 404 specifically if needed, or just throw a general error
-        throw new Error(errorData.message || `Todo deletion failed with status ${response.status}`);
+    if (!response.ok) {
+      // Handle potential errors, e.g., todo not found (404) or server error (500)
+      const errorData = await response.json().catch(() => ({ message: 'Failed to delete todo' }));
+      // Check for 404 specifically if needed, or just throw a general error
+      throw new Error(errorData.message || `Todo deletion failed with status ${response.status}`);
     }
 
     const data = await response.json();
