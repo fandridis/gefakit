@@ -1,13 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiGetSession, apiSignInEmail, apiSignUpEmail, apiSignOut, apiVerifyEmail } from '../api';
-import { SignInEmailRequestBodyDTO, SignUpEmailRequestBodyDTO } from '@gefakit/shared/src/types/auth';
+import { apiGetSession, apiVerifyEmail } from '../api';
 import { ApiError } from '@gefakit/shared';
 
 declare module '@tanstack/react-query' {
     interface Register {
-      defaultError: ApiError
+        defaultError: ApiError
     }
-  }
+}
 
 // Define a query key for the session data - should the same as the sessionQueryKey in the backend
 export const sessionQueryKey = ['gefakit-session'] as const;

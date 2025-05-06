@@ -34,8 +34,9 @@ function LogoutButton() {
   const mutation = useMutation({
     mutationFn: apiSignOut,
     onSuccess: async () => {
-      // invalidate session
       await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+      await queryClient.setQueryData(sessionQueryKey, null)
+
       router.navigate({ to: '/login' }) // TODO: Take this from a config
     }
   });

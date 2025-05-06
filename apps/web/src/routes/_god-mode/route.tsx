@@ -3,15 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sessionQueryKey } from "@/features/auth/hooks/use-auth"
 import { apiStartImpersonation, apiStopImpersonation } from "@/features/impersonation/api"
+import { GetSessionResponseDTO } from "@gefakit/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useState } from "react";
 
 export const Route = createFileRoute('/_god-mode')({
-  beforeLoad: ({ context, location }) => {
+  beforeLoad: ({ preload, context, location }) => {
     console.log('context', context)
-    if (!context.authState.session) {
-      console.log('redirecting to login...')
+    if (preload) {
+      // If we're preloading, we don't need to do anything
+      return;
+    }
+
+    const queryClient = context.queryClient
+    const session = queryClient.getQueryData<GetSessionResponseDTO>(sessionQueryKey)
+
+    if (!session) {
       throw redirect({
         to: '/login',
         search: {
@@ -20,9 +28,9 @@ export const Route = createFileRoute('/_god-mode')({
       })
     }
 
-    if (context.authState.session.impersonator_user_id) {
+    if (session.session?.impersonator_user_id) {
       // All is well, it is an admin/support user in disguise!
-    } else if (!['ADMIN', 'SUPPORT'].includes(context.authState.user?.role ?? '')) {
+    } else if (!['ADMIN', 'SUPPORT'].includes(session.user?.role ?? '')) {
       throw new Error('You are not authorized to access this page')
     }
   },
@@ -37,7 +45,6 @@ function GodModeComponent() {
   const startImpersonationMutation = useMutation({
     mutationFn: apiStartImpersonation,
     onSuccess: async () => {
-      console.log('It is happening!')
       await queryClient.invalidateQueries({ queryKey: sessionQueryKey }); // Refresh session state after sign-in
       window.location.reload(); // Force page refresh
     },

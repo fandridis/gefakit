@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { LoginForm } from '@/features/auth/components/login-form'
 import { GalleryVerticalEnd } from 'lucide-react'
 import { useAuth } from '@/features/auth/hooks/use-auth'
-import { externalAuthStore } from '@/features/auth/hooks/use-external-auth'
 import { useEffect } from 'react'
+import { GetSessionResponseDTO } from '@gefakit/shared'
+import { sessionQueryKey } from '@/features/auth/hooks/use-auth'
 
 const fallback = '/' as const
 
@@ -12,10 +13,19 @@ export const Route = createFileRoute('/login')({
     validateSearch: z.object({
         redirect: z.string().optional().catch(''),
     }),
-    beforeLoad: ({ context, search }) => {
-        if (context.authState.session) {
+    beforeLoad: ({ preload, context, search }) => {
+        if (preload) {
+            // If we're preloading, we don't need to do anything
+            return;
+        }
+
+        const queryClient = context.queryClient
+        const session = queryClient.getQueryData<GetSessionResponseDTO>(sessionQueryKey)
+
+        if (session) {
             throw redirect({ to: search.redirect || fallback, replace: true })
         }
+
     },
     component: LoginComponent,
 })
@@ -27,17 +37,13 @@ function LoginComponent() {
     const routerContext = Route.useRouteContext()
 
     useEffect(() => {
-        /**
-         * If we reach this point and there is a session, it means it's after a successful sign-in.
-         * Because if we end up on this route while authenticated, the "beforeLoad" hook would have caught it.
-         * So we can safely set the session and user in the external auth store and navigate to the redirect/home.
-         */
         if (auth.isSessionSuccess && auth.session) {
-            externalAuthStore.setSession(auth.session.session)
-            externalAuthStore.setUser(auth.session.user)
+            // If we reach this point and there is a session, it means it's after a successful sign-in.
+            // Because if we end up on this route while authenticated, the "beforeLoad" hook would have caught it.
+            // So we can safely navigate to the redirected route or default home.
             navigate({ to: search.redirect || fallback })
         }
-    }, [auth.session, auth.isSessionSuccess, routerContext, search.redirect, navigate])
+    }, [auth.session, auth.isSessionSuccess])
 
     return (
         <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">

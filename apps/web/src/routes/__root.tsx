@@ -1,5 +1,4 @@
 import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router'
-import { AuthState } from '@/features/auth/hooks/use-external-auth'
 import { ImpersonationBanner } from '@/features/impersonation/components/impersonation-banner'
 import { QueryClient } from '@tanstack/react-query'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -7,7 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 interface MyRouterContext {
     queryClient: QueryClient,
-    authState: AuthState
+    // authState: AuthState
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({

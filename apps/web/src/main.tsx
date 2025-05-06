@@ -1,9 +1,12 @@
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
-import { useExternalAuth } from './features/auth/hooks/use-external-auth'
 import './index.css'
+import { sessionQueryKey } from './features/auth/hooks/use-auth'
+import { GetSessionResponseDTO } from '@gefakit/shared'
+import { useEffect, useState } from 'react'
+import { apiGetSession } from './features/auth/api'
 
 
 const queryClient = new QueryClient()
@@ -13,7 +16,7 @@ const router = createRouter({
   routeTree,
   context: {
     queryClient,
-    authState: undefined!
+    // authState: undefined!
   },
   defaultPreload: 'intent',
   // Since we're using React Query, we don't want loader calls to ever be stale
@@ -38,16 +41,35 @@ function App() {
 }
 
 function InnerApp() {
-  const externalSession = useExternalAuth();
+  const [isLoadingForTheFirstTime, setIsLoadingForTheFirstTime] = useState(true)
+  const queryClient = useQueryClient()
 
-  if (externalSession.isInitialLoading) {
+  /**
+   * This is just to make sure the session is loaded on a fresh page load.
+   * Using useAuth() would not work here because it would cause an infinite loop.
+   * Maybe we can investigate why is that the case, fix useAuth and use it here.
+   */
+  useEffect(() => {
+    (async () => {
+      try {
+        await queryClient.ensureQueryData<GetSessionResponseDTO | null>({
+          queryKey: sessionQueryKey,
+          queryFn: apiGetSession,
+        });
+      } catch (error) {
+      } finally {
+        setIsLoadingForTheFirstTime(false)
+      }
+    })();
+  }, [queryClient]);
+
+  if (isLoadingForTheFirstTime) {
     return null;
   }
 
   return (
     <RouterProvider router={router} context={{
       queryClient,
-      authState: externalSession
     }} />
   )
 }
