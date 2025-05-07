@@ -1,30 +1,43 @@
 // --- middleware/db.ts ---
 import { Context, Next } from 'hono';
-import { Kysely, ParseJSONResultsPlugin } from 'kysely';
+import { Kysely, ParseJSONResultsPlugin, PostgresDialect } from 'kysely';
 import { NeonDialect } from 'kysely-neon';
 import { envConfig } from '../lib/env-config';
 import { DB } from '../db/db-types';
+import { Pool } from 'pg';
+import { getDb } from '../lib/db';
 
 /**
- * Always ensure c.vars.db is set, either from injected singleton or new connection.
+ * Injects a Kysely DB instance into the context.
+ * If no instance is injected, it will create a new one.
  */
 export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
   return async (c: Context, next: Next) => {
     let db: Kysely<DB>;
+
+    console.log('envConfig', envConfig);
     if (injectedDb) {
       db = injectedDb;
     } else {
-      const url = envConfig.DATABASE_URL_POOLED;
-      if (!url) {
-        console.error('DATABASE_URL_POOLED is not defined');
+      /**
+       * Connecting to the DB through hyperdrive locally has some issues.
+       * It can work if ran with `wrangler dev --remote` but why do that?
+       * Lets just use NeonDB serverless driver for local development.
+       */
+      const connectionString = envConfig.NODE_ENV === 'development'
+        ? envConfig.DATABASE_URL
+        : c.env.HYPERDRIVE.connectionString;
+
+      if (!connectionString) {
+        console.error('DB connectionString is not defined in env');
         return c.json({ ok: false, error: 'Internal configuration error' }, 500);
       }
-      db = new Kysely<DB>({
-        dialect: new NeonDialect({ connectionString: url }),
-        plugins: [new ParseJSONResultsPlugin()],
+      db = getDb({
+        connectionString,
+        useHyperdrive: envConfig.NODE_ENV === 'production',
       });
     }
-    // attach to context
+
     c.set('db', db);
     await next();
   };

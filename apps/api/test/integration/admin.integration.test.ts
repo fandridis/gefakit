@@ -16,10 +16,10 @@ import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Insertable } from 'kysely';
 import { DB, AuthUser } from '../../src/db/db-types';
-import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, GetSessionResponseDTO } from '@gefakit/shared';
 import { envConfig } from '../../src/lib/env-config';
+import { getDb } from '../../src/lib/db';
 
 describe('Admin API Integration Tests', () => {
   let testDb: Kysely<DB>;
@@ -34,22 +34,22 @@ describe('Admin API Integration Tests', () => {
 
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
-      // Use testApp for login
-      const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-      });
-      expect(loginRes.status).toBe(200);
-      const cookie = loginRes.headers.get('Set-Cookie');
-      expect(cookie).toBeDefined();
-      return cookie!;
+    // Use testApp for login
+    const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(loginRes.status).toBe(200);
+    const cookie = loginRes.headers.get('Set-Cookie');
+    expect(cookie).toBeDefined();
+    return cookie!;
   };
 
   beforeAll(async () => {
     const dbUrl = envConfig.TEST_DATABASE_URL;
     if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
-    testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
@@ -63,7 +63,7 @@ describe('Admin API Integration Tests', () => {
     const adminUserInsert: Insertable<AuthUser> = { email: adminUserEmail, username: `admin-${Date.now()}`, password_hash: adminUserHashedPassword, email_verified: true, role: 'ADMIN' };
     adminUser = await testDb.insertInto('auth.users').values(adminUserInsert).returningAll().executeTakeFirstOrThrow() as UserDTO;
 
-     // Create Normal User
+    // Create Normal User
     const normalUserHashedPassword = await hashPassword(normalUserPassword);
     const normalUserEmail = `test-normal-${Date.now()}@integration.com`;
     const normalUserInsert: Insertable<AuthUser> = { email: normalUserEmail, username: `normal-${Date.now()}`, password_hash: normalUserHashedPassword, email_verified: true };
@@ -84,11 +84,11 @@ describe('Admin API Integration Tests', () => {
       } catch (error) {
         console.error(`[admin.integration.test] Error during cleanup:`, error);
       } finally {
-          await testDb.destroy();
-          // console.log('DB connection closed.');
+        await testDb.destroy();
+        // console.log('DB connection closed.');
       }
     } else {
-        // console.log('No DB connection to close.');
+      // console.log('No DB connection to close.');
     }
   });
 
@@ -136,7 +136,7 @@ describe('Admin API Integration Tests', () => {
       });
 
       expect(sessionRes.status).toBe(200);
-      const {session, user} =  await sessionRes.json() as GetSessionResponseDTO;
+      const { session, user } = await sessionRes.json() as GetSessionResponseDTO;
       expect(session?.id).toBeDefined();
       expect(session?.user_id).toBe(normalUser.id);
       expect(session?.impersonator_user_id).toBe(adminUser.id);
@@ -159,7 +159,7 @@ describe('Admin API Integration Tests', () => {
         headers: { 'Cookie': adminUserSessionCookie },
       });
       expect(sessionRes2.status).toBe(200);
-      const {session: session2, user: user2} =  await sessionRes2.json() as GetSessionResponseDTO;
+      const { session: session2, user: user2 } = await sessionRes2.json() as GetSessionResponseDTO;
       expect(session2?.id).toBeDefined();
       expect(session2?.user_id).toBe(adminUser.id);
       expect(session2?.impersonator_user_id).toBeNull();

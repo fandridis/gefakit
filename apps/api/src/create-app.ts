@@ -90,6 +90,11 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   // Apply db middleware
   app.use('/api/*', dbMiddleware(config?.dependencies?.db));
 
+  /** Add a health check route */
+  app.get('/api/health', (c) => {
+    return c.json({ ok: true });
+  });
+
   // Apply services middleware - has to be after db middleware
   const { db, ...otherServices } = config?.dependencies ?? {};
   app.use('/api/*', servicesMiddleware(otherServices));

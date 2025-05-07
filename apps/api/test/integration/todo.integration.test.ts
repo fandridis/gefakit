@@ -10,6 +10,7 @@ import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO } from '@gefakit/shared';
 import { envConfig } from '../../src/lib/env-config';
+import { getDb } from '../../src/lib/db'; // Import the new getDb function
 
 // Import service/repo factories
 import { createTodoRepository } from '../../src/features/todos/todo.repository';
@@ -29,11 +30,8 @@ describe('Todo API Integration Tests', () => {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }
 
-    testDb = new Kysely<DB>({
-      dialect: new NeonDialect({
-        connectionString: dbUrl,
-      }),
-    });
+    // Use the getDb function to create the Kysely instance for tests
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 
     // Instantiate dependencies for testing
     const testTodoRepository = createTodoRepository({ db: testDb });
@@ -115,21 +113,21 @@ describe('Todo API Integration Tests', () => {
         const deleteResult = await testDb.deleteFrom('core.todos')
           .where('author_id', '=', testUser.id)
           .execute();
-          // Log the number of deleted rows for debugging if needed
+        // Log the number of deleted rows for debugging if needed
       } catch (error) {
-          console.error(`Error cleaning up todos for user ${testUser.email}:`, error);
+        console.error(`Error cleaning up todos for user ${testUser.email}:`, error);
       }
     } else {
-        // console.log("Skipping test cleanup: testDb or testUser not available.");
+      // console.log("Skipping test cleanup: testDb or testUser not available.");
     }
   });
 
   describe('POST /api/v1/todos', () => {
     it('should create a new todo for the authenticated user', async () => {
-      const newTodoData = { 
-        title: 'Integration Test Todo', 
-        description: 'Integration Test Description', 
-        completed: false, 
+      const newTodoData = {
+        title: 'Integration Test Todo',
+        description: 'Integration Test Description',
+        completed: false,
         due_date: new Date(Date.now() + 24 * 60 * 60 * 1000)
       };
 
@@ -162,15 +160,15 @@ describe('Todo API Integration Tests', () => {
     });
 
     it('should return 401 Unauthorized if no session cookie is provided', async () => {
-        const newTodoData = { title: 'Unauthorized Test Todo', completed: false };
+      const newTodoData = { title: 'Unauthorized Test Todo', completed: false };
 
-        const res = await testApp.request('/api/v1/todos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }, // No Cookie header
-            body: JSON.stringify(newTodoData),
-        });
+      const res = await testApp.request('/api/v1/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, // No Cookie header
+        body: JSON.stringify(newTodoData),
+      });
 
-        expect(res.status).toBe(401); // Expecting Hono's default or auth middleware's response
+      expect(res.status).toBe(401); // Expecting Hono's default or auth middleware's response
     });
 
 
@@ -194,7 +192,7 @@ describe('Todo API Integration Tests', () => {
       expect(res.status).toBe(400);
 
       const body = await res.json() as any;
-      
+
       expect(body.ok).toBe(false);
       expect(body.errors).toBeInstanceOf(Array);
 

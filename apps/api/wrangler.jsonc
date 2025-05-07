@@ -63,7 +63,7 @@
 					"binding": "GEFAKIT_RATE_LIMITER_KV",
 					"id": "52f1f88462794700b3cae7fed8f255a3"
 				}
-			]
+			],
 		},
 		"production": {
 			"vars": {
@@ -80,11 +80,21 @@
 			"kv_namespaces": [
 				{
 					"binding": "KV",
-					"id": "fcd4f648528b42e19c1504f75332ae74"
+					"id": "fcd4f648528b42e19c1504f75332ae74",
+					"preview_id": "fcd4f648528b42e19c1504f75332ae74"
 				},
 				{
 					"binding": "GEFAKIT_RATE_LIMITER_KV",
-					"id": "d0fa476dd3024ae38bce685c05501239"
+					"id": "d0fa476dd3024ae38bce685c05501239",
+					"preview_id": "d0fa476dd3024ae38bce685c05501239"
+				}
+			],
+			"hyperdrive": [
+				{
+					"binding": "HYPERDRIVE",
+					// changed it to dev one
+					"id": "e08347d070c34d52b1e4d0131c46f957",
+					// "localConnectionString": "postgresql://hyperdrive-user:npg_1ncQvjDI5hMJ@ep-aged-unit-a2eedp0n.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 				}
 			]
 		}

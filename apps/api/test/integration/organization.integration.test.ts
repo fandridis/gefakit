@@ -30,6 +30,7 @@ import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
 import { envConfig } from '../../src/lib/env-config';
+import { getDb } from '../../src/lib/db';
 
 // Mock environment variables
 // vi.stubEnv('DATABASE_URL_POOLED', 'postgresql://neondb_owner:npg_v9IioTkZd6RY@ep-withered-heart-a2fk19ng-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require');
@@ -46,11 +47,7 @@ describe('Organization API Integration Tests', () => {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }
 
-    testDb = new Kysely<DB>({
-      dialect: new NeonDialect({
-        connectionString: dbUrl,
-      }),
-    });
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
@@ -94,7 +91,7 @@ describe('Organization API Integration Tests', () => {
   afterAll(async () => {
     if (testDb && testUser) {
       try {
-         // Clean up organizations and memberships first if necessary
+        // Clean up organizations and memberships first if necessary
         const memberships = await testDb.selectFrom('organizations.memberships')
           .where('user_id', '=', testUser.id)
           .select('organization_id')
@@ -102,36 +99,36 @@ describe('Organization API Integration Tests', () => {
         const orgIds = memberships.map(m => m.organization_id);
 
         if (orgIds.length > 0) {
-             // Delete memberships associated with the user
+          // Delete memberships associated with the user
+          await testDb.deleteFrom('organizations.memberships')
+            .where('user_id', '=', testUser.id)
+            .execute();
+
+
+          // Optionally, delete organizations if the test user was the only member/owner
+          // Be careful with this if organizations might be shared in tests or if cleanup is complex
+          // For simplicity, we might only delete organizations fully owned AND created by this test user.
+          // A safer approach might be to delete orgs created in specific tests within afterEach.
+          const ownedOrgs = await testDb.selectFrom('organizations.organizations as org')
+            .innerJoin('organizations.memberships as mem', 'mem.organization_id', 'org.id')
+            .where('mem.user_id', '=', testUser.id)
+            .where('mem.role', '=', 'owner')
+            .where('org.id', 'in', orgIds) // Only consider orgs the user was part of
+            // Add a check to ensure the user is the *only* owner or member if needed
+            .select('org.id')
+            .execute();
+
+          const ownedOrgIds = ownedOrgs.map(o => o.id);
+          if (ownedOrgIds.length > 0) {
+            // Delete memberships for these orgs first (including other users if any test added them)
             await testDb.deleteFrom('organizations.memberships')
-              .where('user_id', '=', testUser.id)
+              .where('organization_id', 'in', ownedOrgIds)
               .execute();
-  
-
-            // Optionally, delete organizations if the test user was the only member/owner
-            // Be careful with this if organizations might be shared in tests or if cleanup is complex
-            // For simplicity, we might only delete organizations fully owned AND created by this test user.
-            // A safer approach might be to delete orgs created in specific tests within afterEach.
-            const ownedOrgs = await testDb.selectFrom('organizations.organizations as org')
-              .innerJoin('organizations.memberships as mem', 'mem.organization_id', 'org.id')
-              .where('mem.user_id', '=', testUser.id)
-              .where('mem.role', '=', 'owner')
-              .where('org.id', 'in', orgIds) // Only consider orgs the user was part of
-              // Add a check to ensure the user is the *only* owner or member if needed
-              .select('org.id')
+            // Then delete the organizations
+            await testDb.deleteFrom('organizations.organizations')
+              .where('id', 'in', ownedOrgIds)
               .execute();
-
-            const ownedOrgIds = ownedOrgs.map(o => o.id);
-            if (ownedOrgIds.length > 0) {
-                 // Delete memberships for these orgs first (including other users if any test added them)
-                await testDb.deleteFrom('organizations.memberships')
-                  .where('organization_id', 'in', ownedOrgIds)
-                  .execute();
-                 // Then delete the organizations
-                await testDb.deleteFrom('organizations.organizations')
-                  .where('id', 'in', ownedOrgIds)
-                  .execute();
-            }
+          }
         }
 
         // Now delete the user
@@ -158,31 +155,31 @@ describe('Organization API Integration Tests', () => {
     // For example, delete specific organizations created ONLY in that test
     // This provides better isolation than relying solely on afterAll
     if (testDb && testUser) {
-        // Example: Delete all orgs created by the test user to ensure clean slate for next test
-        // This might be too broad; adjust based on test needs.
-        try {
-            const memberships = await testDb.selectFrom('organizations.memberships')
-              .where('user_id', '=', testUser.id)
-              .where('role', '=', 'owner') // Assuming creator becomes owner
-              .select('organization_id')
-              .execute();
-            const orgIds = memberships.map(m => m.organization_id);
+      // Example: Delete all orgs created by the test user to ensure clean slate for next test
+      // This might be too broad; adjust based on test needs.
+      try {
+        const memberships = await testDb.selectFrom('organizations.memberships')
+          .where('user_id', '=', testUser.id)
+          .where('role', '=', 'owner') // Assuming creator becomes owner
+          .select('organization_id')
+          .execute();
+        const orgIds = memberships.map(m => m.organization_id);
 
-            if (orgIds.length > 0) {
-                 // Cascade or delete dependencies first (e.g., memberships)
-                await testDb.deleteFrom('organizations.memberships')
-                  .where('organization_id', 'in', orgIds)
-                  .execute();
-                // Then delete the organizations
-                await testDb.deleteFrom('organizations.organizations')
-                  .where('id', 'in', orgIds)
-                  .execute();
-            }
-        } catch (error) {
-            console.error(`[organization.integration.test] Error cleaning up orgs for user ${testUser.email} in afterEach:`, error);
+        if (orgIds.length > 0) {
+          // Cascade or delete dependencies first (e.g., memberships)
+          await testDb.deleteFrom('organizations.memberships')
+            .where('organization_id', 'in', orgIds)
+            .execute();
+          // Then delete the organizations
+          await testDb.deleteFrom('organizations.organizations')
+            .where('id', 'in', orgIds)
+            .execute();
         }
+      } catch (error) {
+        console.error(`[organization.integration.test] Error cleaning up orgs for user ${testUser.email} in afterEach:`, error);
+      }
     } else {
-        // console.warn("Skipping test cleanup in afterEach: testDb or testUser not available.");
+      // console.warn("Skipping test cleanup in afterEach: testDb or testUser not available.");
     }
   });
 
@@ -265,16 +262,16 @@ describe('Organization API Integration Tests', () => {
       expect(body.errors.some((e: any) => e.field === 'name')).toBe(true);
 
 
-    //   // Verify no organization was created
-    //   If we want to do that, we should clear db before each test
-    //     const countResult = await testDb.selectFrom('organizations.organizations')
-    //         .select(({ fn }) => [fn.count('id').as('count')])
-    //         // Add a where clause if needed to narrow down, but checking total count might be enough
-    //         // .where('name', '=', 'some specific name that should not exist')
-    //         .executeTakeFirst();
+      //   // Verify no organization was created
+      //   If we want to do that, we should clear db before each test
+      //     const countResult = await testDb.selectFrom('organizations.organizations')
+      //         .select(({ fn }) => [fn.count('id').as('count')])
+      //         // Add a where clause if needed to narrow down, but checking total count might be enough
+      //         // .where('name', '=', 'some specific name that should not exist')
+      //         .executeTakeFirst();
 
-    //     // Check if count is '0' or the count before the test started
-    //     expect(countResult?.count).toBe("0"); // Assumes afterEach cleans up successfully
+      //     // Check if count is '0' or the count before the test started
+      //     expect(countResult?.count).toBe("0"); // Assumes afterEach cleans up successfully
     });
   });
 

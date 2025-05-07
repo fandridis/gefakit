@@ -20,6 +20,7 @@ import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
 import { envConfig } from '../../src/lib/env-config';
+import { getDb } from '../../src/lib/db';
 
 describe('Organization Invitation API Integration Tests', () => {
   let testDb: Kysely<DB>;
@@ -34,16 +35,16 @@ describe('Organization Invitation API Integration Tests', () => {
 
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
-      // Use testApp
-      const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-      });
-      expect(loginRes.status).toBe(200);
-      const cookie = loginRes.headers.get('Set-Cookie');
-      expect(cookie).toBeDefined();
-      return cookie!;
+    // Use testApp
+    const loginRes = await testApp.request('/api/v1/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(loginRes.status).toBe(200);
+    const cookie = loginRes.headers.get('Set-Cookie');
+    expect(cookie).toBeDefined();
+    return cookie!;
   };
 
   // Helper to create an organization (using sender's session)
@@ -77,7 +78,7 @@ describe('Organization Invitation API Integration Tests', () => {
   beforeAll(async () => {
     const dbUrl = envConfig.TEST_DATABASE_URL;
     if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
-    testDb = new Kysely<DB>({ dialect: new NeonDialect({ connectionString: dbUrl }) });
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
@@ -91,7 +92,7 @@ describe('Organization Invitation API Integration Tests', () => {
     const senderInsert: Insertable<AuthUser> = { email: senderEmail, username: `sender-${Date.now()}`, password_hash: senderHashedPassword, email_verified: true };
     senderUser = await testDb.insertInto('auth.users').values(senderInsert).returningAll().executeTakeFirstOrThrow() as UserDTO;
 
-     // Create Receiver User
+    // Create Receiver User
     const receiverHashedPassword = await hashPassword(receiverPassword);
     const receiverEmail = `test-receiver-${Date.now()}@integration.com`;
     const receiverInsert: Insertable<AuthUser> = { email: receiverEmail, username: `receiver-${Date.now()}`, password_hash: receiverHashedPassword, email_verified: true };
@@ -111,7 +112,7 @@ describe('Organization Invitation API Integration Tests', () => {
         // Clean invitations first (less likely to have FK constraints)
         await testDb.deleteFrom('organizations.invitations').where('organization_id', '=', testOrg.id).execute().catch(e => console.warn("Cleanup: Couldn't delete invitations:", e.message));
         if (testInvitation) {
-             await testDb.deleteFrom('organizations.invitations').where('id', '=', testInvitation.id).execute().catch(e => console.warn("Cleanup: Couldn't delete specific test invitation:", e.message));
+          await testDb.deleteFrom('organizations.invitations').where('id', '=', testInvitation.id).execute().catch(e => console.warn("Cleanup: Couldn't delete specific test invitation:", e.message));
         }
 
         // Clean memberships
@@ -127,11 +128,11 @@ describe('Organization Invitation API Integration Tests', () => {
       } catch (error) {
         console.error(`[organization-invitation.integration.test] Error during cleanup:`, error);
       } finally {
-          await testDb.destroy();
-          // console.log('DB connection closed.');
+        await testDb.destroy();
+        // console.log('DB connection closed.');
       }
     } else {
-        // console.log('No DB connection to close.');
+      // console.log('No DB connection to close.');
     }
   });
 
@@ -196,7 +197,7 @@ describe('Organization Invitation API Integration Tests', () => {
       expect(res.status).toBe(401);
       expect(mockSendEmail).not.toHaveBeenCalled();
     });
-     // Add test for non-member trying to invite if needed (would require a third user/org)
+    // Add test for non-member trying to invite if needed (would require a third user/org)
   });
 
   describe('POST /api/v1/organization-invitations/:token/accept', () => {
@@ -234,42 +235,42 @@ describe('Organization Invitation API Integration Tests', () => {
         .selectAll().executeTakeFirst();
       expect(dbMembership).toBeDefined();
       expect(dbMembership?.role).toBe(testInvitation!.role); // Should match role from invite
-       expect(dbMembership?.user_id).toBe(receiverUser.id);
+      expect(dbMembership?.user_id).toBe(receiverUser.id);
     });
 
-     it('should return 401 Unauthorized without session', async () => {
-        expect(testInvitation).toBeDefined();
-         const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
-             method: 'POST', // No Cookie header
-         });
-         expect(res.status).toBe(401);
-         const dbInvite = await testDb.selectFrom('organizations.invitations').where('id', '=', testInvitation!.id).select('status').executeTakeFirst();
-         expect(dbInvite?.status).toBe('pending'); // Status should not change
+    it('should return 401 Unauthorized without session', async () => {
+      expect(testInvitation).toBeDefined();
+      const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/accept`, {
+        method: 'POST', // No Cookie header
+      });
+      expect(res.status).toBe(401);
+      const dbInvite = await testDb.selectFrom('organizations.invitations').where('id', '=', testInvitation!.id).select('status').executeTakeFirst();
+      expect(dbInvite?.status).toBe('pending'); // Status should not change
     });
 
     it('should return 404 Not Found for invalid token (using receiver session)', async () => {
-        const invalidToken = 'invalid-token-accept-two-user';
-        const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
-        const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/accept`, {
-            method: 'POST',
-            headers: { 'Cookie': receiverSessionCookie },
-        });
-        expect(res.status).toBe(404);
-     });
+      const invalidToken = 'invalid-token-accept-two-user';
+      const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
+      const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/accept`, {
+        method: 'POST',
+        headers: { 'Cookie': receiverSessionCookie },
+      });
+      expect(res.status).toBe(404);
+    });
   });
 
   describe('POST /api/v1/organization-invitations/:token/decline', () => {
-     beforeEach(async () => {
-        testInvitation = await createTestInvite(testOrg.id, receiverUser.email);
-        expect(testInvitation.status).toBe('pending');
-     });
+    beforeEach(async () => {
+      testInvitation = await createTestInvite(testOrg.id, receiverUser.email);
+      expect(testInvitation.status).toBe('pending');
+    });
 
     it('should decline a pending invitation successfully (receiver declines)', async () => {
-       expect(testInvitation).toBeDefined();
-       // Receiver logs in
-        const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
+      expect(testInvitation).toBeDefined();
+      // Receiver logs in
+      const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
 
-       // Receiver declines the invitation
+      // Receiver declines the invitation
       const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
         method: 'POST',
         headers: { 'Cookie': receiverSessionCookie }, // Use Receiver's cookie
@@ -293,23 +294,23 @@ describe('Organization Invitation API Integration Tests', () => {
     });
 
     it('should return 401 Unauthorized without session', async () => {
-        expect(testInvitation).toBeDefined();
-         const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
-             method: 'POST', // No Cookie header
-         });
-         expect(res.status).toBe(401);
-         const dbInvite = await testDb.selectFrom('organizations.invitations').where('id', '=', testInvitation!.id).select('status').executeTakeFirst();
-         expect(dbInvite?.status).toBe('pending'); // Status should not change
+      expect(testInvitation).toBeDefined();
+      const res = await testApp.request(`/api/v1/organization-invitations/${testInvitation!.token}/decline`, {
+        method: 'POST', // No Cookie header
+      });
+      expect(res.status).toBe(401);
+      const dbInvite = await testDb.selectFrom('organizations.invitations').where('id', '=', testInvitation!.id).select('status').executeTakeFirst();
+      expect(dbInvite?.status).toBe('pending'); // Status should not change
     });
 
-     it('should return 404 Not Found for invalid token (using receiver session)', async () => {
-         const invalidToken = 'invalid-token-decline-two-user';
-         const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
-         const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/decline`, {
-             method: 'POST',
-             headers: { 'Cookie': receiverSessionCookie },
-         });
-         expect(res.status).toBe(404);
-     });
+    it('should return 404 Not Found for invalid token (using receiver session)', async () => {
+      const invalidToken = 'invalid-token-decline-two-user';
+      const receiverSessionCookie = await loginUser(receiverUser.email, receiverPassword);
+      const res = await testApp.request(`/api/v1/organization-invitations/${invalidToken}/decline`, {
+        method: 'POST',
+        headers: { 'Cookie': receiverSessionCookie },
+      });
+      expect(res.status).toBe(404);
+    });
   });
 });
