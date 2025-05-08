@@ -1,6 +1,5 @@
 import { useTodos } from "../hooks/useTodos";
-import { useForm } from "@tanstack/react-form";
-import type { AnyFieldApi } from '@tanstack/react-form'
+// import type { AnyFieldApi } from '@tanstack/react-form'
 import {
     TodoDTO,
     CreateTodoRequestBodyDTO,
@@ -9,16 +8,16 @@ import {
 import { createTodoRequestBodySchema } from "@gefakit/shared/src/schemas/todo.schema";
 import { useAppForm } from "@/components/form/form";
 
-function FieldInfo({ field }: { field: AnyFieldApi }) {
-    return (
-        <>
-            {field.state.meta.isTouched && field.state.meta.errors.length ? (
-                <em style={{ color: 'red', marginLeft: '5px' }}>{field.state.meta.errors.join(',')}</em>
-            ) : null}
-            {field.state.meta.isValidating ? 'Validating...' : null}
-        </>
-    )
-}
+// function FieldInfo({ field }: { field: AnyFieldApi }) {
+//     return (
+//         <>
+//             {field.state.meta.isTouched && field.state.meta.errors.length ? (
+//                 <em style={{ color: 'red', marginLeft: '5px' }}>{field.state.meta.errors.join(',')}</em>
+//             ) : null}
+//             {field.state.meta.isValidating ? 'Validating...' : null}
+//         </>
+//     )
+// }
 
 export function TodoView() {
     // Destructure the values from the useTodos hook
