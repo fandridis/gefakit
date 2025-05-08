@@ -5,10 +5,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build:development": "CLOUDFLARE_ENV=development tsc -b && vite build --mode development",
-		"build:production": "CLOUDFLARE_ENV=production tsc -b && vite build --mode production",
+		"build:development": "CLOUDFLARE_ENV=development tsc -b && vite build",
+		"build:production": "tsc -b && vite build --mode production",
 		"deploy:development": "CLOUDFLARE_ENV=development wrangler deploy",
-		"deploy:production": "CLOUDFLARE_ENV=production wrangler deploy",
+		"deploy:production": "npm run build && wrangler deploy",
 		"preview": "npm run build && vite preview",
 		"lint": "eslint .",
 		"cf-typegen": "wrangler types"
@@ -44,21 +44,21 @@
 		"zod": "^3.24.2"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.0.5",
-		"@cloudflare/workers-types": "^4.20250410.0",
-		"@eslint/js": "^9.21.0",
+		"@cloudflare/vite-plugin": "^1.1.1",
+		"@cloudflare/workers-types": "^4.20250508.0",
+		"@eslint/js": "^9.22.0",
 		"@tanstack/router-plugin": "^1.117.2",
 		"@types/node": "^22.14.0",
 		"@types/react": "^19.0.10",
 		"@types/react-dom": "^19.0.4",
 		"@vitejs/plugin-react-swc": "^3.8.0",
-		"eslint": "^9.21.0",
-		"eslint-plugin-react-hooks": "^5.1.0",
+		"eslint": "^9.22.0",
+		"eslint-plugin-react-hooks": "^5.2.0",
 		"eslint-plugin-react-refresh": "^0.4.19",
-		"globals": "^15.15.0",
+		"globals": "^16.0.0",
 		"typescript": "~5.7.2",
-		"typescript-eslint": "^8.24.1",
-		"vite": "^6.2.0",
-		"wrangler": "^4.10.0"
+		"typescript-eslint": "^8.26.1",
+		"vite": "^6.3.1",
+		"wrangler": "^4.14.4"
 	}
 }
