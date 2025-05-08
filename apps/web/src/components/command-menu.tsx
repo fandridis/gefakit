@@ -7,7 +7,7 @@ import {
     CommandInput,
     CommandItem,
     CommandList,
-    CommandSeparator,
+    // CommandSeparator,
 } from '@/components/ui/command'
 import { sidebarData } from './layout/data/sidebar-config'
 import { ScrollArea } from '@/components/ui/scroll-area'

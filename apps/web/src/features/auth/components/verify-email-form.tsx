@@ -7,19 +7,14 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { sessionQueryKey } from "../hooks/use-auth"
-import { signUpEmailRequestBodySchema } from "@gefakit/shared/src/schemas/auth.schema"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
-import { z } from "zod";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiResendVerificationEmail, apiVerifyEmail } from '../api';
 import { Link } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { MailCheck, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input";
-
-
-type RegisterFormValues = z.infer<typeof signUpEmailRequestBodySchema>;
 
 interface VerifyEmailFormProps {
     token: string;

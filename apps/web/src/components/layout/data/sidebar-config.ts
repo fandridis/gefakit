@@ -1,7 +1,7 @@
 'use client'
 
 
-import { AudioWaveform, CogIcon, Command, ComputerIcon, CreditCardIcon, GalleryVerticalEnd, GroupIcon, LayoutIcon, ListTodoIcon, MessageSquareIcon, SettingsIcon, ShirtIcon, UsersIcon } from 'lucide-react'
+import { AudioWaveform, CogIcon, Command, ComputerIcon, CreditCardIcon, GalleryVerticalEnd, GroupIcon, LayoutIcon, ListTodoIcon, MessageSquareIcon, SettingsIcon, ShirtIcon } from 'lucide-react'
 import { type SidebarData } from '../sidebar-types'
 
 export const sidebarData: SidebarData = {
@@ -53,7 +53,7 @@ export const sidebarData: SidebarData = {
         },
       ],
     },
-  
+
     {
       title: 'Collapsible Routes',
       items: [

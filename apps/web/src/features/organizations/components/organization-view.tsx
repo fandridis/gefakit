@@ -84,13 +84,13 @@ export function OrganizationView() {
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {memberships.length === 0 && <p>You are not a member of any organizations yet.</p>}
                     {memberships.map((membership) => (
-                        <li key={membership.organization.id} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <li key={membership.organization_id} style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <strong>{membership.organization.name}</strong>
+                                <strong>{membership.organization_id}</strong>
                                 <span style={{ marginLeft: '10px', fontStyle: 'italic' }}>({membership.role})</span>
                             </div>
                             <button
-                                onClick={() => handleLeaveOrganization(membership.organization.id)}
+                                onClick={() => handleLeaveOrganization(membership.organization_id)}
                                 disabled={isDeletingMembership}
                                 style={{ marginLeft: '10px', backgroundColor: '#ff9800', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
                             >
@@ -98,7 +98,7 @@ export function OrganizationView() {
                             </button>
                             {membership.role === 'owner' && (
                                 <button
-                                    onClick={() => handleDeleteOrganization(membership.organization.id, membership.organization.name)}
+                                    onClick={() => handleDeleteOrganization(membership.organization_id, 'todo:find_name')}
                                     disabled={isDeletingOrganization}
                                     style={{ marginLeft: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
                                 >

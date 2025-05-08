@@ -34,7 +34,6 @@ function LoginComponent() {
     const navigate = Route.useNavigate()
     const search = Route.useSearch()
     const auth = useAuth();
-    const routerContext = Route.useRouteContext()
 
     useEffect(() => {
         if (auth.isSessionSuccess && auth.session) {

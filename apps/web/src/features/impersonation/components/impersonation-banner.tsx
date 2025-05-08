@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { sessionQueryKey, useAuth } from '@/features/auth/hooks/use-auth'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'

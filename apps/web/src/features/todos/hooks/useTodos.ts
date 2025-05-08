@@ -6,7 +6,7 @@ export function useTodos() {
     const queryClient = useQueryClient();
 
     // Fetch Todos Query
-    const { data: todosData, isLoading: isLoadingTodos, error: todosError } = useQuery<{ todos: TodoDTO[] }, Error >({
+    const { data: todosData, isLoading: isLoadingTodos, error: todosError } = useQuery<{ todos: TodoDTO[] }, Error>({
         queryKey: ['todos'],
         queryFn: apiGetTodos,
         // staleTime: 5 * 60 * 1000, // Optional: Configure data freshness
@@ -20,16 +20,22 @@ export function useTodos() {
             await queryClient.cancelQueries({ queryKey: ['todos'] });
 
             // Snapshot the previous value
-            const previousTodos = queryClient.getQueryData< { todos: TodoDTO[] } >(['todos']);
+            const previousTodos = queryClient.getQueryData<{ todos: TodoDTO[] }>(['todos']);
 
             // Optimistically update to the new value
             if (previousTodos) {
-                queryClient.setQueryData< { todos: TodoDTO[] } >(['todos'], {
+                queryClient.setQueryData<{ todos: TodoDTO[] }>(['todos'], {
                     todos: [
                         ...previousTodos.todos,
-                        // Add a temporary ID for the optimistic update
-                        // The actual ID will come from the server response
-                        { ...newTodo, id: Date.now(), completed: false, author_id: -1 /* Placeholder */ },
+                        {
+                            ...newTodo,
+                            id: Date.now(),
+                            completed: false,
+                            author_id: -1,
+                            created_at: new Date(),
+                            description: newTodo.description ?? null,
+                            due_date: newTodo.due_date ?? null,
+                        },
                     ],
                 });
             }
@@ -42,7 +48,7 @@ export function useTodos() {
             if (context?.previousTodos) {
                 queryClient.setQueryData(['todos'], context.previousTodos);
             }
-            console.error("Error creating todo:", err);
+            console.error("Error creating todo:", newTodo, err);
             // Optionally: show a notification to the user
         },
         // Always refetch after error or success:
@@ -56,20 +62,26 @@ export function useTodos() {
         mutationFn: ({ id, data }: { id: number; data: UpdateTodoRequestBodyDTO }) => apiUpdateTodo(id, data),
         onMutate: async ({ id, data: updatedTodoData }) => {
             await queryClient.cancelQueries({ queryKey: ['todos'] });
-            const previousTodos = queryClient.getQueryData< { todos: TodoDTO[] } >(['todos']);
+            const previousTodos = queryClient.getQueryData<{ todos: TodoDTO[] }>(['todos']);
 
             if (previousTodos) {
-                queryClient.setQueryData< { todos: TodoDTO[] } >(['todos'], {
+                queryClient.setQueryData<{ todos: TodoDTO[] }>(['todos'], {
                     todos: previousTodos.todos.map((todo) =>
-                        todo.id === id ? { ...todo, ...updatedTodoData } : todo
+                        todo.id === id ? {
+                            ...todo,
+                            ...updatedTodoData,
+                            completed: updatedTodoData.completed ?? false,
+                            description: updatedTodoData.description ?? null,
+                            due_date: updatedTodoData.due_date ?? null,
+                        } : todo
                     ),
                 });
             }
             return { previousTodos };
         },
-        onError: (err, variables, context) => {
-            if (context?.previousTodos) {
-                queryClient.setQueryData(['todos'], context.previousTodos);
+        onError: (err, context) => {
+            if (context?.data) {
+                queryClient.setQueryData(['todos'], context.data);
             }
             console.error("Error updating todo:", err);
         },
@@ -83,10 +95,10 @@ export function useTodos() {
         mutationFn: apiDeleteTodo,
         onMutate: async (idToDelete) => {
             await queryClient.cancelQueries({ queryKey: ['todos'] });
-            const previousTodos = queryClient.getQueryData< { todos: TodoDTO[] } >(['todos']);
+            const previousTodos = queryClient.getQueryData<{ todos: TodoDTO[] }>(['todos']);
 
             if (previousTodos) {
-                queryClient.setQueryData< { todos: TodoDTO[] } >(['todos'], {
+                queryClient.setQueryData<{ todos: TodoDTO[] }>(['todos'], {
                     todos: previousTodos.todos.filter((todo) => todo.id !== idToDelete),
                 });
             }
@@ -96,7 +108,7 @@ export function useTodos() {
             if (context?.previousTodos) {
                 queryClient.setQueryData(['todos'], context.previousTodos);
             }
-            console.error("Error deleting todo:", err);
+            console.error(`Error deleting todo ${idToDelete}`, err);
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['todos'] });

@@ -14,7 +14,7 @@ export const AppHeader = ({
     children,
     ...props
 }: HeaderProps) => {
-    const [offset, setOffset] = React.useState(0)
+    const [offset,] = React.useState(0)
 
     // React.useEffect(() => {
     //     const onScroll = () => {

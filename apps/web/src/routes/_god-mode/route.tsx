@@ -2,7 +2,7 @@ import { LoadingOverlay } from "@/components/loading-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { sessionQueryKey } from "@/features/auth/hooks/use-auth"
-import { apiStartImpersonation, apiStopImpersonation } from "@/features/impersonation/api"
+import { apiStartImpersonation } from "@/features/impersonation/api"
 import { GetSessionResponseDTO } from "@gefakit/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"

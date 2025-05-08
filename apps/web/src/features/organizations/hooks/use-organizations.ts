@@ -1,21 +1,20 @@
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import {
-    OrganizationMembershipDTO, 
+    OrganizationMembershipDTO,
     CreateOrganizationRequestBodyDTO,
-    CreateOrganizationResponseDTO, 
-    OrganizationDTO
-} from '@gefakit/shared/src/types/organization'; 
-import { apiGetOrganizationMemberships, apiCreateOrganization, apiLeaveOrganization, apiDeleteOrganization } from '../api'; 
+    CreateOrganizationResponseDTO,
+} from '@gefakit/shared/src/types/organization';
+import { apiGetOrganizationMemberships, apiCreateOrganization, apiLeaveOrganization, apiDeleteOrganization } from '../api';
 
 export function useOrganizations() {
     const queryClient = useQueryClient();
 
     const { data: membershipsData, isLoading: isLoadingMemberships, error: membershipsError } = useQuery<
-        { memberships: OrganizationMembershipDTO[] }, 
+        { memberships: OrganizationMembershipDTO[] },
         Error
     >({
         queryKey: ['myOrganizationMemberships'],
-        queryFn: apiGetOrganizationMemberships, 
+        queryFn: apiGetOrganizationMemberships,
         // staleTime: 5 * 60 * 1000,
     });
 
@@ -72,7 +71,7 @@ export function useOrganizations() {
         createOrganization,
         isCreatingOrganization,
         createOrganizationError: createError as Error | null,
-        deleteOrganizationMembership, 
+        deleteOrganizationMembership,
         isDeletingMembership,
         deleteMembershipError: deleteMembershipError as Error | null,
         deleteOrganization,
