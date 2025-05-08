@@ -1,57 +1,55 @@
-# .github/workflows/preview-deploy.yml
-# Triggers on pull requests to main, deploys API preview, captures its URL, then builds & deploys web preview with that URL.
-name: Deploy Preview
+name: Deploy Cloudflare Worker Preview
 
 on:
   pull_request:
-    branches:
-      - main
+    types: [opened, reopened, synchronize]
 
 jobs:
-  preview:
+  deploy:
     runs-on: ubuntu-latest
-    env:
-      # Cloudflare credentials stored in repo secrets
-      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Create and Update GitHub Deployment
+        id: create_deployment
+        uses: actions/github-script@v6
         with:
-          node-version: 18
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.payload.pull_request.head.sha,
+              required_contexts: [],
+              environment: 'Cloudflare Worker Preview',
+              description: 'Creating a preview',
+              auto_merge: false,
+            });
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+            if (deployment.status !== 201) {
+              throw new Error('Failed to create deployment');
+            }
 
-      - name: Install Wrangler
-        run: npm install -g wrangler@3.74.0
+            return deployment.data.id;
 
-      - name: Deploy API preview
-        id: deploy-api
-        run: |
-          # Uploads a new version and outputs JSON containing preview_url
-          PREVIEW_API_URL=$(wrangler versions upload \  
-            --name gefakit-api-production \  
-            --env preview \  
-            --json  
-          | jq -r '.preview_url')
-          echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env=${{ github.event.pull_request.number }}
 
-      - name: Build web with preview API URL
-        env:
-          API_URL: ${{ env.PREVIEW_API_URL }}
-        run: |
-          # Assumes your web project picks up process.env.API_URL
-          cd packages/web
-          yarn build
-
-      - name: Deploy web preview
-        run: |
-          # Deploys web preview; Wrangler reuses the preview_urls setting
-          cd packages/web
-          wrangler deploy \
-            --name gefakit-web-production \
-            --env preview
+      - name: Update GitHub Deployment Status
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'success',
+              description: 'Created a preview',
+              deployment_id: ${{ steps.create_deployment.outputs.result }},
+              environment_url: '${{ steps.deploy.outputs.deployment-url }}',
+            });
