@@ -22,7 +22,7 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
        * It can work if ran with `wrangler dev --remote` but why do that?
        * Lets just use NeonDB serverless driver for local development.
        */
-      const connectionString = process.env.NODE_ENV === 'development'
+      const connectionString = c.env.NODE_ENV === 'development'
         ? process.env.DATABASE_URL
         : c.env.HYPERDRIVE.connectionString;
 
@@ -32,7 +32,7 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
       }
       db = getDb({
         connectionString,
-        useHyperdrive: process.env.NODE_ENV === 'production',
+        useHyperdrive: c.env.NODE_ENV === 'production',
       });
     }
 
