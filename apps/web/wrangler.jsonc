@@ -14,18 +14,21 @@
 		"enabled": true
 	},
 	"vars": {
+		"CLOUDFLARE_ENV": "development",
 		"VITE_NODE_ENV": "development",
 		"VITE_API_URL": "http://localhost:8787"
 	},
 	"env": {
 		"development": {
 			"vars": {
+				"CLOUDFLARE_ENV": "development",
 				"VITE_NODE_ENV": "development",
 				"VITE_API_URL": "http://localhost:8787"
 			}
 		},
 		"production": {
 			"vars": {
+				"CLOUDFLARE_ENV": "production",
 				"VITE_NODE_ENV": "production",
 				"VITE_API_URL": "https://gefakit-api-production.fandridis.workers.dev"
 			}

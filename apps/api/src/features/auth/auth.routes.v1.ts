@@ -167,7 +167,6 @@ export function createAuthRoutesV1() {
     });
 
     app.get('/sign-in/github', async (c) => {
-        console.log('==================== /sign-in/github ====================')
         const state = generateState();
         const oauthClients = createOAuthClients();
         const url = await oauthClients.github.createAuthorizationURL(state, []);
@@ -178,7 +177,6 @@ export function createAuthRoutesV1() {
     });
 
     app.get('/login/github/callback', async (c) => {
-        console.log('==================== /login/github/callback ====================')
         const oauthClients = createOAuthClients();
         const authService = getAuthService(c);
 

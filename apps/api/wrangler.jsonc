@@ -21,7 +21,7 @@
 		"enabled": true
 	},
 	"vars": {
-		"APP_URL": "http://localhost:5173"
+		"APP_URL": "http://localhost:5173",
 	},
 	"d1_databases": [
 		{
