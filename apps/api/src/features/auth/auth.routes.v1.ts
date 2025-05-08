@@ -243,6 +243,8 @@ export function createAuthRoutesV1() {
 
             setSessionCookie(c, sessionToken);
 
+            console.log('gg1 REDIRECTING TO', `${process.env.APP_URL}/dashboard`);
+
             return c.redirect(`${process.env.APP_URL}/dashboard`);
 
         } catch (e) {
