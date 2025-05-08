@@ -5,10 +5,10 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build:development": "tsc -b && vite build --mode development",
-		"build:production": "tsc -b && vite build --mode production",
-		"deploy:development": "CLOUDFLARE_ENV=development npm run build:development && wrangler deploy",
-		"deploy:production": "CLOUDFLARE_ENV=production npm run build:production && wrangler deploy",
+		"build:development": "CLOUDFLARE_ENV=development tsc -b && vite build --mode development",
+		"build:production": "CLOUDFLARE_ENV=production tsc -b && vite build --mode production",
+		"deploy:development": "CLOUDFLARE_ENV=development wrangler deploy",
+		"deploy:production": "CLOUDFLARE_ENV=production wrangler deploy",
 		"preview": "npm run build && vite preview",
 		"lint": "eslint .",
 		"cf-typegen": "wrangler types"
