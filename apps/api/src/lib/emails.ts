@@ -1,6 +1,5 @@
 // lib/emails/index.ts
 import { Resend } from "resend";
-import { envConfig } from "./env-config";
 
 export const EMAIL_CONFIG = {
   FROM: "hello@app.orcavo.com",
@@ -19,7 +18,7 @@ export const sendEmail = async ({ to, subject, reactTemplate, htmlTemplate }: Se
     console.log(errorMsg);
     return { ok: false, error: { name: "ValidationError", message: errorMsg } };
   }
-  const resend = new Resend(envConfig.RESEND_KEY);
+  const resend = new Resend(process.env.RESEND_KEY);
 
   // Base payload
   const emailPayload: {
@@ -50,8 +49,8 @@ export const sendEmail = async ({ to, subject, reactTemplate, htmlTemplate }: Se
     return { ok: true, data: res.data };
 
   } catch (error) {
-      console.error("[sendEmail] Exception sending email:", error);
-      const message = error instanceof Error ? error.message : "Unknown error sending email";
-      return { ok: false, error: { name: "SendEmailError", message } };
+    console.error("[sendEmail] Exception sending email:", error);
+    const message = error instanceof Error ? error.message : "Unknown error sending email";
+    return { ok: false, error: { name: "SendEmailError", message } };
   }
 };

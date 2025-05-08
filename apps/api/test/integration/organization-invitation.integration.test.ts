@@ -19,7 +19,6 @@ import { DB, AuthUser, OrganizationsInvitation } from '../../src/db/db-types';
 import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
-import { envConfig } from '../../src/lib/env-config';
 import { getDb } from '../../src/lib/db';
 
 describe('Organization Invitation API Integration Tests', () => {
@@ -76,7 +75,7 @@ describe('Organization Invitation API Integration Tests', () => {
   };
 
   beforeAll(async () => {
-    const dbUrl = envConfig.TEST_DATABASE_URL;
+    const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
     testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 

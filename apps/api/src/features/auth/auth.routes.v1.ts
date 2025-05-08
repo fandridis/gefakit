@@ -20,7 +20,6 @@ import { getAuthService, getOnboardingService } from "../../utils/get-service";
 import { getEmailService } from "../../utils/get-service";
 import { authErrors } from "./auth.errors";
 import { AppVariables } from "../../create-app";
-import { envConfig } from "../../lib/env-config";
 
 const authRateLimiter = kvTokenBucketRateLimiter({
     kvBindingName: 'GEFAKIT_RATE_LIMITER_KV',
@@ -246,7 +245,7 @@ export function createAuthRoutesV1() {
 
             setSessionCookie(c, sessionToken);
 
-            return c.redirect(`${envConfig.APP_URL}/dashboard`);
+            return c.redirect(`${process.env.APP_URL}/dashboard`);
 
         } catch (e) {
             console.error('GitHub OAuth Callback Error:', e);

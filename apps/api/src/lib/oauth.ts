@@ -1,16 +1,15 @@
 import { GitHub, Google } from "arctic";
-import { envConfig } from "./env-config";
 export function createOAuthClients() {
 	const github = new GitHub(
-		envConfig.GITHUB_CLIENT_ID,
-		envConfig.GITHUB_CLIENT_SECRET,
-		envConfig.GITHUB_REDIRECT_URI
+		process.env.GITHUB_CLIENT_ID,
+		process.env.GITHUB_CLIENT_SECRET,
+		process.env.GITHUB_REDIRECT_URI
 	);
 
 	// const google = new Google(
-	// 	envConfig.GOOGLE_CLIENT_ID,
-	// 	envConfig.GOOGLE_CLIENT_SECRET,
-	// 	envConfig.GOOGLE_REDIRECT_URI
+	// 	process.env.GOOGLE_CLIENT_ID,
+	// 	process.env.GOOGLE_CLIENT_SECRET,
+	// 	process.env.GOOGLE_REDIRECT_URI
 	// );
 
 	return { github, google: null };

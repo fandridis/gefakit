@@ -7,7 +7,6 @@ import { createOrganizationRoutesV1 } from './features/organizations/organizatio
 import { createOrganizationInvitationRoutesV1 } from './features/organization-invitations/organization-invitation.routes.v1';
 import { impersonationLogMiddleware } from './middleware/impersonation-log';
 import { kvTokenBucketRateLimiter } from './middleware/rate-limiter';
-import { envConfig } from './lib/env-config';
 import { securityHeaders } from './middleware/security-headers';
 import { logger } from 'hono/logger';
 import { Kysely } from 'kysely';
@@ -65,7 +64,8 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   // Apply CORS headers
   app.use('/api/*', async (c, next) => {
     console.log('===== /api/* CORS headers =====')
-    const origin = envConfig.APP_URL || 'http://localhost:5173';
+    console.log('process.env.APP_URL', process.env.APP_URL)
+    const origin = process.env.APP_URL || 'http://localhost:5173';
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
     c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');

@@ -2,7 +2,6 @@
 import { Context, Next } from 'hono';
 import { Kysely, ParseJSONResultsPlugin, PostgresDialect } from 'kysely';
 import { NeonDialect } from 'kysely-neon';
-import { envConfig } from '../lib/env-config';
 import { DB } from '../db/db-types';
 import { Pool } from 'pg';
 import { getDb } from '../lib/db';
@@ -15,7 +14,6 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
   return async (c: Context, next: Next) => {
     let db: Kysely<DB>;
 
-    console.log('envConfig', envConfig);
     if (injectedDb) {
       db = injectedDb;
     } else {
@@ -24,8 +22,8 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
        * It can work if ran with `wrangler dev --remote` but why do that?
        * Lets just use NeonDB serverless driver for local development.
        */
-      const connectionString = envConfig.NODE_ENV === 'development'
-        ? envConfig.DATABASE_URL
+      const connectionString = process.env.NODE_ENV === 'development'
+        ? process.env.DATABASE_URL
         : c.env.HYPERDRIVE.connectionString;
 
       if (!connectionString) {
@@ -34,7 +32,7 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
       }
       db = getDb({
         connectionString,
-        useHyperdrive: envConfig.NODE_ENV === 'production',
+        useHyperdrive: process.env.NODE_ENV === 'production',
       });
     }
 

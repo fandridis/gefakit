@@ -3,7 +3,6 @@ import emailVerificationTemplate from "./templates/email-verification.template";
 import organizationInvitationTemplate from './templates/organization-invitation.template';
 import passwordResetTemplate from "./templates/password-reset.template";
 import otpTemplate from "./templates/otp.template";
-import { envConfig } from "../../lib/env-config";
 
 export type EmailService = ReturnType<typeof createEmailService>;
 
@@ -28,7 +27,7 @@ export function createEmailService() {
     email: string;
     token: string;
   }) {
-    const verificationUrl = `${envConfig.APP_URL}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.APP_URL}/verify-email?token=${token}`;
 
     const htmlTemplate = emailVerificationTemplate({ verificationUrl });
 
@@ -48,12 +47,12 @@ export function createEmailService() {
     orgName: string;
     token: string;
   }) {
-    const invitationUrl = `${envConfig.APP_URL}/accept-invitation?token=${token}`;
+    const invitationUrl = `${process.env.APP_URL}/accept-invitation?token=${token}`;
     const htmlTemplate = organizationInvitationTemplate({ orgName, invitationUrl });
 
     const res = await sendEmail({
       to: email,
-      subject: `You're invited to join ${orgName} on GefaKit!`, 
+      subject: `You're invited to join ${orgName} on GefaKit!`,
       htmlTemplate,
     });
   }
@@ -65,19 +64,19 @@ export function createEmailService() {
     email: string;
     token: string;
   }) {
-    const resetUrl = `${envConfig.APP_URL}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
     const htmlTemplate = passwordResetTemplate({ resetUrl });
 
     await sendEmail({
       to: email,
-      subject: 'Reset Your GefaKit Password', 
+      subject: 'Reset Your GefaKit Password',
       htmlTemplate,
     });
   }
 
   async function sendOtpEmail({ email, otp }: { email: string; otp: string }) {
-    const htmlTemplate = otpTemplate({ otp }); 
-    
+    const htmlTemplate = otpTemplate({ otp });
+
     await sendEmail({
       to: email,
       subject: 'Your GefaKit Sign-In Code',
@@ -85,9 +84,9 @@ export function createEmailService() {
     });
   }
 
-  return { 
-    sendWelcomeEmail, 
-    sendOrganizationInvitationEmail, 
+  return {
+    sendWelcomeEmail,
+    sendOrganizationInvitationEmail,
     sendVerificationEmail,
     sendPasswordResetEmail,
     sendOtpEmail

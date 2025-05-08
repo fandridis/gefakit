@@ -1,21 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { createAppInstance, AppConfig, AppVariables } from '../../src/create-app';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { createAppInstance, AppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
 import { DB } from '../../src/db/db-types';
 import { Insertable } from 'kysely';
 import { AuthUser, CoreTodo } from '../../src/db/db-types';
-import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
-import { UserDTO } from '@gefakit/shared';
-import { envConfig } from '../../src/lib/env-config';
 import { getDb } from '../../src/lib/db'; // Import the new getDb function
 
 // Import service/repo factories
 import { createTodoRepository } from '../../src/features/todos/todo.repository';
 import { createTodoService } from '../../src/features/todos/todo.service';
-import { getTodoService } from '../../src/utils/get-service';
 // --- Test Suite Setup ---
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
@@ -25,7 +21,7 @@ describe('Todo API Integration Tests', () => {
   let sessionCookie: string;
 
   beforeAll(async () => {
-    const dbUrl = envConfig.TEST_DATABASE_URL;
+    const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }

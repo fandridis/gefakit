@@ -18,7 +18,6 @@ import { Kysely, Insertable } from 'kysely';
 import { DB, AuthUser } from '../../src/db/db-types';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, GetSessionResponseDTO } from '@gefakit/shared';
-import { envConfig } from '../../src/lib/env-config';
 import { getDb } from '../../src/lib/db';
 
 describe('Admin API Integration Tests', () => {
@@ -47,7 +46,7 @@ describe('Admin API Integration Tests', () => {
   };
 
   beforeAll(async () => {
-    const dbUrl = envConfig.TEST_DATABASE_URL;
+    const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
     testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
 

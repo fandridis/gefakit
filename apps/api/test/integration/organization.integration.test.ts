@@ -29,7 +29,6 @@ import { Insertable } from 'kysely';
 import { NeonDialect } from 'kysely-neon';
 import { hashPassword } from '../../src/lib/crypto';
 import { UserDTO, OrganizationDTO, CreateOrganizationInvitationResponseDTO } from '@gefakit/shared';
-import { envConfig } from '../../src/lib/env-config';
 import { getDb } from '../../src/lib/db';
 
 // Mock environment variables
@@ -42,7 +41,7 @@ describe('Organization API Integration Tests', () => {
   let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
   beforeAll(async () => {
-    const dbUrl = envConfig.TEST_DATABASE_URL;
+    const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }

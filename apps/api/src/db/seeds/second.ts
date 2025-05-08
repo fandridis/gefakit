@@ -5,10 +5,9 @@ import { DB } from '../db-types'
 import { config } from 'dotenv'
 import { NeonDialect } from 'kysely-neon'
 import { faker } from '@faker-js/faker'
-import { envConfig } from '../../lib/env-config'
 
 // Choose a config file based on NODE_ENV
-const env = envConfig.NODE_ENV || 'development'
+const env = process.env.NODE_ENV || 'development'
 const envFile =
   env === 'production'
     ? '.dev.vars.production'
@@ -20,7 +19,7 @@ config({ path: envFile })
 async function seed() {
   const db = new Kysely<DB>({
     dialect: new NeonDialect({
-      connectionString: envConfig.DATABASE_URL,
+      connectionString: process.env.DATABASE_URL,
     }),
   })
 
