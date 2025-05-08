@@ -2,7 +2,8 @@ import axios from 'redaxios';
 import { SignUpEmailRequestBodyDTO, GetSessionResponseDTO } from "@gefakit/shared";
 import { handleSimpleError } from '@/utils/api-error';
 
-console.log('import.meta.env.VITE_API_URL', import.meta.env.VITE_API_URL)
+console.log('import.meta.env', import.meta.env)
+console.log('process.env: ', process.env)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/auth';
 
