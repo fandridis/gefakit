@@ -22,38 +22,42 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 18 # Or your desired Node.js version
 
       - name: Install pnpm
         run: npm install -g pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile # Assumes you have a pnpm-lock.yaml
 
       - name: Install Wrangler
-        run: npm install -g wrangler@3.74.0
+        # Install wrangler globally, or ensure it's installed via pnpm install
+        run: npm install -g wrangler@3.74.0 # Use a version that supports preview URLs or let pnpm manage it
 
       - name: Deploy API preview
         id: deploy-api
         run: |
-          # Uploads a new version and outputs JSON containing preview_url
+          # Uploads a new version. It prints the preview URL to stdout.
+          # We capture the output and extract the URL using grep.
+          # Adjust the grep pattern if your preview URL structure is different
           PREVIEW_API_URL=$(wrangler versions upload \
             --name gefakit-api-production \
             --env preview \
-            --json \
-          | jq -r '.preview_url')
+          | grep -o 'https://[a-f0-9-]+-gefakit-api-production\.fandridis\.workers\.dev')
           echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
 
       - name: Build web with preview API URL
+        # Ensure your frontend build process uses the API_URL environment variable
         env:
           API_URL: ${{ env.PREVIEW_API_URL }}
         run: |
-          cd packages/web
+          cd packages/web # Adjust path if necessary
           pnpm run build
 
       - name: Deploy web preview
         run: |
-          cd packages/web
+          cd packages/web # Adjust path if necessary
+          # Wrangler will pick up the necessary info from wrangler.toml/jsonc in the packages/web directory
           wrangler deploy \
             --name gefakit-web-production \
             --env preview
