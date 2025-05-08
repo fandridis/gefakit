@@ -21,7 +21,7 @@
 		"enabled": true
 	},
 	"vars": {
-		"DB_ENV": "development"
+		"APP_URL": "http://localhost:5173"
 	},
 	"d1_databases": [
 		{
@@ -43,8 +43,9 @@
 	],
 	"env": {
 		"development": {
+			"name": "gefakit-api-development",
 			"vars": {
-				"DB_ENV": "development"
+				"APP_URL": "http://localhost:5173"
 			},
 			"d1_databases": [
 				{
@@ -66,8 +67,9 @@
 			],
 		},
 		"production": {
+			"name": "gefakit-api-production",
 			"vars": {
-				"DB_ENV": "production"
+				"APP_URL": "http://localhost:5173",
 			},
 			"d1_databases": [
 				{
