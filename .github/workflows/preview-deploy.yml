@@ -35,7 +35,7 @@ jobs:
         id: deploy-api
         run: |
           # Change directory to the API worker package so Wrangler can find its config
-          cd packages/api # <--- ADDED cd command
+          cd apps/api
 
           # Uploads a new version using npx wrangler
           # It prints the preview URL to stdout.
