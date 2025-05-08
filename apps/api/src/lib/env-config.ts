@@ -4,7 +4,7 @@ import { z } from 'zod';
 // 1. Define your schema of expected env‐variables:
 const EnvSchema = z.object({
   // Environment
-  NODE_ENV: z.enum(['development','production','test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   // Database URLs
   DATABASE_URL: z.string().url(),
@@ -23,8 +23,11 @@ const EnvSchema = z.object({
   // …add any others here…
 });
 
+console.log('===== env-config =====')
+
 // 2. Parse & validate process.env:
 const _env = EnvSchema.safeParse(process.env);
+console.log('[envConfig] _env', _env)
 if (!_env.success) {
   console.error('❌ Invalid environment variables:', _env.error.format());
   // Exit immediately so you don't run in a broken configuration

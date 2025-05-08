@@ -64,6 +64,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Apply CORS headers
   app.use('/api/*', async (c, next) => {
+    console.log('===== /api/* CORS headers =====')
     const origin = envConfig.APP_URL || 'http://localhost:5173';
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
