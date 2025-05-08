@@ -23,14 +23,6 @@
 	"vars": {
 		"APP_URL": "http://localhost:5173",
 	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "gefakit-db-development",
-			"database_id": "dac494ad-023c-4959-93b9-123f792f36cd",
-			"migrations_dir": "./src/db/migrations"
-		}
-	],
 	"kv_namespaces": [
 		{
 			"binding": "KV",
@@ -47,14 +39,6 @@
 			"vars": {
 				"APP_URL": "http://localhost:5173"
 			},
-			"d1_databases": [
-				{
-					"binding": "DB",
-					"database_name": "gefakit-db-development",
-					"database_id": "dac494ad-023c-4959-93b9-123f792f36cd",
-					"migrations_dir": "./src/db/migrations"
-				}
-			],
 			"kv_namespaces": [
 				{
 					"binding": "KV",
@@ -71,14 +55,6 @@
 			"vars": {
 				"APP_URL": "https://gefakit-web-production.fandridis.workers.dev",
 			},
-			"d1_databases": [
-				{
-					"binding": "DB",
-					"database_name": "gefakit-db-production",
-					"database_id": "3e46b69c-754f-4c03-82b9-033cd50f6ea7",
-					"migrations_dir": "./src/db/migrations"
-				}
-			],
 			"kv_namespaces": [
 				{
 					"binding": "KV",
