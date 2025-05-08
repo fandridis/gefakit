@@ -14,17 +14,17 @@
 		"enabled": true
 	},
 	"vars": {
-		"MY_VAR": "Top-level var 1 (Still development)"
+		"VITE_API_URL": "http://localhost:8787"
 	},
 	"env": {
 		"development": {
 			"vars": {
-				"MY_VAR": "Development var 1"
+				"VITE_API_URL": "http://localhost:8787"
 			}
 		},
 		"production": {
 			"vars": {
-				"MY_VAR": "Production var 1"
+				"VITE_API_URL": "https://gefakit-api-production.fandridis.workers.dev"
 			}
 		}
 	}
