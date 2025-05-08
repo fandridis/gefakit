@@ -1,5 +1,6 @@
 # .github/workflows/preview-deploy.yml
-# Triggers on pull requests to main, deploys API preview, captures its URL, then builds & deploys web preview with that URL.
+# Triggers on pull requests to main
+# Deploys API preview, captures its URL, then builds & deploys web preview with that URL
 name: Deploy Preview
 
 on:
@@ -23,8 +24,11 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Install Wrangler
         run: npm install -g wrangler@3.74.0
@@ -33,10 +37,10 @@ jobs:
         id: deploy-api
         run: |
           # Uploads a new version and outputs JSON containing preview_url
-          PREVIEW_API_URL=$(wrangler versions upload \  
-            --name gefakit-api-production \  
-            --env preview \  
-            --json  
+          PREVIEW_API_URL=$(wrangler versions upload \
+            --name gefakit-api-production \
+            --env preview \
+            --json \
           | jq -r '.preview_url')
           echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
 
@@ -44,13 +48,11 @@ jobs:
         env:
           API_URL: ${{ env.PREVIEW_API_URL }}
         run: |
-          # Assumes your web project picks up process.env.API_URL
           cd packages/web
-          yarn build
+          pnpm run build
 
       - name: Deploy web preview
         run: |
-          # Deploys web preview; Wrangler reuses the preview_urls setting
           cd packages/web
           wrangler deploy \
             --name gefakit-web-production \
