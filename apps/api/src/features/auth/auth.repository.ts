@@ -104,7 +104,6 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
         },
 
         async findEmailVerificationTokenByValue({ tokenValue }: { tokenValue: string }) {
-            console.log('looking for token:', tokenValue);
             return db
                 .selectFrom('auth.email_verifications')
                 .selectAll()
@@ -157,11 +156,11 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
                 .where('auth.oauth_accounts.provider', '=', provider)
                 .where('auth.oauth_accounts.provider_user_id', '=', providerUserId)
                 .select([
-                    'auth.users.id', 
+                    'auth.users.id',
                     'auth.users.email',
-                    'auth.users.username', 
-                    'auth.users.created_at', 
-                    'auth.users.email_verified', 
+                    'auth.users.username',
+                    'auth.users.created_at',
+                    'auth.users.email_verified',
                     'auth.users.role'
                 ])
                 .executeTakeFirst();
