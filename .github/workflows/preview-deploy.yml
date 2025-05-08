@@ -28,22 +28,24 @@ jobs:
         run: npm install -g pnpm
 
       - name: Install dependencies
+        # This will install all dependencies, including wrangler if it's in package.json
         run: pnpm install --frozen-lockfile # Assumes you have a pnpm-lock.yaml
-
-      - name: Install Wrangler
-        # Install wrangler globally, or ensure it's installed via pnpm install
-        run: npm install -g wrangler@3.74.0 # Use a version that supports preview URLs or let pnpm manage it
 
       - name: Deploy API preview
         id: deploy-api
         run: |
-          # Uploads a new version. It prints the preview URL to stdout.
+          # Change directory to the API worker package so Wrangler can find its config
+          cd packages/api # <--- ADDED cd command
+
+          # Uploads a new version using npx wrangler
+          # It prints the preview URL to stdout.
           # We capture the output and extract the URL using grep.
           # Adjust the grep pattern if your preview URL structure is different
-          PREVIEW_API_URL=$(wrangler versions upload \
+          PREVIEW_API_URL=$(npx wrangler versions upload \ # <--- Changed wrangler to npx wrangler
             --name gefakit-api-production \
             --env preview \
-          | grep -o 'https://[a-f0-9-]+-gefakit-api-production\.fandridis\.workers\.dev')
+          | grep -o 'https://[a-f0-9-]+-gefakit-api-production\.fandridis\.workers\.dev') # Ensure this regex matches your URL exactly
+
           echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
 
       - name: Build web with preview API URL
@@ -58,6 +60,6 @@ jobs:
         run: |
           cd packages/web # Adjust path if necessary
           # Wrangler will pick up the necessary info from wrangler.toml/jsonc in the packages/web directory
-          wrangler deploy \
+          npx wrangler deploy \ # <--- Changed wrangler to npx wrangler
             --name gefakit-web-production \
             --env preview
