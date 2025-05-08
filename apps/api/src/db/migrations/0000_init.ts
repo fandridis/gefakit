@@ -1,35 +1,35 @@
-import { Kysely, sql } from 'kysely'
+import { Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
   // --- Schemas ---
-  await db.schema.createSchema('auth').ifNotExists().execute()
-  await db.schema.createSchema('core').ifNotExists().execute()
-  await db.schema.createSchema('organizations').ifNotExists().execute()
+  await db.schema.createSchema('auth').ifNotExists().execute();
+  await db.schema.createSchema('core').ifNotExists().execute();
+  await db.schema.createSchema('organizations').ifNotExists().execute();
 
   // --- Custom Types ---
   await db.schema
     .createType('organizations.membership_role')
     .asEnum(['owner', 'admin', 'member'])
-    .execute()
+    .execute();
 
   await db.schema
     .createType('organizations.invitation_status')
     .asEnum(['pending', 'accepted', 'declined', 'expired'])
-    .execute()
+    .execute();
 
   // --- Tables ---
 
   // auth.users
   await db.schema
     .createTable('auth.users')
-    .addColumn('id', 'serial', (col) => col.primaryKey()) // Changed from bigint in notifications for consistency
+    .addColumn('id', 'serial', (col) => col.primaryKey())
     .addColumn('username', 'text', (col) => col.notNull().unique())
     .addColumn('email', 'text', (col) => col.notNull().unique())
     .addColumn('password_hash', 'text', (col) => col.notNull())
-    .addColumn('recovery_code', sql`bytea`)
-    .addColumn('email_verified', 'boolean', (col) => col.notNull().defaultTo(false)) // Added in 0002
+    .addColumn('email_verified', 'boolean', (col) => col.notNull().defaultTo(false))
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-    .execute()
+    .addColumn('role', 'varchar(64)', (col) => col.notNull().defaultTo('USER'))
+    .execute();
 
   // organizations.organizations
   await db.schema
@@ -38,7 +38,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('name', 'text', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-    .execute()
+    .execute();
 
   // auth.sessions
   await db.schema
@@ -46,10 +46,13 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('id', 'text', (col) => col.primaryKey())
     .addColumn('user_id', 'integer', (col) => col.references('auth.users.id').onDelete('cascade').notNull())
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
-    .addColumn('active_organization_id', 'integer', (col) => // Added in 0003
+    .addColumn('active_organization_id', 'integer', (col) =>
       col.references('organizations.organizations.id').onDelete('set null')
     )
-    .execute()
+    .addColumn('impersonator_user_id', 'integer', (col) =>
+      col.references('auth.users.id').onDelete('set null')
+    )
+    .execute();
 
   // organizations.memberships
   await db.schema
@@ -57,11 +60,11 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('user_id', 'integer', (col) => col.references('auth.users.id').onDelete('cascade').notNull())
     .addColumn('organization_id', 'integer', (col) => col.references('organizations.organizations.id').onDelete('cascade').notNull())
     .addColumn('role', sql`organizations.membership_role`, (col) => col.notNull())
-    .addColumn('is_default', 'boolean', (col) => col.notNull().defaultTo(false)) // Added in 0003
+    .addColumn('is_default', 'boolean', (col) => col.notNull().defaultTo(false))
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addPrimaryKeyConstraint('memberships_pkey', ['user_id', 'organization_id'])
-    .execute()
+    .execute();
 
   // organizations.invitations
   await db.schema
@@ -76,9 +79,9 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-    .execute()
+    .execute();
 
-  // auth.email_verifications (from 0001)
+  // auth.email_verifications
   await db.schema
     .createTable('auth.email_verifications')
     .addColumn('id', 'serial', (col) => col.primaryKey())
@@ -88,7 +91,7 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
     .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
     .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
-    .execute()
+    .execute();
 
   // core.todos
   await db.schema
@@ -100,13 +103,13 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('completed', 'boolean', (col) => col.notNull().defaultTo(false))
     .addColumn('author_id', 'integer', (col) => col.references('auth.users.id').onDelete('cascade').notNull())
     .addColumn('created_at', 'timestamp', (col) => col.notNull().defaultTo(sql`now()`))
-    .execute()
+    .execute();
 
-  // core.notifications (from 0004)
+  // core.notifications
   await db.schema
     .createTable('core.notifications')
     .addColumn('id', 'bigserial', (col) => col.primaryKey())
-    .addColumn('user_id', 'integer', (col) => // Changed from bigint to match auth.users.id
+    .addColumn('user_id', 'integer', (col) =>
       col.references('auth.users.id').onDelete('cascade').notNull()
     )
     .addColumn('type', 'varchar(64)', (col) => col.notNull())
@@ -118,24 +121,57 @@ export async function up(db: Kysely<any>): Promise<void> {
     .addColumn('expires_at', 'timestamptz')
     .execute();
 
+  await db.schema
+    .createTable('auth.oauth_accounts')
+    .addColumn('id', 'serial', (col) => col.primaryKey())
+    .addColumn('user_id', 'integer', (col) =>
+      col.references('auth.users.id').onDelete('cascade').notNull()
+    )
+    .addColumn('provider', 'varchar(64)', (col) => col.notNull()) // e.g., 'github', 'google'
+    .addColumn('provider_user_id', 'text', (col) => col.notNull()) // User ID from the OAuth provider
+    .addColumn('created_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .addColumn('updated_at', 'timestamptz', (col) => col.notNull().defaultTo(sql`now()`))
+    .execute();
+
+  await db.schema
+    .createTable('auth.password_reset_tokens')
+    .addColumn('id', 'serial', (col) => col.primaryKey())
+    .addColumn('user_id', 'integer', (col) =>
+      col.references('auth.users.id').onDelete('cascade').notNull()
+    )
+    .addColumn('hashed_token', 'text', (col) => col.notNull().unique())
+    .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
+    .addColumn('created_at', 'timestamptz', (col) =>
+      col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
+    .execute();
+
+  await db.schema
+    .createTable('auth.otp_codes')
+    .addColumn('id', 'serial', (col) => col.primaryKey())
+    .addColumn('user_id', 'integer', (col) =>
+      col.references('auth.users.id').onDelete('cascade').notNull()
+    )
+    .addColumn('hashed_code', 'text', (col) => col.notNull())
+    .addColumn('expires_at', 'timestamptz', (col) => col.notNull())
+    .addColumn('created_at', 'timestamptz', (col) =>
+      col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
+    .execute();
 
   // --- Indexes ---
-
-  // organizations.invitations(token) - from 0000
   await db.schema
     .createIndex('invitations_token_idx')
     .on('organizations.invitations')
     .column('token')
-    .execute()
+    .execute();
 
-  // auth.email_verifications(identifier) - from 0001
   await db.schema
     .createIndex('email_verifications_identifier_idx')
     .on('auth.email_verifications')
     .column('identifier')
-    .execute()
+    .execute();
 
-  // organizations.memberships(user_id) where is_default=true - from 0003
   await db.schema
     .createIndex('memberships_user_id_is_default_unique_idx')
     .on('organizations.memberships')
@@ -144,30 +180,73 @@ export async function up(db: Kysely<any>): Promise<void> {
     .unique()
     .execute();
 
-  // core.notifications(user_id, created_at desc) - from 0004
+  await db.schema
+    .createIndex('users_role_idx')
+    .on('auth.users')
+    .column('role')
+    .execute();
+
+  await db.schema
+    .createIndex('sessions_impersonator_user_id_idx')
+    .on('auth.sessions')
+    .column('impersonator_user_id')
+    .execute();
+
+  await db.schema
+    .createIndex('oauth_accounts_provider_provider_user_id_unique_idx')
+    .on('auth.oauth_accounts')
+    .columns(['provider', 'provider_user_id'])
+    .unique()
+    .execute();
+
+  await db.schema
+    .createIndex('oauth_accounts_user_id_idx')
+    .on('auth.oauth_accounts')
+    .column('user_id')
+    .execute();
+
+  await db.schema
+    .createIndex('idx_password_reset_tokens_user_id')
+    .on('auth.password_reset_tokens')
+    .column('user_id')
+    .execute();
+
+  await db.schema
+    .createIndex('idx_otp_codes_user_id')
+    .on('auth.otp_codes')
+    .column('user_id')
+    .execute();
+
   await db.schema
     .createIndex('idx_notifications_user_created')
     .on('core.notifications')
-    .columns(['user_id', 'created_at desc']) // Kysely handles the DESC modifier here
+    .columns(['user_id', 'created_at desc'])
     .execute();
 
-  // core.notifications(user_id, created_at desc) where read_at IS NULL - from 0004
   await sql`
     CREATE INDEX idx_notifications_user_unread_ordered
     ON core.notifications (user_id, created_at DESC)
     WHERE read_at IS NULL;
   `.execute(db);
-
 }
 
-// Note: This is probably not needed as there's no point in rolling back past this point.
+//  The down function drops all tables, types, schemas, and indexes in reverse order of creation.
 export async function down(db: Kysely<any>): Promise<void> {
   await sql`DROP INDEX IF EXISTS idx_notifications_user_unread_ordered;`.execute(db);
   await db.schema.dropIndex('idx_notifications_user_created').ifExists().execute();
+  await db.schema.dropIndex('idx_otp_codes_user_id').ifExists().execute();
+  await db.schema.dropIndex('idx_password_reset_tokens_user_id').ifExists().execute();
+  await db.schema.dropIndex('oauth_accounts_user_id_idx').ifExists().execute();
+  await db.schema.dropIndex('oauth_accounts_provider_provider_user_id_unique_idx').ifExists().execute();
+  await db.schema.dropIndex('sessions_impersonator_user_id_idx').ifExists().execute();
+  await db.schema.dropIndex('users_role_idx').ifExists().execute();
   await db.schema.dropIndex('memberships_user_id_is_default_unique_idx').ifExists().execute();
   await db.schema.dropIndex('email_verifications_identifier_idx').ifExists().execute();
   await db.schema.dropIndex('invitations_token_idx').ifExists().execute();
 
+  await db.schema.dropTable('auth.otp_codes').ifExists().execute();
+  await db.schema.dropTable('auth.password_reset_tokens').ifExists().execute();
+  await db.schema.dropTable('auth.oauth_accounts').ifExists().execute();
   await db.schema.dropTable('core.notifications').ifExists().execute();
   await db.schema.dropTable('core.todos').ifExists().execute();
   await db.schema.dropTable('auth.email_verifications').ifExists().execute();
@@ -183,4 +262,4 @@ export async function down(db: Kysely<any>): Promise<void> {
   await db.schema.dropSchema('organizations').ifExists().execute();
   await db.schema.dropSchema('core').ifExists().execute();
   await db.schema.dropSchema('auth').ifExists().execute();
-} 
+}

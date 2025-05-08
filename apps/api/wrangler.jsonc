@@ -92,9 +92,7 @@
 			"hyperdrive": [
 				{
 					"binding": "HYPERDRIVE",
-					// changed it to dev one
-					"id": "e08347d070c34d52b1e4d0131c46f957",
-					// "localConnectionString": "postgresql://hyperdrive-user:npg_1ncQvjDI5hMJ@ep-aged-unit-a2eedp0n.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+					"id": "c32cec91c00842cfb06c5cbbcc5f8276",
 				}
 			]
 		}
