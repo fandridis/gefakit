@@ -20,6 +20,7 @@
 	},
 	"env": {
 		"development": {
+			"name": "gefakit-web-development",
 			"vars": {
 				"CLOUDFLARE_ENV": "development",
 				"VITE_NODE_ENV": "development",
@@ -27,6 +28,7 @@
 			}
 		},
 		"production": {
+			"name": "gefakit-web-production",
 			"vars": {
 				"CLOUDFLARE_ENV": "production",
 				"VITE_NODE_ENV": "production",
