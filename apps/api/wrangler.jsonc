@@ -69,7 +69,7 @@
 		"production": {
 			"name": "gefakit-api-production",
 			"vars": {
-				"APP_URL": "http://localhost:5173",
+				"APP_URL": "https://gefakit-web-production.fandridis.workers.dev",
 			},
 			"d1_databases": [
 				{
