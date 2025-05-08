@@ -1,0 +1,57 @@
+# .github/workflows/preview-deploy.yml
+# Triggers on pull requests to main, deploys API preview, captures its URL, then builds & deploys web preview with that URL.
+name: Deploy Preview
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      # Cloudflare credentials stored in repo secrets
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@3.74.0
+
+      - name: Deploy API preview
+        id: deploy-api
+        run: |
+          # Uploads a new version and outputs JSON containing preview_url
+          PREVIEW_API_URL=$(wrangler versions upload \  
+            --name gefakit-api-production \  
+            --env preview \  
+            --json  
+          | jq -r '.preview_url')
+          echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
+
+      - name: Build web with preview API URL
+        env:
+          API_URL: ${{ env.PREVIEW_API_URL }}
+        run: |
+          # Assumes your web project picks up process.env.API_URL
+          cd packages/web
+          yarn build
+
+      - name: Deploy web preview
+        run: |
+          # Deploys web preview; Wrangler reuses the preview_urls setting
+          cd packages/web
+          wrangler deploy \
+            --name gefakit-web-production \
+            --env preview
