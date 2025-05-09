@@ -1,9 +1,8 @@
 name: Deploy to Cloudflare Pages
 
 on:
-  push:
-    branches:
-      - main # Or your main branch
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 jobs:
   deploy:
@@ -22,20 +21,31 @@ jobs:
           cache: 'pnpm'
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: |
+          echo "Installing pnpm..."
+          npm install -g pnpm
+          echo "pnpm installation complete."
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          echo "Installing dependencies..."
+          pnpm install --frozen-lockfile
+          echo "Dependency installation complete."
 
       - name: Build web app
         working-directory: apps/web
         run: |
+          echo "Building web app..."
           CLOUDFLARE_ENV=gefa tsc -b
           vite build
+          echo "Web app build complete."
 
       - name: Deploy to Cloudflare Pages
         working-directory: apps/web
-        run: npx wrangler deploy --no-open
+        run: |
+          echo "Deploying to Cloudflare Pages..."
+          npx wrangler deploy --no-open
+          echo "Deployment to Cloudflare Pages complete."
         env:
           CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
