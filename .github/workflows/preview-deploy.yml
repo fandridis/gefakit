@@ -55,7 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Wrangler
-        run: npm install -g wrangler@3.74.0
+        run: npm install -g wrangler@4.10.0
 
       - name: Deploy API preview
         id: deploy-api
