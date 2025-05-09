@@ -120,7 +120,7 @@ jobs:
             -H "Content-Type: application/json"
 
       - name: Delete Neon Database Branch
-        uses: neondatabase/delete-branch-action@v5
+        uses: neondatabase/delete-branch-action@v3
         with:
           project_id: 'super-waterfall-86281505'
           branch_name: ${{ github.event.ref }}
