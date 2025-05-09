@@ -85,6 +85,7 @@ jobs:
       - name: Deploy API preview (raw CLI)
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
           cd apps/api
           # Deploy the top-level config under a new script name
