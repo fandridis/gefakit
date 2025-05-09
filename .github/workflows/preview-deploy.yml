@@ -73,14 +73,22 @@ jobs:
       #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       #     command: "deploy --env=${{ steps.generate_env_name.outputs.ENV_NAME }}"
 
-      - name: Deploy API preview (Cloudflare Action)
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # instead of `environment:` here, pass the name override:
-          name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
-          command: deploy
+      # - name: Deploy API preview (Cloudflare Action)
+      #   uses: cloudflare/wrangler-action@v3
+      #   with:
+      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      #     # instead of `environment:` here, pass the name override:
+      #     name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+      #     command: deploy
+
+      - name: Deploy API preview (raw CLI)
+        env:
+          ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+        run: |
+          cd apps/api
+          # Deploy the top-level config under a new script name
+          wrangler deploy --name="${ENV_NAME}"
 
 
       - name: Set default API URL
