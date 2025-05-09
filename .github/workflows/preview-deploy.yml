@@ -57,18 +57,14 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
 
-      - name: Deploy API preview
+      - name: Deploy API preview (Cloudflare Action)
         id: deploy-api
         if: steps.api_changes.outputs.hasApiChanges == 'true'
-        run: |
-          BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          # Only upload API preview if there were changes
-          PREVIEW_API_URL=$(wrangler versions upload \
-            --name gefakit-api-production \
-            --env preview \
-            --branch "$BRANCH_NAME" \
-          | grep 'Preview URL:' | awk '{print $3}')
-          echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: "deploy --env=$(echo \"${{ github.head_ref }}\" | sed 's/[^a-zA-Z0-9-]/-/g')"
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
