@@ -14,6 +14,14 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
   return async (c: Context, next: Next) => {
     let db: Kysely<DB>;
 
+    if (c?.env) {
+      console.log('c.env', c.env);
+    }
+
+    if (process.env) {
+      console.log('process.env', JSON.stringify(process.env, null, 2));
+    }
+
     if (injectedDb) {
       db = injectedDb;
     } else {
