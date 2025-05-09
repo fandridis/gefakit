@@ -59,7 +59,7 @@ jobs:
           project_id: 'super-waterfall-86281505'
           branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
           parent: 'production'
-          role: neondb_owner
+          username: 'neondb_owner'
           api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Deploy API preview (raw CLI)
