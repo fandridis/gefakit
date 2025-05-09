@@ -41,13 +41,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ← NEW STEP: only run tests when the API is actually changing
-      - name: Run API tests
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
-        run: |
-          cd apps/api
-          npm run test
-
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
 
@@ -83,8 +76,17 @@ jobs:
         run: |
           echo "${{ steps.create_db_branch.outputs.db_url }}" \
             | wrangler secret put DATABASE_URL --name "$ENV_NAME"
+          echo "${{ steps.create_db_branch.outputs.db_url }}" \
+            | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
           echo "development" \
             | wrangler secret put NODE_ENV --name "$ENV_NAME"
+
+
+      - name: Run API tests
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          cd apps/api
+          npm run test
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
