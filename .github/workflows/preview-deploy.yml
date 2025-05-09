@@ -87,8 +87,7 @@ jobs:
         run: |
           npx wrangler deploy \
             --config wrangler.generated.toml \
-            --env ${{ steps.generate_env_name.outputs.ENV_NAME }} \
-            --api-token ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            --env ${{ steps.generate_env_name.outputs.ENV_NAME }}
 
       # ─────────────────────────────────────────────────────────────────────────────
 
@@ -104,7 +103,6 @@ jobs:
           PREVIEW_URL=$(npx wrangler deploy \
             --config wrangler.generated.toml \
             --env ${{ steps.generate_env_name.outputs.ENV_NAME }} \
-            --api-token ${{ secrets.CLOUDFLARE_API_TOKEN }} --dry-run \
             | tail -n1)
           echo "PREVIEW_API_URL=$PREVIEW_URL" >> $GITHUB_ENV
 
