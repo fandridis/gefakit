@@ -1,55 +1,89 @@
-name: Deploy Cloudflare Worker Preview
+# .github/workflows/preview-deploy.yml
+# Required GitHub Secrets and Cloudflare API Token permissions:
+#   - Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   - CLOUDFLARE_API_TOKEN must have:
+#       • User -> User Details -> Read
+#       • Account -> Workers Scripts -> Write
+#       • Account -> Workers Services -> Write
+#       • Account -> Workers Routes -> Edit (if using routes)
+#       • (Optional) Account -> Account Settings -> Read for some deploy commands
+# Triggers on pull requests to main
+# Deploys API preview (only if API changed), captures its URL, then builds & deploys web preview with that URL
+name: Deploy Preview
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 jobs:
-  deploy:
+  preview:
     runs-on: ubuntu-latest
+    env:
+      # Cloudflare credentials stored in repo secrets
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Create and Update GitHub Deployment
-        id: create_deployment
-        uses: actions/github-script@v6
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          script: |
-            const deployment = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.payload.pull_request.head.sha,
-              required_contexts: [],
-              environment: 'Cloudflare Worker Preview',
-              description: 'Creating a preview',
-              auto_merge: false,
-            });
+          # need full history to diff against main
+          fetch-depth: 0
 
-            if (deployment.status !== 201) {
-              throw new Error('Failed to create deployment');
-            }
-
-            return deployment.data.id;
-
-      - name: Deploy to Cloudflare Workers
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env=${{ github.event.pull_request.number }}
+          node-version: 22
 
-      - name: Update GitHub Deployment Status
-        if: always()
-        uses: actions/github-script@v6
+      - name: Check for API changes
+        id: api_changes
+        run: |
+          # compare this branch against main for any changes under apps/api/
+          git fetch origin main
+          if git diff --quiet origin/main...HEAD -- apps/api/; then
+            echo "hasApiChanges=false" >> $GITHUB_OUTPUT
+          else
+            echo "hasApiChanges=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            await github.rest.repos.createDeploymentStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'success',
-              description: 'Created a preview',
-              deployment_id: ${{ steps.create_deployment.outputs.result }},
-              environment_url: '${{ steps.deploy.outputs.deployment-url }}',
-            });
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@4.10.0
+
+      - name: Deploy API preview
+        id: deploy-api
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          # Only upload API preview if there were changes
+          PREVIEW_API_URL=$(wrangler versions upload \
+            --name gefakit-api-production \
+            --env preview \
+          | grep 'Preview URL:' | awk '{print $3}')
+          echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
+
+      - name: Set default API URL
+        if: steps.api_changes.outputs.hasApiChanges == 'false'
+        run: |
+          echo "PREVIEW_API_URL=https://gefakit-api-production.fandridis.workers.dev" >> $GITHUB_ENV
+
+      - name: Build web with preview API URL
+        env:
+          API_URL: ${{ env.PREVIEW_API_URL }}
+        run: |
+          cd apps/web
+          npm run build:development
+
+      - name: Deploy web preview
+        run: |
+          cd apps/web
+          npm run deploy:development
+          # wrangler deploy \
+          #   --name gefakit-web-production \
+          #   --env preview
