@@ -78,11 +78,12 @@ jobs:
           API_URL: ${{ env.PREVIEW_API_URL }}
         run: |
           cd apps/web
-          pnpm run build
+          npm run build:development
 
       - name: Deploy web preview
         run: |
           cd apps/web
-          wrangler deploy \
-            --name gefakit-web-production \
-            --env preview
+          npm run deploy:development
+          # wrangler deploy \
+          #   --name gefakit-web-production \
+          #   --env preview
