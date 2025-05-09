@@ -90,6 +90,14 @@ jobs:
           echo "$DB_URL" | wrangler secret put DATABASE_URL --name "$ENV_NAME"
           echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
           echo "development" | wrangler secret put NODE_ENV --name "$ENV_NAME"
+
+          echo "DATABASE_URL=$DB_URL"      >> $GITHUB_ENV
+          echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
+          echo "NODE_ENV=test"             >> $GITHUB_ENV
+
+      - name: Debug DB_URL
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: echo "› DATABASE_URL is now → $DATABASE_URL"
           
       - name: Run API tests
         if: steps.api_changes.outputs.hasApiChanges == 'true'
