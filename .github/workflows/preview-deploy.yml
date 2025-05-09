@@ -61,10 +61,12 @@ jobs:
         id: deploy-api
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
+          BRANCH_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
           # Only upload API preview if there were changes
           PREVIEW_API_URL=$(wrangler versions upload \
             --name gefakit-api-production \
             --env preview \
+            --branch "$BRANCH_NAME" \
           | grep 'Preview URL:' | awk '{print $3}')
           echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
 
