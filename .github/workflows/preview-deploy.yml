@@ -57,6 +57,13 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
 
+      - name: Generate environment name
+        id: generate_env_name
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
+
       - name: Deploy API preview (Cloudflare Action)
         id: deploy-api
         if: steps.api_changes.outputs.hasApiChanges == 'true'
@@ -64,7 +71,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: "deploy --env=$(echo \"${{ github.head_ref }}\" | sed 's/[^a-zA-Z0-9-]/-/g')"
+          command: "deploy --env=${{ steps.generate_env_name.outputs.ENV_NAME }}"
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
