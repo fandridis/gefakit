@@ -51,6 +51,17 @@ jobs:
           ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
 
+      - name: Create Neon Database Branch for Preview
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        id: create_db_branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: 'super-waterfall-86281505'
+          branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          parent: 'production'
+          role: neondb_owner
+          api_key: ${{ secrets.NEON_API_KEY }}
+
       - name: Deploy API preview (raw CLI)
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
@@ -59,29 +70,27 @@ jobs:
           cd apps/api
           wrangler deploy --name="${ENV_NAME}"
 
-      - name: Create Neon Database Branch for Preview
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
-        uses: neondatabase/create-branch-action@v5
-        with:
-          project_id: 'super-waterfall-86281505'
-          branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
-          parent: 'production'
-          username: 'neondb_owner'
-          api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Push preview secrets
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
-          echo "${{ steps.create_db_branch.outputs.db_url }}" \
-            | wrangler secret put DATABASE_URL --name "$ENV_NAME"
-          echo "${{ steps.create_db_branch.outputs.db_url }}" \
-            | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
-          echo "development" \
-            | wrangler secret put NODE_ENV --name "$ENV_NAME"
+          DB_URL="${{ steps.create_db_branch.outputs.db_url }}"
 
+          # Fallback only if for some reason it's empty
+          if [ -z "$DB_URL" ]; then
+            DB_URL=$(
+              curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+                https://console.neon.tech/api/v2/projects/super-waterfall-86281505/branches/${ENV_NAME} \
+              | jq -r '.connectionString'
+            )
+          fi
 
+          echo "$DB_URL" | wrangler secret put DATABASE_URL --name "$ENV_NAME"
+          echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
+          echo "development" | wrangler secret put NODE_ENV --name "$ENV_NAME"
+          
       - name: Run API tests
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
