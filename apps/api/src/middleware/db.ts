@@ -14,6 +14,8 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
   return async (c: Context, next: Next) => {
     let db: Kysely<DB>;
 
+    console.log('[dbMiddleware] c.env.NODE_ENV', c.env.NODE_ENV);
+
     if (injectedDb) {
       db = injectedDb;
     } else {
