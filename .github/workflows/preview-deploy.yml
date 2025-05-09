@@ -41,6 +41,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ← NEW STEP: only run tests when the API is actually changing
+      - name: Run API tests
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          cd apps/api
+          npm run test
+
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
 
