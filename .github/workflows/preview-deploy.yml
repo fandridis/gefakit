@@ -91,10 +91,17 @@ jobs:
           # Deploy the top-level config under a new script name
           wrangler deploy --name="${ENV_NAME}"
 
-          # now re-attach your secrets to that env
-          echo "${{ secrets.DATABASE_URL }}"    | wrangler secret put DATABASE_URL    --env "$ENV_NAME"
-          # …repeat for each secret…
-
+      - name: Push preview secrets
+        env:
+            ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+        run: |
+            # echo each secret value into wrangler, targeting the worker script name
+            echo "${{ secrets.DATABASE_URL }}" \
+              | wrangler secret put DATABASE_URL --name "$ENV_NAME"
+        
+            # echo "${{ secrets.ANOTHER_SECRET }}" \
+            #   | wrangler secret put ANOTHER_SECRET  --name "$ENV_NAME"
+            # # …and so on for each secret…
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
