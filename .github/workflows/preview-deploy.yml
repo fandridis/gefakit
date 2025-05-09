@@ -18,34 +18,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
 
-      - name: Install pnpm
+      - name: Start
         run: |
-          echo "Installing pnpm..."
-          npm install -g pnpm
-          echo "pnpm installation complete."
-
-      - name: Install dependencies
-        run: |
-          echo "Installing dependencies..."
-          pnpm install --frozen-lockfile
-          echo "Dependency installation complete."
+          echo "Starting..."
 
       - name: Build web app
         working-directory: apps/web
         run: |
           echo "Building web app..."
-          CLOUDFLARE_ENV=gefa tsc -b
-          vite build
-          echo "Web app build complete."
+          npm run build:development
 
       - name: Deploy to Cloudflare Pages
         working-directory: apps/web
         run: |
           echo "Deploying to Cloudflare Pages..."
-          npx wrangler deploy --no-open
-          echo "Deployment to Cloudflare Pages complete."
+          npm run deploy:development
         env:
           CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
