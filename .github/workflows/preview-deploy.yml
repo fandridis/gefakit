@@ -111,10 +111,10 @@ jobs:
           # echo each secret value into wrangler, targeting the worker script name
           echo "${{ steps.create_db_branch.outputs.db_url }}" \
             | wrangler secret put DATABASE_URL --name "$ENV_NAME"
+          echo "development" \
+            | wrangler secret put NODE_ENV --name "$ENV_NAME"
         
-          # echo "${{ secrets.ANOTHER_SECRET }}" \
-          #   | wrangler secret put ANOTHER_SECRET  --name "$ENV_NAME"
-          # # …and so on for each secret…
+          
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
