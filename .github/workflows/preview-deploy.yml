@@ -1,15 +1,10 @@
-# .github/workflows/preview-deploy.yml
-# Required GitHub Secrets and Cloudflare API Token permissions:
-#   - Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NEON_API_KEY
-#   - CLOUDFLARE_API_TOKEN must have User→Read, Workers Scripts→Write, Workers Services→Write, Workers Routes→Edit
-# Triggers on PRs to main, and on branch deletions
 name: Deploy Preview
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     branches:
       - main
-  delete:
 
 jobs:
   preview:
@@ -65,7 +60,6 @@ jobs:
           wrangler deploy --name="${ENV_NAME}"
 
       - name: Create Neon Database Branch for Preview
-        id: create_db_branch
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         uses: neondatabase/create-branch-action@v5
         with:
@@ -101,27 +95,3 @@ jobs:
         run: |
           cd apps/web
           npm run deploy:development
-
-  cleanup:
-    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
-    runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      NEON_API_KEY:          ${{ secrets.NEON_API_KEY }}
-    steps:
-      - name: Delete Cloudflare Worker script
-        run: |
-          BRANCH="${{ github.event.ref }}"
-          echo "Deleting Worker script for branch: $BRANCH"
-          curl -s -X DELETE \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -H "Content-Type: application/json"
-
-      - name: Delete Neon Database Branch
-        uses: neondatabase/delete-branch-action@v3
-        with:
-          project_id: 'super-waterfall-86281505'
-          branch_name: ${{ github.event.ref }}
-          api_key: ${{ secrets.NEON_API_KEY }}

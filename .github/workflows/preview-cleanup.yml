@@ -1,0 +1,29 @@
+name: Cleanup Preview
+
+on:
+  delete:
+
+jobs:
+  cleanup:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+    steps:
+      - name: Delete Cloudflare Worker script
+        run: |
+          BRANCH="${{ github.event.ref }}"
+          echo "Deleting Worker script for branch: $BRANCH"
+          curl -s -X DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json"
+
+      - name: Delete Neon Database Branch
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: 'super-waterfall-86281505'
+          branch: ${{ github.event.ref }}
+          api_key: ${{ secrets.NEON_API_KEY }}
