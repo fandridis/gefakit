@@ -1,33 +1,26 @@
 # .github/workflows/preview-deploy.yml
 # Required GitHub Secrets and Cloudflare API Token permissions:
-#   - Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
-#   - CLOUDFLARE_API_TOKEN must have:
-#       • User -> User Details -> Read
-#       • Account -> Workers Scripts -> Write
-#       • Account -> Workers Services -> Write
-#       • Account -> Workers Routes -> Edit (if using routes)
-#       • (Optional) Account -> Account Settings -> Read for some deploy commands
-# Triggers on pull requests to main
-# Deploys API preview (only if API changed), captures its URL, then builds & deploys web preview with that URL
+#   - Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NEON_API_KEY
+#   - CLOUDFLARE_API_TOKEN must have User→Read, Workers Scripts→Write, Workers Services→Write, Workers Routes→Edit
+# Triggers on PRs to main, and on branch deletions
 name: Deploy Preview
 
 on:
   pull_request:
     branches:
       - main
+  delete:
 
 jobs:
   preview:
     runs-on: ubuntu-latest
     env:
-      # Cloudflare credentials stored in repo secrets
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # need full history to diff against main
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -38,7 +31,6 @@ jobs:
       - name: Check for API changes
         id: api_changes
         run: |
-          # compare this branch against main for any changes under apps/api/
           git fetch origin main
           if git diff --quiet origin/main...HEAD -- apps/api/; then
             echo "hasApiChanges=false" >> $GITHUB_OUTPUT
@@ -64,31 +56,12 @@ jobs:
           ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
 
-      # - name: Deploy API preview (Cloudflare Action)
-      #   id: deploy-api
-      #   if: steps.api_changes.outputs.hasApiChanges == 'true'
-      #   uses: cloudflare/wrangler-action@v3
-      #   with:
-      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      #     command: "deploy --env=${{ steps.generate_env_name.outputs.ENV_NAME }}"
-
-      # - name: Deploy API preview (Cloudflare Action)
-      #   uses: cloudflare/wrangler-action@v3
-      #   with:
-      #     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      #     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      #     # instead of `environment:` here, pass the name override:
-      #     name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
-      #     command: deploy
-
       - name: Deploy API preview (raw CLI)
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
           cd apps/api
-          # Deploy the top-level config under a new script name
           wrangler deploy --name="${ENV_NAME}"
 
       - name: Create Neon Database Branch for Preview
@@ -98,23 +71,19 @@ jobs:
         with:
           project_id: 'super-waterfall-86281505'
           branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
-          parent: 'production' # Fork from production branch
-          username: 'neondb_owner' # Assumed from your example connection string
+          parent: 'production'
+          username: 'neondb_owner'
           api_key: ${{ secrets.NEON_API_KEY }}
-          # database: 'neondb' # This is the default and matches your example
 
       - name: Push preview secrets
-        if: steps.api_changes.outputs.hasApiChanges == 'true' # Ensure this runs only when a new DB branch is created
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
-          # echo each secret value into wrangler, targeting the worker script name
           echo "${{ steps.create_db_branch.outputs.db_url }}" \
             | wrangler secret put DATABASE_URL --name "$ENV_NAME"
           echo "development" \
             | wrangler secret put NODE_ENV --name "$ENV_NAME"
-        
-          
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
@@ -132,6 +101,27 @@ jobs:
         run: |
           cd apps/web
           npm run deploy:development
-          # wrangler deploy \
-          #   --name gefakit-web-production \
-          #   --env preview
+
+  cleanup:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NEON_API_KEY:          ${{ secrets.NEON_API_KEY }}
+    steps:
+      - name: Delete Cloudflare Worker script
+        run: |
+          BRANCH="${{ github.event.ref }}"
+          echo "Deleting Worker script for branch: $BRANCH"
+          curl -s -X DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json"
+
+      - name: Delete Neon Database Branch
+        uses: neondatabase/delete-branch-action@v5
+        with:
+          project_id: 'super-waterfall-86281505'
+          branch_name: ${{ github.event.ref }}
+          api_key: ${{ secrets.NEON_API_KEY }}
