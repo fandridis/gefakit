@@ -57,26 +57,56 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
 
+      # ─────────────────────────────────────────────────────────────────────────────
+      # Dynamic Wrangler config generation for branch-based env names
       - name: Generate environment name
         id: generate_env_name
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
-          ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
+          # sanitize branch to be alphanumeric + dashes only
+          BRANCH=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
+          echo "ENV_NAME=$BRANCH" >> $GITHUB_OUTPUT
 
-      - name: Deploy API preview (Cloudflare Action)
-        id: deploy-api
+      - name: Create dynamic wrangler.toml
         if: steps.api_changes.outputs.hasApiChanges == 'true'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: "deploy --env=${{ steps.generate_env_name.outputs.ENV_NAME }}"
+        run: |
+          # Basic static fields from your original wrangler.toml
+          cat > wrangler.generated.toml <<EOF
+          name = "gefakit-api"
+          type = "javascript"
+          account_id = "${{ env.CLOUDFLARE_ACCOUNT_ID }}"
+          workers_dev = true
+
+          [env.${{ steps.generate_env_name.outputs.ENV_NAME }}]
+          name = "gefakit-api-${{ steps.generate_env_name.outputs.ENV_NAME }}"
+          workers_dev = true
+          EOF
+
+      - name: Deploy API preview
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          npx wrangler deploy \
+            --config wrangler.generated.toml \
+            --env ${{ steps.generate_env_name.outputs.ENV_NAME }} \
+            --api-token ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      # ─────────────────────────────────────────────────────────────────────────────
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
         run: |
           echo "PREVIEW_API_URL=https://gefakit-api-production.fandridis.workers.dev" >> $GITHUB_ENV
+
+      - name: Capture API preview URL
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        run: |
+          # Wrangler will print the URL as the last line; capture it from stdout
+          PREVIEW_URL=$(npx wrangler deploy \
+            --config wrangler.generated.toml \
+            --env ${{ steps.generate_env_name.outputs.ENV_NAME }} \
+            --api-token ${{ secrets.CLOUDFLARE_API_TOKEN }} --dry-run \
+            | tail -n1)
+          echo "PREVIEW_API_URL=$PREVIEW_URL" >> $GITHUB_ENV
 
       - name: Build web with preview API URL
         env:
@@ -89,6 +119,3 @@ jobs:
         run: |
           cd apps/web
           npm run deploy:development
-          # wrangler deploy \
-          #   --name gefakit-web-production \
-          #   --env preview
