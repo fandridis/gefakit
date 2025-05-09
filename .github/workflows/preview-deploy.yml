@@ -23,6 +23,14 @@ jobs:
         run: |
           echo "Starting..."
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm i
+
       - name: Build web app
         working-directory: apps/web
         run: |
