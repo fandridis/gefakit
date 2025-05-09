@@ -91,17 +91,30 @@ jobs:
           # Deploy the top-level config under a new script name
           wrangler deploy --name="${ENV_NAME}"
 
+      - name: Create Neon Database Branch for Preview
+        id: create_db_branch
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: 'super-waterfall-86281505'
+          branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          parent: 'production' # Fork from production branch
+          username: 'neondb_owner' # Assumed from your example connection string
+          api_key: ${{ secrets.NEON_API_KEY }}
+          # database: 'neondb' # This is the default and matches your example
+
       - name: Push preview secrets
+        if: steps.api_changes.outputs.hasApiChanges == 'true' # Ensure this runs only when a new DB branch is created
         env:
-            ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
-            # echo each secret value into wrangler, targeting the worker script name
-            echo "${{ secrets.DATABASE_URL }}" \
-              | wrangler secret put DATABASE_URL --name "$ENV_NAME"
+          # echo each secret value into wrangler, targeting the worker script name
+          echo "${{ steps.create_db_branch.outputs.db_url }}" \
+            | wrangler secret put DATABASE_URL --name "$ENV_NAME"
         
-            # echo "${{ secrets.ANOTHER_SECRET }}" \
-            #   | wrangler secret put ANOTHER_SECRET  --name "$ENV_NAME"
-            # # …and so on for each secret…
+          # echo "${{ secrets.ANOTHER_SECRET }}" \
+          #   | wrangler secret put ANOTHER_SECRET  --name "$ENV_NAME"
+          # # …and so on for each secret…
 
       - name: Set default API URL
         if: steps.api_changes.outputs.hasApiChanges == 'false'
