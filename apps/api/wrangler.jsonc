@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "gefakit-api",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-04-08",
+	"compatibility_date": "2025-05-09",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
