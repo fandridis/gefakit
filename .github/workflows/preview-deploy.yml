@@ -1,27 +1,50 @@
-name: Deploy to Cloudflare Pages
+# .github/workflows/preview-deploy.yml
+# Required GitHub Secrets and Cloudflare API Token permissions:
+#   - Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   - CLOUDFLARE_API_TOKEN must have:
+#       • User -> User Details -> Read
+#       • Account -> Workers Scripts -> Write
+#       • Account -> Workers Services -> Write
+#       • Account -> Workers Routes -> Edit (if using routes)
+#       • (Optional) Account -> Account Settings -> Read for some deploy commands
+# Triggers on pull requests to main
+# Deploys API preview (only if API changed), captures its URL, then builds & deploys web preview with that URL
+name: Deploy Preview
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 jobs:
-  deploy:
-    name: Deploy
+  preview:
     runs-on: ubuntu-latest
+    env:
+      # Cloudflare credentials stored in repo secrets
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          # need full history to diff against main
+          fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Start
+      - name: Check for API changes
+        id: api_changes
         run: |
-          echo "Starting..."
+          # compare this branch against main for any changes under apps/api/
+          git fetch origin main
+          if git diff --quiet origin/main...HEAD -- apps/api/; then
+            echo "hasApiChanges=false" >> $GITHUB_OUTPUT
+          else
+            echo "hasApiChanges=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
@@ -29,20 +52,37 @@ jobs:
           version: 10
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm install --frozen-lockfile
 
-      - name: Build web app
-        working-directory: apps/web
-        run: |
-          echo "Building web app..."
-          npm run build:development
+      - name: Install Wrangler
+        run: npm install -g wrangler@3.74.0
 
-      - name: Deploy to Cloudflare Pages
-        working-directory: apps/web
+      - name: Deploy API preview
+        id: deploy-api
+        if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
-          echo "Deploying to Cloudflare Pages..."
-          npm run deploy:development
+          # Only upload API preview if there were changes
+          PREVIEW_API_URL=$(wrangler versions upload \
+            --name gefakit-api-production \
+            --env preview \
+          | grep 'Preview URL:' | awk '{print $3}')
+          echo "PREVIEW_API_URL=$PREVIEW_API_URL" >> $GITHUB_ENV
+
+      - name: Set default API URL
+        if: steps.api_changes.outputs.hasApiChanges == 'false'
+        run: |
+          echo "PREVIEW_API_URL=https://gefakit-api-production.fandridis.workers.dev" >> $GITHUB_ENV
+
+      - name: Build web with preview API URL
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_PROJECT_NAME: ${{ secrets.CLOUDFLARE_PROJECT_NAME }} # Added project name
+          API_URL: ${{ env.PREVIEW_API_URL }}
+        run: |
+          cd packages/web
+          pnpm run build
+
+      - name: Deploy web preview
+        run: |
+          cd packages/web
+          wrangler deploy \
+            --name gefakit-web-production \
+            --env preview
