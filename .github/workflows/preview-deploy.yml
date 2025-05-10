@@ -68,8 +68,7 @@ jobs:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
           cd apps/api
-          wrangler deploy --name="${ENV_NAME}"
-
+          wrangler deploy --name="${ENV_NAME}-api" --var APP_URL:"https://${ENV_NAME}-web.fandridis.workers.dev"
 
       - name: Push preview secrets
         if: steps.api_changes.outputs.hasApiChanges == 'true'
@@ -87,9 +86,9 @@ jobs:
             )
           fi
 
-          echo "$DB_URL" | wrangler secret put DATABASE_URL --name "$ENV_NAME"
-          echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
-          echo "development" | wrangler secret put NODE_ENV --name "$ENV_NAME"
+          echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${ENV_NAME}-api"
+          echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${ENV_NAME}-api"
+          echo "development" | wrangler secret put NODE_ENV --name "${ENV_NAME}-api"
 
           echo "DATABASE_URL=$DB_URL"      >> $GITHUB_ENV
           echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
@@ -107,6 +106,7 @@ jobs:
           NODE_ENV:          ${{ env.NODE_ENV }}
           NEON_API_KEY:      ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID:   ${{ secrets.NEON_PROJECT_ID }}
+          APP_URL:           ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-web.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
         run: |
           cd apps/api
           npm run test
@@ -118,12 +118,18 @@ jobs:
 
       - name: Build web with preview API URL
         env:
-          API_URL: ${{ env.PREVIEW_API_URL }}
+          API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          VITE_API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          CLOUDFLARE_ENV: development
+          VITE_NODE_ENV: development
         run: |
           cd apps/web
           npm run build:development
 
       - name: Deploy web preview
+        env:
+          ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
           cd apps/web
-          npm run deploy:development
+          # Deploy the web worker
+          wrangler deploy --name="${ENV_NAME}-web"
