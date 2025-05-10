@@ -119,6 +119,9 @@ jobs:
       - name: Build web with preview API URL
         env:
           API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          VITE_API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          CLOUDFLARE_ENV: development
+          VITE_NODE_ENV: development
         run: |
           cd apps/web
           npm run build:development
@@ -128,10 +131,5 @@ jobs:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
           cd apps/web
-          # Set environment variables for the web worker
-          echo "development" | wrangler secret put CLOUDFLARE_ENV --name "${ENV_NAME}-web"
-          echo "development" | wrangler secret put VITE_NODE_ENV --name "${ENV_NAME}-web"
-          echo "https://${ENV_NAME}-api.fandridis.workers.dev" | wrangler secret put VITE_API_URL --name "${ENV_NAME}-web"
-          
           # Deploy the web worker
           wrangler deploy --name="${ENV_NAME}-web"

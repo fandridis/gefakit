@@ -44,6 +44,8 @@ function InnerApp() {
   const [isLoadingForTheFirstTime, setIsLoadingForTheFirstTime] = useState(true)
   const queryClient = useQueryClient()
 
+  console.log('[INNER API]: API_URL', import.meta.env.VITE_API_URL)
+
   /**
    * This is just to make sure the session is loaded on a fresh page load.
    * Using useAuth() would not work here because it would cause an infinite loop.
