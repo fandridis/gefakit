@@ -90,6 +90,8 @@ jobs:
           echo "$DB_URL" | wrangler secret put DATABASE_URL --name "$ENV_NAME"
           echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "$ENV_NAME"
           echo "development" | wrangler secret put NODE_ENV --name "$ENV_NAME"
+          echo "${{ secrets.NEON_API_KEY }}" | wrangler secret put NEON_API_KEY --name "$ENV_NAME"
+          echo "${{ secrets.NEON_PROJECT_ID }}" | wrangler secret put NEON_PROJECT_ID --name "$ENV_NAME"
 
           echo "DATABASE_URL=$DB_URL"      >> $GITHUB_ENV
           echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
