@@ -1,3 +1,4 @@
+// migrate.ts
 import * as path from 'path'
 import { promises as fs } from 'fs'
 import {
@@ -5,25 +6,46 @@ import {
     Migrator,
     FileMigrationProvider,
 } from 'kysely'
-import { NeonDialect } from 'kysely-neon'
 import { config } from 'dotenv'
 import { getDb } from '../lib/db'
+import { fileURLToPath } from 'url'
 
-console.log('process.env.NODE_ENV', process.env.NODE_ENV)
+// don't load your .dev.vars defaults if we're testing
+if (process.env.NODE_ENV === 'test') {
+    // if you want to load a .env.test, you could do:
+    // config({ path: '.env.test' })
+} else {
+    const env = process.env.NODE_ENV || 'development'
+    const envFile =
+        env === 'production'
+            ? '.dev.vars.production'
+            : '.dev.vars'
+    config({ path: envFile })
+}
 
-const env = process.env.NODE_ENV || 'development'
-const envFile =
-    env === 'production'
-        ? '.dev.vars.production'
-        : '.dev.vars'
+// Get the directory path in ESM
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-// Load environment variables from the appropriate file
-config({ path: envFile })
+console.log('================ migrate script =================')
+console.log('WITH NODE_ENV: ', process.env.NODE_ENV)
 
 async function migrateToLatest() {
-    const DB_URL = process.env.NODE_ENV === 'test'
-        ? process.env.TEST_DATABASE_URL
-        : process.env.DATABASE_URL
+    // order of precedence:
+    // 1) MIGRATE_DATABASE_URL
+    // 2) if NODE_ENV==='test', TEST_DATABASE_URL
+    // 3) otherwise DATABASE_URL
+    const DB_URL =
+        process.env.MIGRATE_DATABASE_URL
+        ?? (process.env.NODE_ENV === 'test'
+            ? process.env.TEST_DATABASE_URL
+            : process.env.DATABASE_URL)
+
+    console.log('using the db_url', DB_URL)
+    if (!DB_URL) {
+        console.error('No database connection string provided!')
+        process.exit(1)
+    }
 
     const db = getDb({ connectionString: DB_URL })
 
@@ -32,28 +54,28 @@ async function migrateToLatest() {
         provider: new FileMigrationProvider({
             fs,
             path,
-            // This needs to be an absolute path.
             migrationFolder: path.join(__dirname, 'migrations'),
         }),
     })
 
     const { error, results } = await migrator.migrateToLatest()
-
     results?.forEach((it) => {
         if (it.status === 'Success') {
-            console.log(`migration "${it.migrationName}" was executed successfully`)
-        } else if (it.status === 'Error') {
-            console.error(`failed to execute migration "${it.migrationName}"`)
+            console.log(`✅  migration "${it.migrationName}" executed`)
+        } else {
+            console.error(`❌  migration "${it.migrationName}" failed`)
         }
     })
 
     if (error) {
-        console.error('failed to migrate')
-        console.error(error)
+        console.error('Migration failed:', error)
         process.exit(1)
     }
 
     await db.destroy()
 }
 
-migrateToLatest()
+migrateToLatest().catch((err) => {
+    console.error(err)
+    process.exit(1)
+})

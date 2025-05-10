@@ -46,7 +46,7 @@ describe('Organization API Integration Tests', () => {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }
 
-    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: false });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {

@@ -7,9 +7,11 @@ export default defineWorkersConfig({
     },
   },
   test: {
-    // env: {
-    //   DATABASE_URL_POOLED: 'postgresql://neondb_owner:npg_v9IioTkZd6RY@ep-withered-heart-a2fk19ng-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require',
-    // },
+    env: {
+      NODE_ENV: 'test',
+      TEST_DATABASE_URL: process.env.TEST_DATABASE_URL,
+      DATABASE_URL: process.env.DATABASE_URL
+    },
     globalSetup: './test/global-setup.ts',
     setupFiles: ['./test/setup-files.ts'],
     poolOptions: {

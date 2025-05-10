@@ -1,5 +1,6 @@
 {
 	"name": "gefakit-api",
+	"type": "module",
 	"scripts": {
 		"dev": "wrangler dev",
 		"dev:production:yes-i-am-sure": "wrangler dev --remote --env production",
@@ -11,12 +12,13 @@
 		"db:migrate:development": "cross-env NODE_ENV=development tsx ./src/db/migrate.ts",
 		"db:migrate:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/migrate.ts",
 		"db:migrate:test": "cross-env NODE_ENV=test tsx ./src/db/migrate.ts",
+		"migrate:test": "cross-env NODE_ENV=test MIGRATE_DATABASE_URL=$TEST_DATABASE_URL ts-node ./scripts/migrate.ts",
 		"db:migrate:down:development": "cross-env NODE_ENV=development tsx ./src/db/migrate-down.ts",
 		"db:migrate:down:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/migrate-down.ts",
 		"db:seed:file": "cross-env NODE_ENV=development tsx ./src/db/seeds/seed-runner.ts",
 		"db:drop:development": "cross-env NODE_ENV=development tsx ./src/db/seeds/drop.ts",
 		"db:drop:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/seeds/drop.ts",
-		"test": "vitest run"
+		"test": "cross-env NODE_ENV=test tsx ./scripts/test.ts"
 	},
 	"dependencies": {
 		"@gefakit/shared": "workspace:*",
@@ -43,8 +45,9 @@
 		"@types/node": "^22.14.0",
 		"@types/pg": "^8.11.14",
 		"dotenv": "^16.5.0",
+		"execa": "^9.5.3",
 		"kysely-codegen": "^0.18.3",
-		"tsx": "^4.19.3",
+		"tsx": "^4.19.4",
 		"vitest": "~3.0.0",
 		"wrangler": "^4.10.0"
 	}

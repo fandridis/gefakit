@@ -77,7 +77,7 @@ describe('Organization Invitation API Integration Tests', () => {
   beforeAll(async () => {
     const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) throw new Error("TEST_DATABASE_URL not set.");
-    testDb = getDb({ connectionString: dbUrl, useHyperdrive: true });
+    testDb = getDb({ connectionString: dbUrl, useHyperdrive: false });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
