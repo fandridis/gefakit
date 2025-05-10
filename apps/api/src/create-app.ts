@@ -93,7 +93,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   /** Add a health check route */
   app.get('/api/health', (c) => {
-    return c.json({ ok: true, message: 'prod 16', processEnv: JSON.stringify(process.env) });
+    return c.json({ ok: true, message: 'prod 17', processEnv: JSON.stringify(process.env) });
   });
 
   // Apply services middleware - has to be after db middleware

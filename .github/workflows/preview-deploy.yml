@@ -89,6 +89,7 @@ jobs:
           echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${ENV_NAME}-api"
           echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${ENV_NAME}-api"
           echo "development" | wrangler secret put NODE_ENV --name "${ENV_NAME}-api"
+          echo "https://${ENV_NAME}-web.fandridis.workers.dev" | wrangler secret put APP_URL --name "${ENV_NAME}-api"
 
           echo "DATABASE_URL=$DB_URL"      >> $GITHUB_ENV
           echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
