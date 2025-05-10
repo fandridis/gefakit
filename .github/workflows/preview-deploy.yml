@@ -107,6 +107,7 @@ jobs:
           NODE_ENV:          ${{ env.NODE_ENV }}
           NEON_API_KEY:      ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID:   ${{ secrets.NEON_PROJECT_ID }}
+          APP_URL:           ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
         run: |
           cd apps/api
           npm run test
@@ -118,12 +119,14 @@ jobs:
 
       - name: Build web with preview API URL
         env:
-          API_URL: ${{ env.PREVIEW_API_URL }}
+          API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
         run: |
           cd apps/web
           npm run build:development
 
       - name: Deploy web preview
+        env:
+          ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
         run: |
           cd apps/web
-          npm run deploy:development
+          wrangler deploy --name="${ENV_NAME}"
