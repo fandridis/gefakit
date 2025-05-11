@@ -160,8 +160,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const envName = '${{ steps.generate_env_name.outputs.ENV_NAME }}';
+            const workerName = '${{ steps.generate_env_name.outputs.WORKER_NAME }}';
             const hasApiChanges = '${{ steps.api_changes.outputs.hasApiChanges }}' === 'true';
-            const webUrl = `https://${envName}-web.fandridis.workers.dev`;
+            const webUrl = `https://${workerName}-web.fandridis.workers.dev`;
             
             // Get the latest commit message
             const commits = await github.rest.pulls.listCommits({
@@ -177,7 +178,7 @@ jobs:
               `- Web: ${webUrl}\n`;
             
             if (hasApiChanges) {
-              const apiUrl = `https://${envName}-api.fandridis.workers.dev`;
+              const apiUrl = `https://${workerName}-api.fandridis.workers.dev`;
               message += `- API: ${apiUrl}\n`;
             }
             
