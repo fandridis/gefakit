@@ -41,6 +41,7 @@ jobs:
         run: npm install -g wrangler@4.10.0
 
       - name: Run database migrations
+        id: migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -49,17 +50,20 @@ jobs:
           pnpm db:migrate:production:yes-i-am-sure
 
       - name: Deploy API
+        id: deploy
         run: |
           cd apps/api
           echo "Deploying production API worker"
           pnpm deploy:production:yes-i-am-sure
 
-    # Production secrets are already set in the production environment
-    #   - name: Push production secrets
-    #     run: |
-    #       # Push production database URL
-    #       echo "${{ secrets.DATABASE_URL }}" | wrangler secret put DATABASE_URL --name "api"
-    #       echo "production" | wrangler secret put NODE_ENV --name "api"
+      - name: Rollback migrations on deployment failure
+        if: steps.deploy.outcome == 'failure'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd apps/api
+          echo "Deployment failed, rolling back migrations..."
+          pnpm db:migrate:down:production:yes-i-am-sure
 
       - name: Build web with production API URL
         env:
