@@ -153,6 +153,7 @@ jobs:
             const webUrl = `https://${envName}-web.fandridis.workers.dev`;
             
             let message = `## 🚀 Preview Deployment\n\n` +
+              `Latest commit: ${context.payload.head_commit.message}\n\n` +
               `Your changes have been deployed to preview environments:\n\n` +
               `- Web: ${webUrl}\n`;
             
@@ -163,9 +164,32 @@ jobs:
             
             message += `\nThese previews will be automatically deleted when the PR is closed.`;
             
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: message
+              issue_number: context.issue.number
             });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.startsWith('## 🚀 Preview Deployment')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: message
+              });
+            } else {
+              // Create new comment if none exists
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message
+              });
+            }
