@@ -1,0 +1,77 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+
+# Add permissions block
+permissions:
+  contents: read
+
+# Add custom run name
+run-name: "Deploy Production: ${{ github.sha }}"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@4.10.0
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd apps/api
+          echo "Running database migrations..."
+          tsx src/db/migrate.ts
+
+      - name: Deploy API
+        run: |
+          cd apps/api
+          echo "Deploying production API worker"
+          wrangler deploy --name="gefakit-api-production" --var APP_URL:"https://gefakit-web-production.fandridis.workers.dev" --minify
+
+    # Production secrets are already set in the production environment
+    #   - name: Push production secrets
+    #     run: |
+    #       # Push production database URL
+    #       echo "${{ secrets.DATABASE_URL }}" | wrangler secret put DATABASE_URL --name "api"
+    #       echo "production" | wrangler secret put NODE_ENV --name "api"
+
+      - name: Build web with production API URL
+        env:
+          VITE_API_URL: https://gefakit-api-production.fandridis.workers.dev
+          CLOUDFLARE_ENV: production
+          VITE_NODE_ENV: production
+        run: |
+          cd apps/web
+          npm run build:production
+
+      - name: Deploy web
+        run: |
+          cd apps/web
+          echo "Deploying production web worker"
+          wrangler deploy --name="gefakit-web-production"
