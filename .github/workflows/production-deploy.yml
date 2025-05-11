@@ -52,7 +52,7 @@ jobs:
         run: |
           cd apps/api
           echo "Deploying production API worker"
-          wrangler deploy --name="gefakit-api-production" --var APP_URL:"https://gefakit-web-production.fandridis.workers.dev" --minify
+          pnpm deploy:production:yes-i-am-sure
 
     # Production secrets are already set in the production environment
     #   - name: Push production secrets
