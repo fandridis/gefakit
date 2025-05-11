@@ -11,6 +11,9 @@ permissions:
   contents: read
   pull-requests: write
 
+# Add custom run name
+run-name: "Deploy Preview: ${{ github.head_ref }}"
+
 jobs:
   preview:
     runs-on: ubuntu-latest

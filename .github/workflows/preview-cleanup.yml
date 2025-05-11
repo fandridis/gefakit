@@ -3,6 +3,9 @@ name: Cleanup Preview
 on:
   delete:
 
+# Add custom run name
+run-name: "Cleanup Preview: ${{ github.event.ref }}"
+
 jobs:
   cleanup:
     if: github.event.ref_type == 'branch'
