@@ -12,18 +12,33 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
     steps:
-      - name: Delete Cloudflare Worker script
+      - name: Delete Cloudflare Worker scripts
         run: |
           BRANCH="${{ github.event.ref }}"
-          echo "Deleting Worker script for branch: $BRANCH"
+          echo "Deleting Worker scripts for branch: $BRANCH"
+          
+          # Delete web worker
           curl -s -X DELETE \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}-web" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json"
+            
+          # Delete API worker
+          curl -s -X DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}-api" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json"
 
-      - name: Delete Neon Database Branch
-        uses: neondatabase/delete-branch-action@v3
-        with:
-          project_id: 'super-waterfall-86281505'
-          branch: ${{ github.event.ref }}
-          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Setup Neon CLI
+        run: npm i -g neonctl@v2
+
+      - name: Check and Delete Neon Database Branch
+        run: |
+          BRANCH="${{ github.event.ref }}"
+          # List all branches and check if our branch exists
+          if neonctl branches list --project-id 'super-waterfall-86281505' --api-key "${{ secrets.NEON_API_KEY }}" | grep -q "$BRANCH"; then
+            echo "Deleting Neon database branch: $BRANCH"
+            neonctl branches delete --project-id 'super-waterfall-86281505' --branch "$BRANCH" --api-key "${{ secrets.NEON_API_KEY }}"
+          else
+            echo "Branch $BRANCH not found in Neon database, skipping deletion"
+          fi
