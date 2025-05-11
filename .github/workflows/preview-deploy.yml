@@ -45,14 +45,6 @@ jobs:
           parent: 'production'
           username: 'neondb_owner'
           api_key: ${{ secrets.NEON_API_KEY }}
-        continue-on-error: true
-
-      - name: Debug Neon Action Output
-        run: |
-          echo "Checking Neon action outputs..."
-          echo "DB Branch Name: ${{ steps.generate_env_name.outputs.DB_BRANCH_NAME }}"
-          echo "Project ID: ${{ secrets.NEON_PROJECT_ID }}"
-          echo "API Key exists: ${{ secrets.NEON_API_KEY != '' }}"
 
   deploy-api:
     needs: setup
@@ -97,29 +89,11 @@ jobs:
           WORKER_NAME: ${{ needs.setup.outputs.worker_name }}
         run: |
           # Get the database URL directly from Neon API
-          # First try to get the branch by name
-          BRANCH_RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-            "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches?branch_name=${ENV_NAME}")
-          
-          # Extract branch ID from the response
-          BRANCH_ID=$(echo "$BRANCH_RESPONSE" | jq -r '.branches[0].id')
-          
-          if [ -z "$BRANCH_ID" ]; then
-            echo "Could not find branch ID, trying to get connection string directly..."
-            DB_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-              "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${ENV_NAME}" \
-              | jq -r '.connectionString')
-          else
-            echo "Found branch ID: $BRANCH_ID"
-            DB_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-              "https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${BRANCH_ID}" \
-              | jq -r '.connectionString')
-          fi
-
-          if [ -z "$DB_URL" ]; then
-            echo "Error: Could not get database URL"
-            exit 1
-          fi
+          DB_URL=$(
+            curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+              https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${ENV_NAME} \
+            | jq -r '.connectionString'
+          )
 
           echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${WORKER_NAME}-api"
           echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${WORKER_NAME}-api"
