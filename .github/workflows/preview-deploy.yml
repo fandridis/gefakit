@@ -6,6 +6,14 @@ on:
     branches:
       - main
 
+# Add permissions block
+permissions:
+  contents: read
+  pull-requests: write
+
+# Add custom run name
+run-name: "Deploy Preview: ${{ github.head_ref }}"
+
 jobs:
   preview:
     runs-on: ubuntu-latest
@@ -50,14 +58,15 @@ jobs:
         run: |
           ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "DB_BRANCH_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
 
       - name: Create Neon Database Branch for Preview
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         id: create_db_branch
         uses: neondatabase/create-branch-action@v5
         with:
-          project_id: 'super-waterfall-86281505'
-          branch_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: ${{ steps.generate_env_name.outputs.DB_BRANCH_NAME }}
           parent: 'production'
           username: 'neondb_owner'
           api_key: ${{ secrets.NEON_API_KEY }}
@@ -81,7 +90,7 @@ jobs:
           if [ -z "$DB_URL" ]; then
             DB_URL=$(
               curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-                https://console.neon.tech/api/v2/projects/super-waterfall-86281505/branches/${ENV_NAME} \
+                https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${ENV_NAME} \
               | jq -r '.connectionString'
             )
           fi
@@ -133,3 +142,62 @@ jobs:
           cd apps/web
           # Deploy the web worker
           wrangler deploy --name="${ENV_NAME}-web"
+
+      - name: Comment PR with preview URLs
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const envName = '${{ steps.generate_env_name.outputs.ENV_NAME }}';
+            const hasApiChanges = '${{ steps.api_changes.outputs.hasApiChanges }}' === 'true';
+            const webUrl = `https://${envName}-web.fandridis.workers.dev`;
+            
+            // Get the latest commit message
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            const latestCommit = commits.data[commits.data.length - 1];
+            
+            let message = `## 🚀 Preview Deployment\n\n` +
+              `Latest commit: ${latestCommit.commit.message}\n\n` +
+              `Your changes have been deployed to preview environments:\n\n` +
+              `- Web: ${webUrl}\n`;
+            
+            if (hasApiChanges) {
+              const apiUrl = `https://${envName}-api.fandridis.workers.dev`;
+              message += `- API: ${apiUrl}\n`;
+            }
+            
+            message += `\nThese previews will be automatically deleted when the PR is closed.`;
+            
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.startsWith('## 🚀 Preview Deployment')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: message
+              });
+            } else {
+              // Create new comment if none exists
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: message
+              });
+            }
