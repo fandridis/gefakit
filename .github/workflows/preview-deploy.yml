@@ -31,16 +31,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Check for API changes
-        id: api_changes
-        run: |
-          git fetch origin main
-          if git diff --quiet origin/main...HEAD -- apps/api/; then
-            echo "hasApiChanges=false" >> $GITHUB_OUTPUT
-          else
-            echo "hasApiChanges=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -54,14 +44,19 @@ jobs:
 
       - name: Generate environment name
         id: generate_env_name
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
-          ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
+          # Convert to lowercase and replace any non-alphanumeric chars with dashes
+          ENV_NAME=$(echo "${{ github.head_ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
           echo "DB_BRANCH_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "WORKER_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
+          
+          # Debug logging
+          echo "Original branch name: ${{ github.head_ref }}"
+          echo "Generated ENV_NAME: $ENV_NAME"
+          echo "Generated WORKER_NAME: deploy-preview-$ENV_NAME"
 
       - name: Create Neon Database Branch for Preview
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         id: create_db_branch
         uses: neondatabase/create-branch-action@v5
         with:
@@ -72,17 +67,18 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Deploy API preview (raw CLI)
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          WORKER_NAME: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
         run: |
           cd apps/api
-          wrangler deploy --name="${ENV_NAME}-api" --var APP_URL:"https://${ENV_NAME}-web.fandridis.workers.dev"
+          echo "Deploying API worker with name: ${WORKER_NAME}-api"
+          wrangler deploy --name="${WORKER_NAME}-api" --var APP_URL:"https://${WORKER_NAME}-web.fandridis.workers.dev"
 
       - name: Push preview secrets
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          WORKER_NAME: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
         run: |
           DB_URL="${{ steps.create_db_branch.outputs.db_url }}"
 
@@ -95,40 +91,33 @@ jobs:
             )
           fi
 
-          echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${ENV_NAME}-api"
-          echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${ENV_NAME}-api"
-          echo "development" | wrangler secret put NODE_ENV --name "${ENV_NAME}-api"
+          echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${WORKER_NAME}-api"
+          echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${WORKER_NAME}-api"
+          echo "development" | wrangler secret put NODE_ENV --name "${WORKER_NAME}-api"
 
           echo "DATABASE_URL=$DB_URL"      >> $GITHUB_ENV
           echo "TEST_DATABASE_URL=$DB_URL" >> $GITHUB_ENV
           echo "NODE_ENV=test"             >> $GITHUB_ENV
 
       - name: Debug DB_URL
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: echo "› DATABASE_URL is now → $DATABASE_URL"
           
       - name: Run API tests
-        if: steps.api_changes.outputs.hasApiChanges == 'true'
         env:
           DATABASE_URL:      ${{ env.DATABASE_URL }}
           TEST_DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
           NODE_ENV:          ${{ env.NODE_ENV }}
           NEON_API_KEY:      ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID:   ${{ secrets.NEON_PROJECT_ID }}
-          APP_URL:           ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-web.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          APP_URL:           ${{ format('https://{0}-web.fandridis.workers.dev', steps.generate_env_name.outputs.WORKER_NAME) }}
         run: |
           cd apps/api
           npm run test
 
-      - name: Set default API URL
-        if: steps.api_changes.outputs.hasApiChanges == 'false'
-        run: |
-          echo "PREVIEW_API_URL=https://gefakit-api-production.fandridis.workers.dev" >> $GITHUB_ENV
-
       - name: Build web with preview API URL
         env:
-          API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
-          VITE_API_URL: ${{ steps.api_changes.outputs.hasApiChanges == 'true' && format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.ENV_NAME) || env.PREVIEW_API_URL }}
+          API_URL: ${{ format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.WORKER_NAME) }}
+          VITE_API_URL: ${{ format('https://{0}-api.fandridis.workers.dev', steps.generate_env_name.outputs.WORKER_NAME) }}
           CLOUDFLARE_ENV: development
           VITE_NODE_ENV: development
         run: |
@@ -138,10 +127,12 @@ jobs:
       - name: Deploy web preview
         env:
           ENV_NAME: ${{ steps.generate_env_name.outputs.ENV_NAME }}
+          WORKER_NAME: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
         run: |
           cd apps/web
+          echo "Deploying web worker with name: ${WORKER_NAME}-web"
           # Deploy the web worker
-          wrangler deploy --name="${ENV_NAME}-web"
+          wrangler deploy --name="${WORKER_NAME}-web"
 
       - name: Comment PR with preview URLs
         uses: actions/github-script@v7
@@ -149,8 +140,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const envName = '${{ steps.generate_env_name.outputs.ENV_NAME }}';
-            const hasApiChanges = '${{ steps.api_changes.outputs.hasApiChanges }}' === 'true';
-            const webUrl = `https://${envName}-web.fandridis.workers.dev`;
+            const workerName = '${{ steps.generate_env_name.outputs.WORKER_NAME }}';
+            const webUrl = `https://${workerName}-web.fandridis.workers.dev`;
+            const apiUrl = `https://${workerName}-api.fandridis.workers.dev`;
             
             // Get the latest commit message
             const commits = await github.rest.pulls.listCommits({
@@ -163,14 +155,9 @@ jobs:
             let message = `## 🚀 Preview Deployment\n\n` +
               `Latest commit: ${latestCommit.commit.message}\n\n` +
               `Your changes have been deployed to preview environments:\n\n` +
-              `- Web: ${webUrl}\n`;
-            
-            if (hasApiChanges) {
-              const apiUrl = `https://${envName}-api.fandridis.workers.dev`;
-              message += `- API: ${apiUrl}\n`;
-            }
-            
-            message += `\nThese previews will be automatically deleted when the PR is closed.`;
+              `- Web: ${webUrl}\n` +
+              `- API: ${apiUrl}\n` +
+              `\nThese previews will be automatically deleted when the PR is closed.`;
             
             // Find existing comment
             const comments = await github.rest.issues.listComments({

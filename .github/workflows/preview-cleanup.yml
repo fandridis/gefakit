@@ -18,17 +18,25 @@ jobs:
       - name: Delete Cloudflare Worker scripts
         run: |
           BRANCH="${{ github.event.ref }}"
-          echo "Deleting Worker scripts for branch: $BRANCH"
+          # Convert to lowercase and replace any non-alphanumeric chars with dashes
+          WORKER_NAME="deploy-preview-$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')"
+          
+          # Debug logging
+          echo "Original branch name: $BRANCH"
+          echo "Generated WORKER_NAME: $WORKER_NAME"
+          echo "Will delete workers:"
+          echo "- ${WORKER_NAME}-web"
+          echo "- ${WORKER_NAME}-api"
           
           # Delete web worker
           curl -s -X DELETE \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}-web" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}-web" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json"
             
           # Delete API worker
           curl -s -X DELETE \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${BRANCH}-api" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}-api" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json"
 
