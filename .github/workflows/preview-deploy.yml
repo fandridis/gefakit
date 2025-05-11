@@ -133,3 +133,30 @@ jobs:
           cd apps/web
           # Deploy the web worker
           wrangler deploy --name="${ENV_NAME}-web"
+
+      - name: Comment PR with preview URLs
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const envName = '${{ steps.generate_env_name.outputs.ENV_NAME }}';
+            const hasApiChanges = '${{ steps.api_changes.outputs.hasApiChanges }}' === 'true';
+            const webUrl = `https://${envName}-web.fandridis.workers.dev`;
+            
+            let message = `## 🚀 Preview Deployment\n\n` +
+              `Your changes have been deployed to preview environments:\n\n` +
+              `- Web: ${webUrl}\n`;
+            
+            if (hasApiChanges) {
+              const apiUrl = `https://${envName}-api.fandridis.workers.dev`;
+              message += `- API: ${apiUrl}\n`;
+            }
+            
+            message += `\nThese previews will be automatically deleted when the PR is closed.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
