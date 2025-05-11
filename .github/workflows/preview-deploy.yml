@@ -56,7 +56,8 @@ jobs:
         id: generate_env_name
         if: steps.api_changes.outputs.hasApiChanges == 'true'
         run: |
-          ENV_NAME=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9-]/-/g')
+          # Convert to lowercase and replace any non-alphanumeric chars with dashes
+          ENV_NAME=$(echo "${{ github.head_ref }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
           echo "DB_BRANCH_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
           echo "WORKER_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT

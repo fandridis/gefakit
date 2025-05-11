@@ -18,7 +18,8 @@ jobs:
       - name: Delete Cloudflare Worker scripts
         run: |
           BRANCH="${{ github.event.ref }}"
-          WORKER_NAME="deploy-preview-$BRANCH"
+          # Convert to lowercase and replace any non-alphanumeric chars with dashes
+          WORKER_NAME="deploy-preview-$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')"
           echo "Deleting Worker scripts for branch: $BRANCH"
           
           # Delete web worker
