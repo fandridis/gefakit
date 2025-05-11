@@ -46,7 +46,13 @@ jobs:
       - name: Check and Delete Neon Database Branch
         run: |
           BRANCH="${{ github.event.ref }}"
-          DB_BRANCH="deploy-preview-$BRANCH"
+          # Convert to lowercase and replace any non-alphanumeric chars with dashes, similar to worker name
+          DB_BRANCH="deploy-preview-$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')"
+          
+          # Debug logging
+          echo "Original branch name: $BRANCH"
+          echo "Generated DB_BRANCH: $DB_BRANCH"
+          
           # List all branches and check if our branch exists
           if neonctl branches list --project-id ${{ secrets.NEON_PROJECT_ID }} --api-key "${{ secrets.NEON_API_KEY }}" | grep -q "$DB_BRANCH"; then
             echo "Deleting Neon database branch: $DB_BRANCH"
