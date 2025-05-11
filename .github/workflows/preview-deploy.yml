@@ -21,7 +21,6 @@ jobs:
       env_name: ${{ steps.generate_env_name.outputs.ENV_NAME }}
       worker_name: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
       db_branch_name: ${{ steps.generate_env_name.outputs.DB_BRANCH_NAME }}
-      db_url: ${{ steps.create_db_branch.outputs.db_url }}
     steps:
       - name: Generate environment name
         id: generate_env_name
@@ -89,16 +88,12 @@ jobs:
           ENV_NAME: ${{ needs.setup.outputs.env_name }}
           WORKER_NAME: ${{ needs.setup.outputs.worker_name }}
         run: |
-          DB_URL="${{ needs.setup.outputs.db_url }}"
-
-          # Fallback only if for some reason it's empty
-          if [ -z "$DB_URL" ]; then
-            DB_URL=$(
-              curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
-                https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${ENV_NAME} \
-              | jq -r '.connectionString'
-            )
-          fi
+          # Get the database URL directly from Neon API
+          DB_URL=$(
+            curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+              https://console.neon.tech/api/v2/projects/${{ secrets.NEON_PROJECT_ID }}/branches/${ENV_NAME} \
+            | jq -r '.connectionString'
+          )
 
           echo "$DB_URL" | wrangler secret put DATABASE_URL --name "${WORKER_NAME}-api"
           echo "$DB_URL" | wrangler secret put TEST_DATABASE_URL --name "${WORKER_NAME}-api"
