@@ -61,6 +61,11 @@ jobs:
           echo "ENV_NAME=$ENV_NAME" >> $GITHUB_OUTPUT
           echo "DB_BRANCH_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
           echo "WORKER_NAME=deploy-preview-$ENV_NAME" >> $GITHUB_OUTPUT
+          
+          # Debug logging
+          echo "Original branch name: ${{ github.head_ref }}"
+          echo "Generated ENV_NAME: $ENV_NAME"
+          echo "Generated WORKER_NAME: deploy-preview-$ENV_NAME"
 
       - name: Create Neon Database Branch for Preview
         if: steps.api_changes.outputs.hasApiChanges == 'true'
@@ -80,6 +85,7 @@ jobs:
           WORKER_NAME: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
         run: |
           cd apps/api
+          echo "Deploying API worker with name: ${WORKER_NAME}-api"
           wrangler deploy --name="${WORKER_NAME}-api" --var APP_URL:"https://${WORKER_NAME}-web.fandridis.workers.dev"
 
       - name: Push preview secrets
@@ -145,6 +151,7 @@ jobs:
           WORKER_NAME: ${{ steps.generate_env_name.outputs.WORKER_NAME }}
         run: |
           cd apps/web
+          echo "Deploying web worker with name: ${WORKER_NAME}-web"
           # Deploy the web worker
           wrangler deploy --name="${WORKER_NAME}-web"
 
