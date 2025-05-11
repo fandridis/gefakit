@@ -56,7 +56,7 @@ jobs:
           # List all branches and check if our branch exists
           if neonctl branches list --project-id ${{ secrets.NEON_PROJECT_ID }} --api-key "${{ secrets.NEON_API_KEY }}" | grep -q "$DB_BRANCH"; then
             echo "Deleting Neon database branch: $DB_BRANCH"
-            neonctl branches delete --project-id ${{ secrets.NEON_PROJECT_ID }} --branch "$DB_BRANCH" --api-key "${{ secrets.NEON_API_KEY }}"
+            neonctl branch delete "$DB_BRANCH" --project-id ${{ secrets.NEON_PROJECT_ID }} --api-key "${{ secrets.NEON_API_KEY }}"
           else
             echo "Branch $DB_BRANCH not found in Neon database, skipping deletion"
           fi
