@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'apps/api/**'
+      - 'apps/web/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
 
 # Add permissions block
 permissions:
@@ -13,7 +19,27 @@ permissions:
 run-name: "Deploy Production: ${{ github.sha }}"
 
 jobs:
-  deploy:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api_changed: ${{ steps.filter.outputs.api }}
+      web_changed: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+            web:
+              - 'apps/web/**'
+
+  deploy-api:
+    needs: check-changes
+    if: needs.check-changes.outputs.api_changed == 'true'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -64,6 +90,35 @@ jobs:
           cd apps/api
           echo "Deployment failed, rolling back migrations..."
           pnpm db:migrate:down:production:yes-i-am-sure
+
+  deploy-web:
+    needs: check-changes
+    if: needs.check-changes.outputs.web_changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@4.10.0
 
       - name: Build web with production API URL
         env:
