@@ -36,9 +36,9 @@ jobs:
         run: |
           BRANCH="${{ github.event.ref }}"
           # List all branches and check if our branch exists
-          if neonctl branches list --project-id 'super-waterfall-86281505' --api-key "${{ secrets.NEON_API_KEY }}" | grep -q "$BRANCH"; then
+          if neonctl branches list --project-id ${{ secrets.NEON_PROJECT_ID }} --api-key "${{ secrets.NEON_API_KEY }}" | grep -q "$BRANCH"; then
             echo "Deleting Neon database branch: $BRANCH"
-            neonctl branches delete --project-id 'super-waterfall-86281505' --branch "$BRANCH" --api-key "${{ secrets.NEON_API_KEY }}"
+            neonctl branches delete --project-id ${{ secrets.NEON_PROJECT_ID }} --branch "$BRANCH" --api-key "${{ secrets.NEON_API_KEY }}"
           else
             echo "Branch $BRANCH not found in Neon database, skipping deletion"
           fi
