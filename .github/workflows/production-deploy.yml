@@ -46,7 +46,7 @@ jobs:
         run: |
           cd apps/api
           echo "Running database migrations..."
-          tsx src/db/migrate.ts
+          pnpm db:migrate:production:yes-i-am-sure
 
       - name: Deploy API
         run: |
