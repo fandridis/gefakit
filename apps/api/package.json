@@ -18,7 +18,8 @@
 		"db:seed:file": "cross-env NODE_ENV=development tsx ./src/db/seeds/seed-runner.ts",
 		"db:drop:development": "cross-env NODE_ENV=development tsx ./src/db/seeds/drop.ts",
 		"db:drop:production:yes-i-am-sure": "cross-env NODE_ENV=production tsx ./src/db/seeds/drop.ts",
-		"test": "cross-env NODE_ENV=test tsx ./scripts/test.ts"
+		"test": "cross-env NODE_ENV=test tsx ./scripts/test.ts",
+		"dev:onboard": "cross-env NODE_ENV=development tsx ./scripts/developer-onboarding.ts"
 	},
 	"dependencies": {
 		"@gefakit/shared": "workspace:*",

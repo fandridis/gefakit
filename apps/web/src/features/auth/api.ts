@@ -2,107 +2,104 @@ import axios from 'redaxios';
 import { SignUpEmailRequestBodyDTO, GetSessionResponseDTO } from "@gefakit/shared";
 import { handleSimpleError } from '@/utils/api-error';
 
-console.log('import.meta.env', import.meta.env)
-console.log('process.env: ', process.env)
-
 const API_BASE_URL = import.meta.env.VITE_API_URL + '/api/v1/auth';
 
 // Type guard to check if an object conforms to the AppErrorResponse interface
 // isAppError has been moved to utils/api.ts
 
 export const apiGetSession = async (): Promise<GetSessionResponseDTO | null> => {
-  try {
-    const response = await axios.get<GetSessionResponseDTO>(`${API_BASE_URL}/session`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-      withCredentials: true,
-    });
+    try {
+        const response = await axios.get<GetSessionResponseDTO>(`${API_BASE_URL}/session`, {
+            headers: {
+                'Accept': 'application/json',
+            },
+            withCredentials: true,
+        });
 
-    // Axios considers 2xx successful, check data directly
-    const data = response.data;
-    // console.log('Session check:', data); // Keep for debugging if needed
+        // Axios considers 2xx successful, check data directly
+        const data = response.data;
+        // console.log('Session check:', data); // Keep for debugging if needed
 
-    // If user and session are present and not null, we are authenticated.
-    if (data && data.user && data.session) {
-      return data;
-    } else {
-      // Should not happen with successful 2xx unless backend sends incomplete data
-      console.warn('apiGetSession: Received successful response but data is incomplete.', data);
-      return null;
+        // If user and session are present and not null, we are authenticated.
+        if (data && data.user && data.session) {
+            return data;
+        } else {
+            // Should not happen with successful 2xx unless backend sends incomplete data
+            console.warn('apiGetSession: Received successful response but data is incomplete.', data);
+            return null;
+        }
+    } catch (error: any) {
+        console.log('here i am....')
+        // Handle explicit "No Session Cookie" case (401 Unauthorized)
+        if (error.response && error.response.status === 401) {
+            // console.log('Session check: No valid session found (401).'); // Keep for debugging if needed
+            return null; // Treat as not authenticated
+        }
+
+        // For all other errors, use the standard handler (which throws)
+        handleSimpleError(error);
+        // Because handleSimpleError always throws, we need a fallback return for type safety, although it's unreachable.
+        // Alternatively, handleSimpleError could return the error to be thrown here, but its current implementation throws directly.
+        return null; // Or throw new Error("Fell through handleSimpleError?"); This line should technically be unreachable.
     }
-  } catch (error: any) {
-    console.log('here i am....')
-    // Handle explicit "No Session Cookie" case (401 Unauthorized)
-    if (error.response && error.response.status === 401) {
-      // console.log('Session check: No valid session found (401).'); // Keep for debugging if needed
-      return null; // Treat as not authenticated
-    }
-
-    // For all other errors, use the standard handler (which throws)
-    handleSimpleError(error);
-    // Because handleSimpleError always throws, we need a fallback return for type safety, although it's unreachable.
-    // Alternatively, handleSimpleError could return the error to be thrown here, but its current implementation throws directly.
-    return null; // Or throw new Error("Fell through handleSimpleError?"); This line should technically be unreachable.
-  }
 };
 
 // Returns the Axios promise directly. Error handling delegated to the caller (e.g., React Query's onError).
 export const apiSignInEmail = async ({ email, password }: { email: string, password: string }) => {
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Keep or remove delay as needed
-  return axios.post(`${API_BASE_URL}/sign-in/email`,
-    { email, password },
-    { withCredentials: true }
-  ).catch(handleSimpleError);
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Keep or remove delay as needed
+    return axios.post(`${API_BASE_URL}/sign-in/email`,
+        { email, password },
+        { withCredentials: true }
+    ).catch(handleSimpleError);
 };
 
 // Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiSignUpEmail = async ({ username, email, password }: SignUpEmailRequestBodyDTO) => {
-  return axios.post(`${API_BASE_URL}/sign-up/email`,
-    { username, email, password }
-  ).catch(handleSimpleError);
+    return axios.post(`${API_BASE_URL}/sign-up/email`,
+        { username, email, password }
+    ).catch(handleSimpleError);
 };
 
 // Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiSignOut = async () => {
-  return axios.post(`${API_BASE_URL}/sign-out`,
-    null, // No request body needed for sign-out
-    {
-      withCredentials: true,
-    }
-  ).catch(handleSimpleError);
+    return axios.post(`${API_BASE_URL}/sign-out`,
+        null, // No request body needed for sign-out
+        {
+            withCredentials: true,
+        }
+    ).catch(handleSimpleError);
 };
 
 // Returns the Axios promise directly. Error handling delegated to the caller.
 export const apiVerifyEmail = async (token: string) => {
-  return axios.get(`${API_BASE_URL}/verify-email`, {
-    params: { token },
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).catch(handleSimpleError);
+    return axios.get(`${API_BASE_URL}/verify-email`, {
+        params: { token },
+        headers: {
+            'Accept': 'application/json',
+        },
+    }).catch(handleSimpleError);
 };
 
 export const apiResendVerificationEmail = async (email: string) => {
-  return axios.post(`${API_BASE_URL}/resend-verification-email`, { email }, {
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).catch(handleSimpleError);
+    return axios.post(`${API_BASE_URL}/resend-verification-email`, { email }, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    }).catch(handleSimpleError);
 };
 
 export const apiRequestResetPassword = async (email: string) => {
-  return axios.post(`${API_BASE_URL}/request-password-reset`, { email }, {
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).catch(handleSimpleError);
+    return axios.post(`${API_BASE_URL}/request-password-reset`, { email }, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    }).catch(handleSimpleError);
 };
 
 export const apiResetPassword = async (token: string, newPassword: string) => {
-  return axios.post(`${API_BASE_URL}/reset-password`, { token, newPassword }, {
-    headers: {
-      'Accept': 'application/json',
-    },
-  }).catch(handleSimpleError);
+    return axios.post(`${API_BASE_URL}/reset-password`, { token, newPassword }, {
+        headers: {
+            'Accept': 'application/json',
+        },
+    }).catch(handleSimpleError);
 };
