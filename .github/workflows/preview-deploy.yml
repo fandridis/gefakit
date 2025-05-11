@@ -152,8 +152,16 @@ jobs:
             const hasApiChanges = '${{ steps.api_changes.outputs.hasApiChanges }}' === 'true';
             const webUrl = `https://${envName}-web.fandridis.workers.dev`;
             
+            // Get the latest commit message
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            const latestCommit = commits.data[commits.data.length - 1];
+            
             let message = `## 🚀 Preview Deployment\n\n` +
-              `Latest commit: ${context.payload.head_commit.message}\n\n` +
+              `Latest commit: ${latestCommit.commit.message}\n\n` +
               `Your changes have been deployed to preview environments:\n\n` +
               `- Web: ${webUrl}\n`;
             
