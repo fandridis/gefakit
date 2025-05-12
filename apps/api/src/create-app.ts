@@ -27,6 +27,7 @@ import { UserService } from './features/users/user.service';
 import { OnboardingService } from './features/onboarding/onboarding.service';
 import { createUserRoutesV1 } from './features/users/user.routes.v1';
 import { createOrganizationMembershipRoutesV1 } from './features/organization-memberships/organization-membership.routes.v1';
+import { createPaymentRoutesV1 } from './features/payments/payment.routes.v1';
 
 export interface AppConfig {
   dependencies?: Partial<AppVariables>;
@@ -128,6 +129,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   app.route("/api/v1/organizations", createOrganizationRoutesV1());
   app.route("/api/v1/organization-memberships", createOrganizationMembershipRoutesV1());
   app.route("/api/v1/organization-invitations", createOrganizationInvitationRoutesV1());
+  app.route("/api/v1/payments", createPaymentRoutesV1());
 
   // --- Error Handling & Not Found ---
   app.notFound((c) => {

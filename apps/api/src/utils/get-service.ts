@@ -20,10 +20,9 @@ import { createAdminService, AdminService } from '../features/admin/admin.servic
 import { createUserRepository } from '../features/users/user.repository';
 import { createUserService, UserService } from '../features/users/user.service';
 
-
-export interface GetServiceProps {
+export interface GetServiceProps<T extends AppVariables = AppVariables> {
     Bindings: Bindings;
-    Variables: AppVariables;
+    Variables: T;
 }
 
 export function getAuthService(c: Context<GetServiceProps>): AuthService {
@@ -72,7 +71,7 @@ export function getOrganizationInvitationService(c: Context<GetServiceProps>): O
 }
 
 export function getOrganizationMembershipService(c: Context<GetServiceProps>): OrganizationMembershipService {
-     let service = c.get('organizationMembershipService');
+    let service = c.get('organizationMembershipService');
     if (service) {
         return service;
     }
@@ -88,7 +87,7 @@ export function getOrganizationMembershipService(c: Context<GetServiceProps>): O
 
 export function getOnboardingService(c: Context<GetServiceProps>) {
     let service = c.get('onboardingService');
-     if (service) {
+    if (service) {
         return service;
     }
     const db = c.get('db');
@@ -99,13 +98,13 @@ export function getOnboardingService(c: Context<GetServiceProps>) {
         authRepository,
         createAuthRepository,
         createOrganizationRepository,
-       // generateEmailVerificationToken: authService.generateEmailVerificationToken
+        // generateEmailVerificationToken: authService.generateEmailVerificationToken
     });
     c.set('onboardingService', service);
     return service;
 }
 
-export function getTodoService(c: Context<GetServiceProps>): TodoService {
+export function getTodoService<T extends AppVariables>(c: Context<GetServiceProps<T>>): TodoService {
     let service = c.get('todoService');
     if (service) {
         return service;
@@ -120,7 +119,7 @@ export function getTodoService(c: Context<GetServiceProps>): TodoService {
 
 export function getAdminService(c: Context<GetServiceProps>): AdminService {
     let service = c.get('adminService');
-     if (service) {
+    if (service) {
         return service;
     }
     const db = c.get('db');
@@ -132,7 +131,7 @@ export function getAdminService(c: Context<GetServiceProps>): AdminService {
 
 export function getUserService(c: Context<GetServiceProps>): UserService {
     let service = c.get('userService');
-     if (service) {
+    if (service) {
         return service;
     }
     const db = c.get('db');
