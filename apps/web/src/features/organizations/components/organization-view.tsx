@@ -1,22 +1,83 @@
 import { useState } from 'react';
-import { useOrganizations } from '../hooks/use-organizations';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOrganizations, organizationMembershipsQueryKey } from '../hooks/use-organizations';
+import { apiCreateOrganization, apiDeleteOrganization, apiLeaveOrganization } from '../api';
+import {
+    CreateOrganizationRequestBodyDTO,
+    CreateOrganizationResponseDTO,
+} from '@gefakit/shared/src/types/organization';
 
 export function OrganizationView() {
     const [orgName, setOrgName] = useState('');
+    const queryClient = useQueryClient();
+    
+    // Use the refactored hook that only handles fetching
     const {
-        createOrganization,
-        isCreatingOrganization,
-        createOrganizationError,
         memberships,
         isLoadingMemberships,
         membershipsError,
-        deleteOrganizationMembership,
-        isDeletingMembership,
-        deleteMembershipError,
-        deleteOrganization,
-        isDeletingOrganization,
-        deleteOrganizationError,
     } = useOrganizations();
+
+    // Create organization mutation
+    const { 
+        mutate: createOrganization,
+        isPending: isCreatingOrganization,
+        error: createOrganizationError
+    } = useMutation<
+        CreateOrganizationResponseDTO,
+        Error,
+        CreateOrganizationRequestBodyDTO
+    >({
+        mutationFn: apiCreateOrganization,
+        onSuccess: (data) => {
+            console.log('Organization creation response:', data);
+            queryClient.invalidateQueries({ queryKey: organizationMembershipsQueryKey });
+        },
+        onError: (err) => {
+            console.error("Error creating organization:", err);
+        },
+    });
+
+    // Leave organization mutation
+    const {
+        mutate: deleteOrganizationMembership,
+        isPending: isDeletingMembership,
+        error: deleteMembershipError
+    } = useMutation<
+        void,
+        Error,
+        { organizationId: number }
+    >({
+        mutationFn: apiLeaveOrganization,
+        onSuccess: () => {
+            // Invalidate memberships query to refresh the list
+            queryClient.invalidateQueries({ queryKey: organizationMembershipsQueryKey });
+        },
+        onError: (err) => {
+            console.error("Error deleting organization membership:", err);
+        },
+    });
+
+    // Delete organization mutation
+    const {
+        mutate: deleteOrganization,
+        isPending: isDeletingOrganization,
+        error: deleteOrganizationError
+    } = useMutation<
+        void,
+        Error,
+        { organizationId: number }
+    >({
+        mutationFn: apiDeleteOrganization,
+        onSuccess: () => {
+            console.log('Organization deleted successfully.');
+            // Invalidate memberships query as the user might no longer be part of the deleted org
+            queryClient.invalidateQueries({ queryKey: organizationMembershipsQueryKey });
+        },
+        onError: (err) => {
+            console.error("Error deleting organization:", err);
+        },
+    });
 
     const handleCreate = () => {
         if (orgName.trim()) {
