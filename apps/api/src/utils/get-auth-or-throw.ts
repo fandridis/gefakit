@@ -4,18 +4,18 @@ import { Bindings } from "../types/hono";
 import { AppVariables } from "../create-app";
 import { authErrors } from "../features/auth/auth.errors";
 
-interface GetAuthOrThrowProps {
+interface GetAuthOrThrowProps<T extends AppVariables = AppVariables> {
     Bindings: Bindings;
-    Variables: AppVariables;
+    Variables: T;
 }
 
-export function getAuthOrThrow(c: Context<GetAuthOrThrowProps>): {user: UserDTO, session: SessionDTO} {
+export function getAuthOrThrow<T extends AppVariables>(c: Context<GetAuthOrThrowProps<T>>): { user: UserDTO, session: SessionDTO } {
     const user = c.get('user');
     const session = c.get('session');
 
-    if (!user || !session) { 
+    if (!user || !session) {
         throw authErrors.unauthorized();
     }
 
-    return {user, session};
-  }
+    return { user, session };
+}

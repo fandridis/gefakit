@@ -79,6 +79,7 @@ export interface AuthUser {
   id: Generated<number>;
   password_hash: string;
   role: Generated<string>;
+  stripe_customer_id: string | null;
   username: string;
 }
 
@@ -92,6 +93,21 @@ export interface CoreNotification {
   template_variables: Json | null;
   type: string;
   user_id: number;
+}
+
+export interface CoreSubscription {
+  cancel_at_period_end: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  current_period_end: Timestamp;
+  current_period_start: Timestamp;
+  id: Generated<number>;
+  organization_id: number | null;
+  status: string;
+  stripe_customer_id: string;
+  stripe_price_id: string;
+  stripe_subscription_id: string;
+  updated_at: Generated<Timestamp>;
+  user_id: number | null;
 }
 
 export interface CoreTodo {
@@ -130,6 +146,7 @@ export interface OrganizationsOrganization {
   created_at: Generated<Timestamp>;
   id: Generated<number>;
   name: string;
+  stripe_customer_id: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -141,6 +158,7 @@ export interface DB {
   "auth.sessions": AuthSession;
   "auth.users": AuthUser;
   "core.notifications": CoreNotification;
+  "core.subscriptions": CoreSubscription;
   "core.todos": CoreTodo;
   "organizations.invitations": OrganizationsInvitation;
   "organizations.memberships": OrganizationsMembership;

@@ -7,6 +7,7 @@ export const userSchema = z.object({
     created_at: z.date(),
     email_verified: z.boolean(),
     role: z.string(),
+    stripe_customer_id: z.string().nullable().optional(),
 });
 
 export const sessionSchema = z.object({
@@ -73,8 +74,8 @@ export const resetPasswordRequestBodySchema = z.object({
 
 export const requestOtpBodySchema = z.object({
     email: z.string().email("Invalid email address"),
-  });
-  
+});
+
 export const verifyOtpBodySchema = z.object({
     email: z.string().email(),
     otp: z.string().length(6, 'OTP must be 6 characters long')

@@ -27,6 +27,11 @@ import { UserService } from './features/users/user.service';
 import { OnboardingService } from './features/onboarding/onboarding.service';
 import { createUserRoutesV1 } from './features/users/user.routes.v1';
 import { createOrganizationMembershipRoutesV1 } from './features/organization-memberships/organization-membership.routes.v1';
+import { createPaymentRoutesV1 } from './features/payments/payment.routes.v1';
+import { PaymentService } from './features/payments/payment.service';
+import { stripeMiddleware } from './middleware/stripe';
+import Stripe from 'stripe';
+import { createWebhookRoutes } from './features/webhooks/webhook.routes';
 
 export interface AppConfig {
   dependencies?: Partial<AppVariables>;
@@ -52,7 +57,9 @@ export interface AppVariables {
   userService?: UserService;
   adminService?: AdminService;
   onboardingService?: OnboardingService;
+  paymentService?: PaymentService;
   /** Misc */
+  stripe?: Stripe;
   impersonatorUserId?: number;
 }
 
@@ -63,8 +70,6 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
 
   // Apply CORS headers
   app.use('/api/*', async (c, next) => {
-    console.log('===== /api/* CORS headers =====')
-    console.log('process.env.APP_URL', process.env.APP_URL)
     const origin = process.env.APP_URL || 'http://localhost:5173';
     c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
@@ -96,9 +101,16 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
     return c.json({ ok: true, message: 'prod 20', processEnv: JSON.stringify(process.env), cenv: JSON.stringify(c.env) });
   });
 
+  // Separate dependencies for specific middleware
+  const { db, stripe, ...remainingServices } = config?.dependencies ?? {};
+
+  // Apply stripe middleware
+  app.use('/api/*', stripeMiddleware(stripe));
+  app.use('/webhooks/*', stripeMiddleware(stripe));
+
   // Apply services middleware - has to be after db middleware
-  const { db, ...otherServices } = config?.dependencies ?? {};
-  app.use('/api/*', servicesMiddleware(otherServices));
+  // Pass only the *remaining* dependencies to the generic servicesMiddleware
+  app.use('/api/*', servicesMiddleware(remainingServices));
 
   // Apply rate limiting AFTER dependencies might be needed (e.g., for key generation)
   // As we could have in dependancies a "crypto utils" that needs to be initialized
@@ -119,6 +131,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
    */
   // Public routes
   app.route("/api/v1/auth", createAuthRoutesV1());
+  app.route("/api/v1/webhooks", createWebhookRoutes());
 
   // Private routes
   app.use("/api/v1/*", authMiddleware(), impersonationLogMiddleware);
@@ -128,6 +141,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   app.route("/api/v1/organizations", createOrganizationRoutesV1());
   app.route("/api/v1/organization-memberships", createOrganizationMembershipRoutesV1());
   app.route("/api/v1/organization-invitations", createOrganizationInvitationRoutesV1());
+  app.route("/api/v1/payments", createPaymentRoutesV1());
 
   // --- Error Handling & Not Found ---
   app.notFound((c) => {
