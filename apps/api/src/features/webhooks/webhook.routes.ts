@@ -5,12 +5,6 @@ import { HTTPException } from "hono/http-exception";
 import { AppVariables } from "../../create-app";
 import { getOrganizationService, getPaymentService, getUserService } from "../../utils/get-service";
 
-// Stripe sends at least the following properties in addition to the Subscription object.
-interface ExtendedSubscription extends Stripe.Subscription {
-    plan: { id: string };
-    quantity: number;
-}
-
 type StripeWebhookAppVariables = AppVariables & {
     stripe: Stripe;
 }
@@ -23,7 +17,8 @@ export function createWebhookRoutes() {
         console.log('( ^.^ )   At /webhooks/stripe   ( ^.^ )');
         console.log(' / | | \\\\                        / | | \\\\');
         console.log('( u u )                        ( u u )');
-        const STRIPE_WEBHOOK_SECRET = c.env.STRIPE_WEBHOOK_SECRET;
+
+        const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
         const stripe = c.get('stripe');
 
