@@ -39,11 +39,11 @@ export function createPaymentRepository({ db }: { db: Kysely<DB> | Transaction<D
                 .executeTakeFirstOrThrow();
         },
 
-        async updateSubscription({ id, subscription }: { id: number, subscription: Updateable<CoreSubscription> }) {
+        async updateSubscriptionByStripeSubscriptionId({ stripeSubscriptionId, subscription }: { stripeSubscriptionId: string, subscription: Updateable<CoreSubscription> }) {
             return db
                 .updateTable('core.subscriptions')
                 .set(subscription)
-                .where('id', '=', id)
+                .where('stripe_subscription_id', '=', stripeSubscriptionId)
                 .returningAll()
                 .executeTakeFirstOrThrow();
         },

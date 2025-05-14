@@ -1,4 +1,4 @@
-import { Insertable } from "kysely";
+import { Insertable, Updateable } from "kysely";
 import { CoreSubscription } from "../../db/db-types";
 import { PaymentRepository } from "./payment.repository";
 import Stripe from 'stripe';
@@ -67,6 +67,33 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
         return { customer: newCustomer, newStripeCustomerIdToPersist };
     }
 
+    async function getOrCreateStripeCustomerForOrganization({ organizationId }: { organizationId: number }): Promise<Stripe.Customer> {
+        // Similar logic as for user: check DB first, then create in Stripe
+        // TODO: Implement logic to check/save mapping for organizationId
+        // This would also need access to an OrganizationService to get organization details
+        // and a similar pattern of returning newStripeIdToPersist if an org's Stripe ID is created/updated.
+        console.log(`Creating/Retrieving Stripe customer for organization ${organizationId}`);
+        // Placeholder: Fetch organization details if needed
+        // const organization = await organizationService.findById(organizationId);
+        // if (!organization) {
+        //    throw paymentErrors.organizationNotFound(organizationId);
+        // }
+
+        try {
+            const customer = await stripe.customers.create({
+                // email: organization.email, // Use organization's email if available
+                name: `Organization ${organizationId}`, // Use organization name
+                metadata: {
+                    internal_organization_id: organizationId.toString(),
+                },
+            });
+            // TODO: Save mapping for organizationId and potentially return new ID for persistence.
+            return customer;
+        } catch (error: any) {
+            throw paymentErrors.stripeError(error.message);
+        }
+    }
+
 
     async function createCheckoutSession({ userId, priceId, successUrl, cancelUrl }: { userId: number, priceId: string, successUrl: string, cancelUrl: string }) {
         const user = await userService.findUserById({ id: userId });
@@ -99,8 +126,6 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
             }
         });
 
-        console.log('Stripe Checkout Session created:', session.id);
-
         return {
             sessionId: session.id,
             // This stripeCustomerIdToUpdate should be used by the caller to update the user record
@@ -112,7 +137,7 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
 
     async function createCustomerPortalSession({ userId }: { userId: number }) {
         const user = await userService.findUserById({ id: userId });
-        console.log({ url: 'https://www.google.com' })
+
         if (!user) {
             throw paymentErrors.userNotFound(userId);
         }
@@ -133,36 +158,15 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
         return paymentRepository.createSubscription({ subscription });
     }
 
-    // getOrCreateStripeCustomerForUser is now primarily an internal helper, 
-    // but could be exposed if direct customer management is needed elsewhere.
-
-
-    async function getOrCreateStripeCustomerForOrganization({ organizationId }: { organizationId: number }): Promise<Stripe.Customer> {
-        // Similar logic as for user: check DB first, then create in Stripe
-        // TODO: Implement logic to check/save mapping for organizationId
-        // This would also need access to an OrganizationService to get organization details
-        // and a similar pattern of returning newStripeIdToPersist if an org's Stripe ID is created/updated.
-        console.log(`Creating/Retrieving Stripe customer for organization ${organizationId}`);
-        // Placeholder: Fetch organization details if needed
-        // const organization = await organizationService.findById(organizationId);
-        // if (!organization) {
-        //    throw paymentErrors.organizationNotFound(organizationId);
-        // }
-        
-        try {
-            const customer = await stripe.customers.create({
-                // email: organization.email, // Use organization's email if available
-                name: `Organization ${organizationId}`, // Use organization name
-                metadata: {
-                    internal_organization_id: organizationId.toString(),
-                },
-            });
-            // TODO: Save mapping for organizationId and potentially return new ID for persistence.
-            return customer;
-        } catch (error: any) {
-            throw paymentErrors.stripeError(error.message);
-        }
+    async function updateSubscriptionByStripeSubscriptionId({ stripeSubscriptionId, subscription }: { stripeSubscriptionId: string, subscription: Updateable<CoreSubscription> }) {
+        return paymentRepository.updateSubscriptionByStripeSubscriptionId({ stripeSubscriptionId, subscription });
     }
+
+    async function deleteSubscription({ id }: { id: number }) {
+        return paymentRepository.deleteSubscription({ id });
+    }
+
+
 
     return {
         findSubscriptionByUserId,
@@ -172,6 +176,8 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
         createCheckoutSession,
         getOrCreateStripeCustomerForOrganization,
         createCustomerPortalSession,
+        updateSubscriptionByStripeSubscriptionId,
+        deleteSubscription,
         // getOrCreateStripeCustomerForUser, // Expose if needed, otherwise keep internal
     };
 }

@@ -64,7 +64,7 @@ export function createWebhookRoutes() {
 
 
                     const mappedData = {
-                        stripe_subscription_id: stripeSubscriptionItem.id,
+                        stripe_subscription_id: stripeSubscription.id,
                         stripe_customer_id: stripeSubscription.customer as string,
                         status: stripeSubscription.status,
                         stripe_price_id: stripeSubscriptionItem.plan.id,
@@ -114,6 +114,56 @@ export function createWebhookRoutes() {
                     //   await c.var.paymentService.createSubscription({ subscription: dataToSave });
                     // }
 
+                    console.log('============================================================');
+                    break;
+                }
+                case 'customer.subscription.updated': {
+                    console.log('============== customer.subscription.updated via /webhooks/stripe ==============');
+                    console.log(' ');
+
+                    const stripeSubscription = event.data.object as Stripe.Subscription; // Cast to Stripe.Subscription
+                    const stripeSubscriptionItem = stripeSubscription.items.data[0];
+
+
+                    console.log('====== stripeSubscription: ======');
+                    console.log(stripeSubscription);
+                    console.log('===== END OF stripeSubscription ======');
+
+                    console.log('====== stripeSubscriptionItem: ======');
+                    console.log(stripeSubscriptionItem);
+                    console.log('===== END OF stripeSubscriptionItem ======');
+
+                    const updatedData = {
+                        status: stripeSubscription.status,
+                        current_period_start: new Date(stripeSubscriptionItem.current_period_start * 1000),
+                        current_period_end: new Date(stripeSubscriptionItem.current_period_end * 1000),
+                        cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+                    };
+
+                    console.log('Mapped data for core.subscriptions update:');
+                    console.log(updatedData);
+
+                    const paymentService = getPaymentService(c);
+
+                    if (!paymentService) {
+                        console.log('NO PAYMENT SERVICE AVAILABLE');
+                        // Potentially throw an error or return a specific response
+                        return c.text('Payment service not available', 500);
+                    }
+
+                    // We need the stripe_subscription_id to identify which subscription to update.
+                    // This usually corresponds to the ID of the first item in the subscription.
+                    const stripeSubscriptionIdToUpdate = stripeSubscriptionItem.id;
+
+
+                    // Assuming paymentService has an updateSubscription method
+                    // It would likely take the stripe_subscription_id and the data to update
+                    const updatedSubscription = await paymentService.updateSubscriptionByStripeSubscriptionId({
+                        stripeSubscriptionId: stripeSubscriptionIdToUpdate,
+                        subscription: updatedData
+                    });
+
+                    console.log('updatedSubscription: ', updatedSubscription);
                     console.log('============================================================');
                     break;
                 }

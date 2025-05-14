@@ -30,8 +30,6 @@ export function createPaymentRoutesV1() {
         const { user } = getAuthOrThrow(c);
         const data = c.req.valid('json');
 
-        console.log('data at /checkout-session', data)
-
         const paymentService = getPaymentService(c);
         const checkoutSession = await paymentService.createCheckoutSession({
             userId: user.id,
@@ -53,7 +51,6 @@ export function createPaymentRoutesV1() {
 
     app.get('/customer-portal', async (c) => {
         const { user } = getAuthOrThrow(c)
-        console.log('user: ', user)
 
         if (!user.stripe_customer_id) {
             throw paymentErrors.missingStripeCustomerId();
