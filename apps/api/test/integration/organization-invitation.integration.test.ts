@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import Stripe from 'stripe';
 
 // Hoist mock
 const { mockSendEmail } = vi.hoisted(() => ({ mockSendEmail: vi.fn().mockResolvedValue(undefined) }));
@@ -32,6 +33,25 @@ describe('Organization Invitation API Integration Tests', () => {
   let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
   let testInvitation: Selectable<OrganizationsInvitation> | null = null;
 
+  // Define mockStripeInstance
+  const mockStripeInstance = {
+    charges: {
+      create: vi.fn().mockResolvedValue({ id: 'ch_test_mock_org_invite', status: 'succeeded' }),
+    },
+    customers: {
+      create: vi.fn().mockResolvedValue({ id: 'cus_test_mock_org_invite' }),
+    },
+    paymentIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'pi_test_mock_org_invite', client_secret: 'pi_org_invite_secret', status: 'requires_payment_method' }),
+    },
+    setupIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'seti_test_mock_org_invite', client_secret: 'seti_org_invite_secret', status: 'requires_payment_method' }),
+    },
+    subscriptions: {
+      create: vi.fn().mockResolvedValue({ id: 'sub_test_mock_org_invite', status: 'active' }),
+    },
+  } as unknown as Stripe;
+
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
     // Use testApp
@@ -52,7 +72,7 @@ describe('Organization Invitation API Integration Tests', () => {
     const res = await testApp.request('/api/v1/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Cookie': senderSessionCookie },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, stripe_customer_id: 'cus_test_mock_org_invite' }),
     });
     expect(res.status).toBe(201);
     const { createdOrganization } = await res.json() as { createdOrganization: OrganizationDTO };
@@ -82,6 +102,7 @@ describe('Organization Invitation API Integration Tests', () => {
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
       db: testDb,
+      stripe: mockStripeInstance, // Pass the mock Stripe instance
     };
     testApp = createAppInstance({ dependencies: testDependencies });
 

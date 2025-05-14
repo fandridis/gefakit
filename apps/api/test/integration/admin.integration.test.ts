@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import Stripe from 'stripe';
 
 // Hoist mock
 const { mockSendEmail } = vi.hoisted(() => ({ mockSendEmail: vi.fn().mockResolvedValue(undefined) }));
@@ -31,6 +32,25 @@ describe('Admin API Integration Tests', () => {
   let normalUserSessionCookie: string;
   let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
+  // Define mockStripeInstance
+  const mockStripeInstance = {
+    charges: {
+      create: vi.fn().mockResolvedValue({ id: 'ch_test_mock_admin', status: 'succeeded' }),
+    },
+    customers: {
+      create: vi.fn().mockResolvedValue({ id: 'cus_test_mock_admin' }),
+    },
+    paymentIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'pi_test_mock_admin', client_secret: 'pi_admin_secret', status: 'requires_payment_method' }),
+    },
+    setupIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'seti_test_mock_admin', client_secret: 'seti_admin_secret', status: 'requires_payment_method' }),
+    },
+    subscriptions: {
+      create: vi.fn().mockResolvedValue({ id: 'sub_test_mock_admin', status: 'active' }),
+    },
+  } as unknown as Stripe;
+
   // Helper to log in a user and return their session cookie
   const loginUser = async (email: string, password: string): Promise<string> => {
     // Use testApp for login
@@ -53,6 +73,7 @@ describe('Admin API Integration Tests', () => {
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
       db: testDb, // Inject testDb
+      stripe: mockStripeInstance, // Pass the mock Stripe instance
     };
     testApp = createAppInstance({ dependencies: testDependencies });
 

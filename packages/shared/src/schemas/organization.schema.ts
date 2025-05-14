@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const organizationSchema = z.object({
   id: z.number().int().positive(),
   name: z.string().min(1, 'Organization name cannot be empty'),
+  stripe_customer_id: z.string().nullable(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 })

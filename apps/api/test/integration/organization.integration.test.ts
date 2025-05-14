@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import Stripe from 'stripe';
 
 // Hoist the mock function definition
 const { mockSendEmail } = vi.hoisted(() => {
@@ -40,17 +41,43 @@ describe('Organization API Integration Tests', () => {
   let sessionCookie: string;
   let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>; // Declare testApp
 
+  // Define mockStripeInstance
+  const mockStripeInstance = {
+    charges: {
+      create: vi.fn().mockResolvedValue({ id: 'ch_test_mock', status: 'succeeded' }),
+      // Add other charge methods if your app uses them e.g. retrieve, list, etc.
+    },
+    customers: {
+      create: vi.fn().mockResolvedValue({ id: 'cus_test_mock' }),
+      // Add other customer methods e.g. retrieve, update, delete, listPaymentMethods, etc.
+    },
+    paymentIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'pi_test_mock', client_secret: 'pi_test_mock_secret', status: 'requires_payment_method' }),
+      // Add other PI methods like confirm, retrieve, etc.
+    },
+    setupIntents: {
+      create: vi.fn().mockResolvedValue({ id: 'seti_test_mock', client_secret: 'seti_test_mock_secret', status: 'requires_payment_method' }),
+    },
+    subscriptions: {
+      create: vi.fn().mockResolvedValue({ id: 'sub_test_mock', status: 'active' }),
+    },
+    // Add other Stripe services like prices, products, invoices, webhooks etc. if needed
+  } as unknown as Stripe; // Cast to Stripe type for type safety
+
   beforeAll(async () => {
     const dbUrl = process.env.TEST_DATABASE_URL;
     if (!dbUrl) {
       throw new Error("TEST_DATABASE_URL environment variable not set.");
     }
 
+    console.log(`[organization.integration.test] Getting DB instance with connectionString: ${dbUrl}`);
+
     testDb = getDb({ connectionString: dbUrl, useHyperdrive: false });
 
     // Create test app instance
     const testDependencies: Partial<AppVariables> = {
-      db: testDb
+      db: testDb,
+      stripe: mockStripeInstance, // Pass the mock Stripe instance
     };
     testApp = createAppInstance({ dependencies: testDependencies });
 
@@ -187,6 +214,7 @@ describe('Organization API Integration Tests', () => {
     it('should create a new organization for the authenticated user', async () => {
       const newOrgData = {
         name: 'Test Integration Organization',
+        stripe_customer_id: 'cus_test_mock',
       };
 
       // Use testApp
@@ -290,7 +318,7 @@ describe('Organization API Integration Tests', () => {
           'Content-Type': 'application/json',
           'Cookie': sessionCookie,
         },
-        body: JSON.stringify({ name: orgName }),
+        body: JSON.stringify({ name: orgName, stripe_customer_id: 'cus_test_mock' }),
       });
       expect(createOrgRes.status).toBe(201);
       const { createdOrganization } = await createOrgRes.json() as { createdOrganization: OrganizationDTO };

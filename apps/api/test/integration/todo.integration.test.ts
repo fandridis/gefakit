@@ -1,24 +1,45 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { createAppInstance, AppVariables } from '../../src/create-app';
 import { Hono } from 'hono';
 import { Bindings } from '../../src/types/hono';
 import { Kysely, Selectable } from 'kysely';
-import { DB } from '../../src/db/db-types';
+import { DB, AuthUser } from '../../src/db/db-types';
 import { Insertable } from 'kysely';
-import { AuthUser, CoreTodo } from '../../src/db/db-types';
+import { CoreTodo } from '../../src/db/db-types';
 import { hashPassword } from '../../src/lib/crypto';
 import { getDb } from '../../src/lib/db'; // Import the new getDb function
+import Stripe from 'stripe'; // Added Stripe import
+import { UserDTO } from '@gefakit/shared'; // Keep UserDTO as it's likely used
 
 // Import service/repo factories
 import { createTodoRepository } from '../../src/features/todos/todo.repository';
 import { createTodoService } from '../../src/features/todos/todo.service';
+
+// Define mockStripeInstance
+const mockStripeInstance = {
+  charges: {
+    create: vi.fn().mockResolvedValue({ id: 'ch_test_mock_todo', status: 'succeeded' }),
+  },
+  customers: {
+    create: vi.fn().mockResolvedValue({ id: 'cus_test_mock_todo' }),
+  },
+  paymentIntents: {
+    create: vi.fn().mockResolvedValue({ id: 'pi_test_mock_todo', client_secret: 'pi_todo_secret', status: 'requires_payment_method' }),
+  },
+  setupIntents: {
+    create: vi.fn().mockResolvedValue({ id: 'seti_test_mock_todo', client_secret: 'seti_todo_secret', status: 'requires_payment_method' }),
+  },
+  subscriptions: {
+    create: vi.fn().mockResolvedValue({ id: 'sub_test_mock_todo', status: 'active' }),
+  },
+} as unknown as Stripe;
+
 // --- Test Suite Setup ---
 describe('Todo API Integration Tests', () => {
   let testDb: Kysely<DB>;
-  let testUser: Selectable<AuthUser> | undefined;
-  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>;
-
+  let testUser: UserDTO | undefined;
   let sessionCookie: string;
+  let testApp: Hono<{ Bindings: Bindings, Variables: AppVariables }>;
 
   beforeAll(async () => {
     console.log('================ todo.integration.test.ts =================')
@@ -40,6 +61,7 @@ describe('Todo API Integration Tests', () => {
     const testDependencies: Partial<AppVariables> = {
       db: testDb, // Inject testDb
       todoService: testTodoService, // Inject real service using testDb
+      stripe: mockStripeInstance, // Pass the mock Stripe instance
     };
 
     // Create app instance with injected dependencies

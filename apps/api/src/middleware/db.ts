@@ -18,10 +18,6 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
       console.log('c.env', c.env);
     }
 
-    if (process.env) {
-      console.log('process.env', JSON.stringify(process.env, null, 2));
-    }
-
     if (injectedDb) {
       db = injectedDb;
     } else {
@@ -38,6 +34,7 @@ export const dbMiddleware = (injectedDb?: Kysely<DB>) => {
         console.error('DB connectionString is not defined in env');
         return c.json({ ok: false, error: 'Internal configuration error' }, 500);
       }
+      console.log(`Getting DB instance with connectionString: ${connectionString} AND nodeEnv: ${c.env.NODE_ENV}`);
       db = getDb({
         connectionString,
         useHyperdrive: c.env.NODE_ENV === 'production',
