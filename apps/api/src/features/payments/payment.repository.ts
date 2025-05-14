@@ -1,5 +1,6 @@
 import { Insertable, Kysely, Updateable, Transaction } from "kysely";
 import { CoreSubscription, DB } from "../../db/db-types";
+import { paymentErrors } from "./payment.errors";
 
 
 export type PaymentRepository = ReturnType<typeof createPaymentRepository>
@@ -11,7 +12,7 @@ export function createPaymentRepository({ db }: { db: Kysely<DB> | Transaction<D
                 .selectFrom('core.subscriptions')
                 .selectAll()
                 .where('user_id', '=', userId)
-                .executeTakeFirst();
+                .executeTakeFirstOrThrow();
         },
 
         async findSubscriptionByOrganizationId({ organizationId }: { organizationId: number }) {
@@ -19,7 +20,7 @@ export function createPaymentRepository({ db }: { db: Kysely<DB> | Transaction<D
                 .selectFrom('core.subscriptions')
                 .selectAll()
                 .where('organization_id', '=', organizationId)
-                .executeTakeFirst();
+                .executeTakeFirstOrThrow();
         },
 
         async findSubscriptionByStripeSubscriptionId({ stripeSubscriptionId }: { stripeSubscriptionId: string }) {
@@ -27,7 +28,7 @@ export function createPaymentRepository({ db }: { db: Kysely<DB> | Transaction<D
                 .selectFrom('core.subscriptions')
                 .selectAll()
                 .where('stripe_subscription_id', '=', stripeSubscriptionId)
-                .executeTakeFirst();
+                .executeTakeFirstOrThrow();
         },
 
         async createSubscription({ subscription }: { subscription: Insertable<CoreSubscription> }) {
@@ -44,7 +45,7 @@ export function createPaymentRepository({ db }: { db: Kysely<DB> | Transaction<D
                 .set(subscription)
                 .where('id', '=', id)
                 .returningAll()
-                .executeTakeFirstOrThrow()
+                .executeTakeFirstOrThrow();
         },
 
         async deleteSubscription({ id }: { id: number }) {

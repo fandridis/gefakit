@@ -7,7 +7,7 @@ import { getAuthOrThrow } from "../../utils/get-auth-or-throw";
 import { getPaymentService, getUserService } from "../../utils/get-service";
 import { Stripe } from "stripe";
 import { z } from "zod";
-import { HTTPException } from "hono/http-exception";
+import { paymentErrors } from "./payment.errors";
 
 type StripeAppVariables = AppVariables & {
     stripe: Stripe;
@@ -56,7 +56,7 @@ export function createPaymentRoutesV1() {
         console.log('user: ', user)
 
         if (!user.stripe_customer_id) {
-            throw new HTTPException(400, { message: 'User does not have billing enabled.' });
+            throw paymentErrors.missingStripeCustomerId();
         }
 
         const paymentService = getPaymentService(c);

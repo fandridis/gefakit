@@ -4,10 +4,7 @@ import { PaymentRepository } from "./payment.repository";
 import Stripe from 'stripe';
 import { UserDTO } from '@gefakit/shared';
 import { UserService } from "../users/user.service";
-
-// Assuming a UserService interface/type exists and is importable
-// import { UserService } from '../user/user.service'; // Example import
-
+import { paymentErrors } from "./payment.errors";
 
 
 export type PaymentService = ReturnType<typeof createPaymentService>
@@ -47,6 +44,8 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
                     console.warn('Stripe customer ID on user record not found in Stripe, will create a new one:', error.message);
                 } else {
                     console.warn('Failed to retrieve existing Stripe customer, will create a new one:', error.message);
+                    // Re-throw as a payment error if needed
+                    // throw paymentErrors.stripeError(error.message);
                 }
                 // Fall through to create a new one
             }
@@ -72,8 +71,7 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
     async function createCheckoutSession({ userId, priceId, successUrl, cancelUrl }: { userId: number, priceId: string, successUrl: string, cancelUrl: string }) {
         const user = await userService.findUserById({ id: userId });
         if (!user) {
-            // In a real app, you might throw a specific error type
-            throw new Error(`User with ID ${userId} not found.`);
+            throw paymentErrors.userNotFound(userId);
         }
 
         const { customer: stripeCustomer, newStripeCustomerIdToPersist } = await getOrCreateStripeCustomerForUser({ user });
@@ -116,11 +114,15 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
         const user = await userService.findUserById({ id: userId });
         console.log({ url: 'https://www.google.com' })
         if (!user) {
-            throw new Error(`User with ID ${userId} not found.`);
+            throw paymentErrors.userNotFound(userId);
+        }
+
+        if (!user.stripe_customer_id) {
+            throw paymentErrors.missingStripeCustomerId();
         }
 
         const portalSession = await stripe.billingPortal.sessions.create({
-            customer: user.stripe_customer_id!, // Will always exist.
+            customer: user.stripe_customer_id,
             return_url: `${process.env.APP_URL}/settings/profile`,
         });
 
@@ -142,16 +144,24 @@ export function createPaymentService({ paymentRepository, stripe, userService }:
         // and a similar pattern of returning newStripeIdToPersist if an org's Stripe ID is created/updated.
         console.log(`Creating/Retrieving Stripe customer for organization ${organizationId}`);
         // Placeholder: Fetch organization details if needed
-        // const organization = await organizationService.findById(organizationId); 
-        const customer = await stripe.customers.create({
-            // email: organization.email, // Use organization's email if available
-            name: `Organization ${organizationId}`, // Use organization name
-            metadata: {
-                internal_organization_id: organizationId.toString(),
-            },
-        });
-        // TODO: Save mapping for organizationId and potentially return new ID for persistence.
-        return customer;
+        // const organization = await organizationService.findById(organizationId);
+        // if (!organization) {
+        //    throw paymentErrors.organizationNotFound(organizationId);
+        // }
+        
+        try {
+            const customer = await stripe.customers.create({
+                // email: organization.email, // Use organization's email if available
+                name: `Organization ${organizationId}`, // Use organization name
+                metadata: {
+                    internal_organization_id: organizationId.toString(),
+                },
+            });
+            // TODO: Save mapping for organizationId and potentially return new ID for persistence.
+            return customer;
+        } catch (error: any) {
+            throw paymentErrors.stripeError(error.message);
+        }
     }
 
     return {
