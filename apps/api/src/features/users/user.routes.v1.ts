@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { Bindings } from "../../types/hono";
 import { getUserService } from "../../utils/get-service";
-import { UserService } from "./user.service";
 import { updateUserRequestBodySchema } from "@gefakit/shared/src/schemas/user.schema";
 import { zValidator } from "../../lib/zod-validator";
 import { AppVariables } from "../../create-app";

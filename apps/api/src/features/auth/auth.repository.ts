@@ -9,7 +9,7 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
             return db
                 .selectFrom('auth.users')
                 .where('id', '=', id)
-                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         },
 
@@ -17,7 +17,7 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
             return db
                 .selectFrom('auth.users')
                 .where('email', '=', email)
-                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         },
 
@@ -25,7 +25,7 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
             return db
                 .selectFrom('auth.users')
                 .where('email', '=', email)
-                .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified', 'role'])
+                .select(['id', 'email', 'username', 'password_hash', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         },
 
@@ -33,7 +33,7 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
             return db
                 .insertInto('auth.users')
                 .values(user)
-                .returning(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .returning(['id', 'email', 'username', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         },
 
@@ -59,7 +59,8 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
                     'auth.users.username',
                     'auth.users.created_at',
                     'auth.users.email_verified',
-                    'auth.users.role'
+                    'auth.users.role',
+                    'auth.users.stripe_customer_id'
                 ])
                 .where('auth.sessions.id', '=', sessionId)
                 .executeTakeFirst();
@@ -161,7 +162,8 @@ export function createAuthRepository({ db }: { db: Kysely<DB> | Transaction<DB> 
                     'auth.users.username',
                     'auth.users.created_at',
                     'auth.users.email_verified',
-                    'auth.users.role'
+                    'auth.users.role',
+                    'auth.users.stripe_customer_id'
                 ])
                 .executeTakeFirst();
         },

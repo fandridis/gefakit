@@ -10,6 +10,8 @@ import { config } from 'dotenv'
 import { getDb } from '../lib/db'
 import { fileURLToPath } from 'url'
 
+console.log('Migrating with NODE_ENV: ', process.env.NODE_ENV)
+
 // don't load your .dev.vars defaults if we're testing
 if (process.env.NODE_ENV === 'test') {
     // if you want to load a .env.test, you could do:

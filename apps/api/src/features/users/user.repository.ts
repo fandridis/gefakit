@@ -11,7 +11,7 @@ export function createUserRepository({ db }: { db: DbClient }) {
             return db
                 .selectFrom('auth.users')
                 .where('id', '=', id)
-                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .select(['id', 'email', 'username', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         },
 
@@ -29,7 +29,7 @@ export function createUserRepository({ db }: { db: DbClient }) {
                 .updateTable('auth.users')
                 .set(allowedUpdates)
                 .where('id', '=', userId)
-                .returning(['id', 'email', 'username', 'created_at', 'email_verified', 'role'])
+                .returning(['id', 'email', 'username', 'created_at', 'email_verified', 'role', 'stripe_customer_id'])
                 .executeTakeFirst();
         }
     };

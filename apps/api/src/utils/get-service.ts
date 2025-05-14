@@ -19,13 +19,17 @@ import { createTodoService, TodoService } from '../features/todos/todo.service';
 import { createAdminService, AdminService } from '../features/admin/admin.service';
 import { createUserRepository } from '../features/users/user.repository';
 import { createUserService, UserService } from '../features/users/user.service';
+import { PaymentService } from '../features/payments/payment.service';
+import { createPaymentRepository } from '../features/payments/payment.repository';
+import { createPaymentService } from '../features/payments/payment.service';
+import Stripe from 'stripe';
 
 export interface GetServiceProps<T extends AppVariables = AppVariables> {
     Bindings: Bindings;
     Variables: T;
 }
 
-export function getAuthService(c: Context<GetServiceProps>): AuthService {
+export function getAuthService<T extends AppVariables>(c: Context<GetServiceProps<T>>): AuthService {
     let service = c.get('authService');
     if (service) {
         return service;
@@ -37,7 +41,7 @@ export function getAuthService(c: Context<GetServiceProps>): AuthService {
     return service;
 }
 
-export function getOrganizationService(c: Context<GetServiceProps>): OrganizationService {
+export function getOrganizationService<T extends AppVariables>(c: Context<GetServiceProps<T>>): OrganizationService {
     let service = c.get('organizationService');
     if (service) {
         return service;
@@ -49,7 +53,7 @@ export function getOrganizationService(c: Context<GetServiceProps>): Organizatio
     return service;
 }
 
-export function getOrganizationInvitationService(c: Context<GetServiceProps>): OrganizationInvitationService {
+export function getOrganizationInvitationService<T extends AppVariables>(c: Context<GetServiceProps<T>>): OrganizationInvitationService {
     let service = c.get('organizationInvitationService');
     if (service) {
         return service;
@@ -70,7 +74,7 @@ export function getOrganizationInvitationService(c: Context<GetServiceProps>): O
     return service;
 }
 
-export function getOrganizationMembershipService(c: Context<GetServiceProps>): OrganizationMembershipService {
+export function getOrganizationMembershipService<T extends AppVariables>(c: Context<GetServiceProps<T>>): OrganizationMembershipService {
     let service = c.get('organizationMembershipService');
     if (service) {
         return service;
@@ -85,7 +89,7 @@ export function getOrganizationMembershipService(c: Context<GetServiceProps>): O
     return service;
 }
 
-export function getOnboardingService(c: Context<GetServiceProps>) {
+export function getOnboardingService<T extends AppVariables>(c: Context<GetServiceProps<T>>): OnboardingService {
     let service = c.get('onboardingService');
     if (service) {
         return service;
@@ -117,7 +121,7 @@ export function getTodoService<T extends AppVariables>(c: Context<GetServiceProp
     return service;
 }
 
-export function getAdminService(c: Context<GetServiceProps>): AdminService {
+export function getAdminService<T extends AppVariables>(c: Context<GetServiceProps<T>>): AdminService {
     let service = c.get('adminService');
     if (service) {
         return service;
@@ -129,7 +133,7 @@ export function getAdminService(c: Context<GetServiceProps>): AdminService {
     return service;
 }
 
-export function getUserService(c: Context<GetServiceProps>): UserService {
+export function getUserService<T extends AppVariables>(c: Context<GetServiceProps<T>>): UserService {
     let service = c.get('userService');
     if (service) {
         return service;
@@ -141,7 +145,7 @@ export function getUserService(c: Context<GetServiceProps>): UserService {
     return service;
 }
 
-export function getEmailService(c: Context<GetServiceProps>): EmailService {
+export function getEmailService<T extends AppVariables>(c: Context<GetServiceProps<T>>): EmailService {
     let service = c.get('emailService');
     if (service) {
         return service;
@@ -150,3 +154,22 @@ export function getEmailService(c: Context<GetServiceProps>): EmailService {
     c.set('emailService', service);
     return service;
 }
+
+export function getPaymentService<T extends AppVariables>(c: Context<GetServiceProps<T>>): PaymentService {
+    let service = c.get('paymentService');
+    let stripe = c.get('stripe');
+    if (!stripe) {
+        throw new Error('Stripe client not available in context');
+    }
+
+    if (service) {
+        return service;
+    }
+    const db = c.get('db');
+    const paymentRepository = createPaymentRepository({ db });
+    const userService = getUserService(c);
+    service = createPaymentService({ paymentRepository, stripe, userService });
+    c.set('paymentService', service);
+    return service;
+}
+

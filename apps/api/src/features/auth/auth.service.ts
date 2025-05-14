@@ -23,18 +23,18 @@ export interface OAuthUserDetails {
 }
 
 export function createAuthService(
-    { 
-        db, 
-        authRepository, 
+    {
+        db,
+        authRepository,
         createAuthRepository,
         createOrganizationRepository
     }:
-    { 
-        db: Kysely<DB>, 
-        authRepository: AuthRepository, 
-        createAuthRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => AuthRepository,
-        createOrganizationRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => OrganizationRepository
-    }) {
+        {
+            db: Kysely<DB>,
+            authRepository: AuthRepository,
+            createAuthRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => AuthRepository,
+            createOrganizationRepository: (args: { db: Kysely<DB> | Transaction<DB> }) => OrganizationRepository
+        }) {
     const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
     const SESSION_RENEWAL_THRESHOLD = 15 * 24 * 60 * 60 * 1000;
     const PASSWORD_RESET_TOKEN_DURATION = 15 * 60 * 1000; // 15 minutes
@@ -146,7 +146,7 @@ export function createAuthService(
     async function createSession({ userId }: { userId: number }) {
         const token = generateSessionToken();
         const sessionId = generateSessionId({ token });
-        
+
         const session = await authRepository.createSession({
             session: {
                 id: sessionId,
@@ -159,13 +159,13 @@ export function createAuthService(
             throw new Error('Failed to create session');
         }
 
-        return { 
+        return {
             session: {
                 id: session.id,
                 user_id: session.user_id,
                 expires_at: session.expires_at,
-            }, 
-            token 
+            },
+            token
         };
     }
 
@@ -203,11 +203,11 @@ export function createAuthService(
             newToken = generateSessionToken();
             const newSessionId = generateSessionId({ token: newToken });
             const newExpiryDate = new Date(Date.now() + SESSION_DURATION);
-            
-            await authRepository.updateSessionIdAndExpiry({ 
-                oldSessionId: session.id, 
+
+            await authRepository.updateSessionIdAndExpiry({
+                oldSessionId: session.id,
                 newSessionId: newSessionId,
-                expiresAt: newExpiryDate 
+                expiresAt: newExpiryDate
             });
 
             // Update the session object in memory for the response
@@ -221,7 +221,8 @@ export function createAuthService(
             username: result.username,
             created_at: result.created_at,
             email_verified: result.email_verified,
-            role: result.role
+            role: result.role,
+            stripe_customer_id: result.stripe_customer_id
         };
 
         return { session, user, newToken };
@@ -346,17 +347,17 @@ export function createAuthService(
         try {
             await db.transaction().execute(async (trx) => {
                 const txAuthRepo = createAuthRepository({ db: trx });
-                
+
                 // Update password
-                await txAuthRepo.updateUserPassword({ 
-                    userId: resetRecord.user_id, 
+                await txAuthRepo.updateUserPassword({
+                    userId: resetRecord.user_id,
                     passwordHash: newPasswordHash
                 });
-                
+
                 // Also mark the email as verified
-                await txAuthRepo.updateUserEmailVerified({ 
-                    userId: resetRecord.user_id, 
-                    verified: true 
+                await txAuthRepo.updateUserEmailVerified({
+                    userId: resetRecord.user_id,
+                    verified: true
                 });
 
                 // Delete the used reset token
@@ -402,14 +403,14 @@ export function createAuthService(
                 const txAuthRepo = createAuthRepository({ db: trx });
 
                 // Use transaction-bound repository (no trx argument needed)
-                await txAuthRepo.updateUserEmailVerified({ 
-                    userId: verificationRecord.user_id, 
-                    verified: true 
+                await txAuthRepo.updateUserEmailVerified({
+                    userId: verificationRecord.user_id,
+                    verified: true
                 });
 
                 // Use transaction-bound repository (no trx argument needed)
-                await txAuthRepo.deleteEmailVerificationToken({ 
-                    tokenId: verificationRecord.id 
+                await txAuthRepo.deleteEmailVerificationToken({
+                    tokenId: verificationRecord.id
                 });
             });
         } catch (err) {
@@ -441,12 +442,12 @@ export function createAuthService(
                 // Note: We trust the email from Google/GitHub IF they mark it as verified.
                 // You might want stricter checks depending on your security model.
                 const existingUserByEmail = await authRepository.findUserWithPasswordByEmail({ email: oauthDetails.email });
-                
+
                 if (existingUserByEmail) {
                     userId = existingUserByEmail.id;
 
-                    await authRepository.linkOAuthAccount({ 
-                        account: { 
+                    await authRepository.linkOAuthAccount({
+                        account: {
                             user_id: userId,
                             provider: oauthDetails.provider,
                             provider_user_id: oauthDetails.providerUserId
@@ -456,7 +457,7 @@ export function createAuthService(
                     const refetchedUser = await authRepository.findUserById(userId);
                     if (!refetchedUser) {
                         // This really shouldn't happen if linking succeeded and user existed
-                        throw authErrors.failedToRefetchUserAfterLinkingOAuthAccountByEmail(); 
+                        throw authErrors.failedToRefetchUserAfterLinkingOAuthAccountByEmail();
                     }
                     user = refetchedUser;
                 } else {
@@ -493,8 +494,8 @@ export function createAuthService(
                                     provider_user_id: oauthDetails.providerUserId
                                 }
                             });
-                             if (!linkedAccount) { // Check linking
-                                 throw authErrors.failedToLinkOAuthAccountDuringTransaction();
+                            if (!linkedAccount) { // Check linking
+                                throw authErrors.failedToLinkOAuthAccountDuringTransaction();
                             }
 
                             // The utility function already returns the created user object
@@ -605,10 +606,10 @@ export function createAuthService(
         // Note: findActiveOtpCodeByUserId already checks expiry in the query,
         // but a double check here is harmless and protects against race conditions.
         if (new Date() > otpRecord.expires_at) {
-             console.warn(`OTP verification attempt with expired code for user: ${user.id}`);
-             // Clean up expired code
-             await authRepository.deleteOtpCodeById({ id: otpRecord.id });
-             throw authErrors.expiredOtp();
+            console.warn(`OTP verification attempt with expired code for user: ${user.id}`);
+            // Clean up expired code
+            await authRepository.deleteOtpCodeById({ id: otpRecord.id });
+            throw authErrors.expiredOtp();
         }
 
         const hashedInputOtp = hashOtpCode({ code: otp });
@@ -640,7 +641,7 @@ export function createAuthService(
     async function resendVerificationEmail({ email }: { email: string }): Promise<{ user: Selectable<AuthUser>, verificationToken: string } | null> {
         // Fetch the user including password hash to match the AuthUser type
         const user = await authRepository.findUserWithPasswordByEmail({ email });
-        
+
         if (!user) {
             // User not found, return null to avoid enumeration
             return null;
