@@ -1,0 +1,27 @@
+{
+    "name": "@gefakit/feature-flag-react",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "test": "vitest"
+    },
+    "dependencies": {
+        "@gefakit/feature-flag": "workspace:*"
+    },
+    "peerDependencies": {
+        "@gefakit/shared": "workspace:*",
+        "react": "^19.0.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.0.10",
+        "typescript": "^5.0.0",
+        "vitest": "^0.30.0",
+        "react": "^19.0.0"
+    }
+}

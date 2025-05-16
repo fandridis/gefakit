@@ -1,0 +1,29 @@
+{
+    "name": "@gefakit/feature-flag",
+    "version": "0.1.0",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "test": "vitest"
+    },
+    "peerDependencies": {
+        "@gefakit/shared": "workspace:*"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "vitest": "^0.30.0"
+    }
+}

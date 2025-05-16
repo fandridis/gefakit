@@ -32,6 +32,8 @@ import { PaymentService } from './features/payments/payment.service';
 import { stripeMiddleware } from './middleware/stripe';
 import Stripe from 'stripe';
 import { createWebhookRoutes } from './features/webhooks/webhook.routes';
+import { FeatureFlagService } from './features/feature-flags/feature-flag.service';
+import { createFeatureFlagRoutesV1 } from './features/feature-flags/feature-flag.routes.v1';
 
 export interface AppConfig {
   dependencies?: Partial<AppVariables>;
@@ -58,6 +60,7 @@ export interface AppVariables {
   adminService?: AdminService;
   onboardingService?: OnboardingService;
   paymentService?: PaymentService;
+  featureFlagService?: FeatureFlagService;
   /** Misc */
   stripe?: Stripe;
   impersonatorUserId?: number;
@@ -142,6 +145,7 @@ export function createAppInstance(config?: AppConfig): Hono<{ Bindings: Bindings
   app.route("/api/v1/organization-memberships", createOrganizationMembershipRoutesV1());
   app.route("/api/v1/organization-invitations", createOrganizationInvitationRoutesV1());
   app.route("/api/v1/payments", createPaymentRoutesV1());
+  app.route("/api/v1/feature-flags", createFeatureFlagRoutesV1());
 
   // --- Error Handling & Not Found ---
   app.notFound((c) => {

@@ -1,6 +1,4 @@
-import { Kysely } from 'kysely';
 import { Context } from 'hono';
-import { DB } from '../db/db-types';
 import { AppVariables } from '../create-app';
 import { Bindings } from '../types/hono';
 
@@ -22,7 +20,8 @@ import { createUserService, UserService } from '../features/users/user.service';
 import { PaymentService } from '../features/payments/payment.service';
 import { createPaymentRepository } from '../features/payments/payment.repository';
 import { createPaymentService } from '../features/payments/payment.service';
-import Stripe from 'stripe';
+import { createFeatureFlagService, FeatureFlagService } from '../features/feature-flags/feature-flag.service';
+import { createFeatureFlagRepository } from '../features/feature-flags/feature-flag.repository';
 
 export interface GetServiceProps<T extends AppVariables = AppVariables> {
     Bindings: Bindings;
@@ -173,3 +172,16 @@ export function getPaymentService<T extends AppVariables>(c: Context<GetServiceP
     return service;
 }
 
+export function getFeatureFlagService<T extends AppVariables>(c: Context<GetServiceProps<T>>): FeatureFlagService {
+    let service = c.get('featureFlagService');
+    if (service) {
+        return service;
+    }
+
+    const kv = c.env.GEFAKIT_FEATURE_FLAGS_KV
+    const featureFlagRepository = createFeatureFlagRepository({ kv });
+    service = createFeatureFlagService({ featureFlagRepository });
+
+    c.set('featureFlagService', service);
+    return service;
+}

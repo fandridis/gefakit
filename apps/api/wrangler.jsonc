@@ -31,6 +31,10 @@
 		{
 			"binding": "GEFAKIT_RATE_LIMITER_KV",
 			"id": "52f1f88462794700b3cae7fed8f255a3"
+		},
+		{
+			"binding": "GEFAKIT_FEATURE_FLAGS_KV",
+			"id": "55ef5734e117422b8e23d6b2ad623c08"
 		}
 	],
 	"env": {
@@ -47,6 +51,10 @@
 				{
 					"binding": "GEFAKIT_RATE_LIMITER_KV",
 					"id": "52f1f88462794700b3cae7fed8f255a3"
+				},
+				{
+					"binding": "GEFAKIT_FEATURE_FLAGS_KV",
+					"id": "55ef5734e117422b8e23d6b2ad623c08"
 				}
 			],
 		},
@@ -65,6 +73,11 @@
 					"binding": "GEFAKIT_RATE_LIMITER_KV",
 					"id": "d0fa476dd3024ae38bce685c05501239",
 					"preview_id": "d0fa476dd3024ae38bce685c05501239"
+				},
+				{
+					"binding": "GEFAKIT_FEATURE_FLAGS_KV",
+					"id": "9173325bdbc047649a4d333fc71b28c2",
+					"preview_id": "9173325bdbc047649a4d333fc71b28c2"
 				}
 			],
 			"hyperdrive": [

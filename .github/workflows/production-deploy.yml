@@ -24,6 +24,7 @@ jobs:
     outputs:
       api_changed: ${{ steps.filter.outputs.api }}
       web_changed: ${{ steps.filter.outputs.web }}
+      packages_changed: ${{ steps.filter.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,10 +37,12 @@ jobs:
               - 'apps/api/**'
             web:
               - 'apps/web/**'
+            packages:
+              - 'packages/**'
 
   deploy-api:
     needs: check-changes
-    if: needs.check-changes.outputs.api_changed == 'true'
+    if: needs.check-changes.outputs.api_changed == 'true' || needs.check-changes.outputs.packages_changed == 'true'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -62,6 +65,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm -r --filter "@gefakit/*" build
 
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0
@@ -93,7 +99,7 @@ jobs:
 
   deploy-web:
     needs: check-changes
-    if: needs.check-changes.outputs.web_changed == 'true'
+    if: needs.check-changes.outputs.web_changed == 'true' || needs.check-changes.outputs.packages_changed == 'true'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,6 +122,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm -r --filter "@gefakit/*" build
 
       - name: Install Wrangler
         run: npm install -g wrangler@4.10.0

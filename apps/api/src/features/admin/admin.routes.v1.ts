@@ -1,9 +1,7 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { createAuthRepository } from '../auth/auth.repository';
 import { authMiddleware } from '../../middleware/auth';
-import { createAdminService } from './admin.service';
 import { Bindings } from '../../types/hono';
 import { getAdminService, getAuthService } from '../../utils/get-service';
 import { adminErrors } from './admin.errors';
@@ -18,7 +16,7 @@ const impersonateSchema = z.object({
 
 
 // Export a factory function that creates and configures the Hono app
-export function createAdminRoutesV1() { 
+export function createAdminRoutesV1() {
   const app = new Hono<{ Bindings: Bindings, Variables: AppVariables }>();
 
   app.post(
@@ -36,7 +34,7 @@ export function createAdminRoutesV1() {
         throw adminErrors.authenticationRequired();
       }
       if (adminUser.id === targetUserId) {
-         throw adminErrors.cannotImpersonateSelf();
+        throw adminErrors.cannotImpersonateSelf();
       }
 
       const adminService = getAdminService(c);
@@ -60,10 +58,10 @@ export function createAdminRoutesV1() {
       if (!session) {
         throw adminErrors.impersonationSessionNotFound();
       }
-      
+
       const authService = getAuthService(c);
       const adminService = getAdminService(c);
-      
+
       const sessionDetails = await authService.findSessionById({ id: session.id });
       if (!sessionDetails || !sessionDetails.impersonator_user_id) {
         throw adminErrors.notImpersonating();
