@@ -126,20 +126,26 @@ describe('Todo API Integration Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up resources created *during* the test (e.g., todos)
     if (testDb && testUser) {
       try {
-        // Delete ALL todos associated with the test user after EACH test
-        // This ensures tests don't interfere with each other via todos
+        if (typeof testUser.id === 'undefined' || testUser.id === null) {
+          // console.error(`[afterEach] Invalid testUser.id: ${testUser.id}. Skipping delete for user ${testUser.email}.`);
+          return;
+        }
+
+        // console.log(`[afterEach] Attempting to delete todos for user ID: ${testUser.id} (type: ${typeof testUser.id})`);
         const deleteResult = await testDb.deleteFrom('core.todos')
           .where('author_id', '=', testUser.id)
           .execute();
-        // Log the number of deleted rows for debugging if needed
+
       } catch (error) {
-        console.error(`Error cleaning up todos for user ${testUser.email}:`, error);
+        console.error(`[afterEach] Error cleaning up todos for user ${testUser.email}:`, error); // Keep this error log
       }
     } else {
-      // console.log("Skipping test cleanup: testDb or testUser not available.");
+      let reason = "testDb or testUser not available.";
+      if (!testDb) reason = "testDb is not available.";
+      else if (!testUser) reason = "testUser is not available.";
+      // console.log(`[afterEach] Skipping cleanup: ${reason}`);
     }
   });
 
@@ -196,11 +202,6 @@ describe('Todo API Integration Tests', () => {
     it('should return 400 Bad Request if request body is invalid', async () => {
       const invalidTodoData = { completed: 'yes' }; // Invalid types
 
-      // fetch all todos to use what exists already, log that
-      const todos = await testDb.selectFrom('core.todos')
-        .selectAll()
-        .execute();
-
       const res = await testApp.request('/api/v1/todos', {
         method: 'POST',
         headers: {
@@ -221,12 +222,21 @@ describe('Todo API Integration Tests', () => {
       expect(body.errors.some((e: any) => e.field === 'title')).toBe(true);
       expect(body.errors.some((e: any) => e.field === 'completed')).toBe(true);
 
-      // Assert: Check that no todo was created in the database
-      const countResult = await testDb.selectFrom('core.todos')
-        .select(({ fn }) => [fn.count('id').as('count')])
+      // Assert: Check that no todo was created in the database for the current user
+      const userTodoCountResult = await testDb.selectFrom('core.todos')
+        .where('author_id', '=', testUser!.id)
+        .select(({ fn }) => [fn.count('id').as('count')
+        ])
         .executeTakeFirst();
+      expect(userTodoCountResult?.count).toBe("0");
 
-      expect(countResult?.count).toBe("0");
+      // Optional: Keep the overall count check if it's truly desired, but it might be flaky
+      // due to parallel tests or other suite residues if not perfectly isolated.
+      // For now, focusing on user-specific count.
+      // const overallCountResult = await testDb.selectFrom('core.todos')
+      //   .select(({ fn }) => [fn.count('id').as('count')])
+      //   .executeTakeFirst();
+      // expect(overallCountResult?.count).toBe("0");
     });
   });
 }); 

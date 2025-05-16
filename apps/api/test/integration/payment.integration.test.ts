@@ -97,10 +97,13 @@ describe('Payment API Integration Tests', () => {
 
     const testPassword = 'password1234';
     const hashedPassword = await hashPassword(testPassword);
-    const userEmail = `testuser-${Date.now()}@payment-integration.com`;
+    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const baseUsername = `testuser-payment-${uniqueSuffix}`;
+    const userEmail = `${baseUsername}@integration.com`;
+
     const userInsert: Insertable<AuthUser> = {
       email: userEmail,
-      username: `testuser-${Date.now()}`,
+      username: baseUsername,
       password_hash: hashedPassword,
       email_verified: true,
       stripe_customer_id: 'cus_test_mock_payment' // Pre-set for some tests
