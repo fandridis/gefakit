@@ -10,3 +10,5 @@ node_modules
 
 ai-project-info.txt
 ai-project-as-text.txt
+
+packages/feature-flag/dist

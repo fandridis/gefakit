@@ -177,6 +177,7 @@ export function createFeatureFlagService({
         context: EvaluationContext
     ): Promise<boolean> {
         const flag = await getFlag(flagId);
+        console.log('Evaluating the flag: ', flag);
         return evaluateFlag(flag, context);
     }
 

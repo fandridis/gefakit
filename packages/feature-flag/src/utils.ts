@@ -168,6 +168,8 @@ export function evaluateFlag(flag: FeatureFlag, context: EvaluationContext): boo
     // Get environment config or use default
     const envConfig = flag.environments.find(e => e.environment === context.environment);
 
+    console.log('Evaluating the flag with config: ', envConfig);
+
     // If no matching environment config, use default enabled value
     if (!envConfig) {
         return flag.defaultEnabled;

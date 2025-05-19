@@ -208,11 +208,14 @@ export function createFeatureFlagRoutesV1() {
         const id = c.req.param('id');
         const contextParams = c.req.query();
 
+        console.log('contextParams: ', { contextParams, cenv: c.env.NODE_ENV });
+        // return c.json({ success: true, contextParams });
+
         const context: EvaluationContext = {
             userId: contextParams.userId ? parseInt(contextParams.userId) : undefined,
             organizationId: contextParams.organizationId ? parseInt(contextParams.organizationId) : undefined,
             subscriptionType: contextParams.subscriptionType,
-            environment: contextParams.environment || 'production'
+            environment: contextParams.environment || c.env.NODE_ENV || 'production'
         };
 
         const service = getFeatureFlagService(c);
